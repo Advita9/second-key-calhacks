@@ -16,9 +16,9 @@ Iteration: 4
 
 ## Build order (do in this order; each line is one commit)
 - [x] 0. Repo scaffold: uv project, Next.js app, spacetime module, bridge, .env loading, `make dev` / `scripts/dev.sh` that starts everything.
-- [ ] 1. Kernel domain: Payment, fingerprint (sha256 of account, amount, currency, beneficiary ref, rail, policy version), state machine, audit chain.
-- [ ] 2. Policy engine: YAML v1, safe expression parser, precedence, tests.
-- [~] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
+- [x] 1. Kernel domain: Payment, fingerprint (sha256 of account, amount, currency, beneficiary ref, rail, policy version), state machine, audit chain.
+- [x] 2. Policy engine: YAML v1, safe expression parser, precedence, tests.
+- [x] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
 - [ ] 4. Hypothesis property tests over random action traces for I1 to I7. Review by invariant-reviewer, attack by red-team.
 - [x] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
 - [x] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
