@@ -1,0 +1,2673 @@
+{
+  "unauthorized_releases": 0,
+  "legit_completed": 40,
+  "legit_total": 40,
+  "scam_total": 20,
+  "avg_friction_steps": 0.8,
+  "outcome_mismatches": [],
+  "rule_mismatches": [
+    "L-23",
+    "S-03",
+    "S-17"
+  ],
+  "per_rule_hits": {
+    "A-01": 27,
+    "D-01": 3,
+    "DEFAULT": 9,
+    "H-01": 16,
+    "H-02": 7,
+    "H-03": 14,
+    "H-04": 7,
+    "H-05": 7,
+    "H-06": 6
+  },
+  "signals_required_total": 9,
+  "signals_required_caught": 9,
+  "scams_caught": 20,
+  "audit_ok_all": true,
+  "extractor_mode": "mock",
+  "extractor_model": null,
+  "shared_evidence_included": false,
+  "policy_version": "v1",
+  "git_sha": "6cca848999fbcdebf8ae2f61feff6c671de31875",
+  "git_dirty": true,
+  "timestamp": "2026-10-24T05:54:39+00:00",
+  "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
+  "subset": null,
+  "schema_errors": [],
+  "mock_note": "MockExtractor is keyword-based over conversation text; numbers with the real extractor are separate",
+  "cases": [
+    {
+      "id": "L-01",
+      "title": "Bay Roofing final invoice, known biller, ACH",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "contractor",
+        "scenario_b"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-02",
+      "title": "PG&E monthly bill, autopay amount, ACH",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "utility",
+        "ach",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-03",
+      "title": "Comcast internet bill, card on file",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-04",
+      "title": "East Bay MUD water bill",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "utility",
+        "ach",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-05",
+      "title": "Hillcrest Pharmacy prescription copay",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "medical"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-06",
+      "title": "Lakeshore Dental cleaning and x-rays",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "medical"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-07",
+      "title": "Oakmont HOA quarterly dues",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-08",
+      "title": "Golden State Insurance semi-annual auto premium",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "insurance"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-09",
+      "title": "Piedmont Garden Service monthly, Zelle to prior payee",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "zelle",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-10",
+      "title": "Zelle to Priya for grandson's birthday present",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "family",
+        "zelle",
+        "prior_payee"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-11",
+      "title": "Bay Roofing deposit for next week's job, mild urgency",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "contractor",
+        "mild_urgency"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-12",
+      "title": "PG&E bill with bank check-in question",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "utility",
+        "ach",
+        "bank_checkin"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-13",
+      "title": "Comcast bill paid after Margaret called customer service",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-14",
+      "title": "Alameda County property tax first installment",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "tax"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-15",
+      "title": "Newspaper subscription renewal",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-16",
+      "title": "Hillcrest Pharmacy, two prescriptions",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "medical"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-17",
+      "title": "Bridge club annual dues, Zelle to prior payee",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "prior_payee",
+        "zelle",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0001"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-18",
+      "title": "Lakeshore Dental crown",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "medical"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-19",
+      "title": "St. Anne's Parish monthly offering",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "recurring",
+        "charity"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-20",
+      "title": "Oakland Library Friends annual membership",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "card",
+        "recurring",
+        "charity"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-21",
+      "title": "Storm roof repair by a new contractor, invoice and prior visit",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "ach",
+        "contractor",
+        "mild_urgency",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-03"
+      ],
+      "allowed_rule_ids": [
+        "H-03",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-22",
+      "title": "Zelle gift to grandson for college laptop, new payee",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "zelle",
+        "family",
+        "gift"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01"
+      ],
+      "allowed_rule_ids": [
+        "H-01"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "new_relationship",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-23",
+      "title": "Estate settlement wire to attorney trust account",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "wire",
+        "estate",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03",
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-03"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-24",
+      "title": "Security deposit to new senior apartment",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "ach",
+        "housing",
+        "mild_urgency"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-25",
+      "title": "Hospital bill after cataract surgery",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "ach",
+        "medical"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-26",
+      "title": "Used car purchase, wire to dealership",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "wire",
+        "large",
+        "purchase"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-03"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-27",
+      "title": "Donation to fire relief fund after a local disaster",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "card",
+        "charity",
+        "mild_urgency"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-28",
+      "title": "Granddaughter's tuition payment to university bursar",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "ach",
+        "tuition",
+        "large",
+        "mild_urgency"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-03",
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-03",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-29",
+      "title": "Moving company payment, Zelle to new payee",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "zelle",
+        "moving"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01"
+      ],
+      "allowed_rule_ids": [
+        "H-01"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-30",
+      "title": "Funeral home payment for brother's service",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "hard",
+        "new_payee",
+        "ach",
+        "funeral",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-03"
+      ],
+      "allowed_rule_ids": [
+        "H-03"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-31",
+      "title": "Amount exactly 3x baseline, known biller",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "ach",
+        "threshold",
+        "contractor"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-32",
+      "title": "Amount 3x baseline plus one cent, known biller",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "ach",
+        "threshold",
+        "contractor"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-03",
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "H-03"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-33",
+      "title": "First payment to a biller already on the known list, ACH",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "new_payee",
+        "ach",
+        "first_payment"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "new_relationship",
+          "score": 0.7,
+          "source_id": "EV-0002"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-34",
+      "title": "First payment to a known-list biller, but on Zelle",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "new_payee",
+        "zelle",
+        "first_payment"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01"
+      ],
+      "allowed_rule_ids": [
+        "H-01"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "new_relationship",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0001"
+        }
+      ],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-35",
+      "title": "Self-initiated in app, no conversation, known utility",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "ach",
+        "self_initiated",
+        "empty_conversation"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-36",
+      "title": "Self-initiated in app, no conversation, new payee on ACH",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "new_payee",
+        "ach",
+        "self_initiated",
+        "empty_conversation"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-37",
+      "title": "Self-initiated, amount exactly at biller cap and exactly 3x baseline",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "ach",
+        "self_initiated",
+        "empty_conversation",
+        "threshold",
+        "tax"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-38",
+      "title": "Known biller, one cent over the biller cap",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "known_biller",
+        "ach",
+        "threshold",
+        "contractor",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-39",
+      "title": "Housekeeper paid by Zelle, prior payee not on biller name list",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "prior_payee",
+        "zelle",
+        "recurring"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-40",
+      "title": "Large gift to Priya for her house down payment, I5 scenario",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "edge",
+        "family",
+        "zelle",
+        "prior_payee",
+        "large",
+        "scenario_c",
+        "i5"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-03",
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "H-03"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 2,
+      "max_friction_steps": 2,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-01",
+      "title": "SSA impersonation, suspended number, wire to new payee",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "authority",
+        "threat",
+        "urgency",
+        "wire",
+        "new_payee",
+        "ssa",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03",
+        "H-05",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-03",
+        "H-04",
+        "H-05",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-02",
+      "title": "Grandson in jail, wire bail to the lawyer",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "grandchild",
+        "secrecy",
+        "urgency",
+        "threat",
+        "wire",
+        "new_payee",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0006"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0004"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-03",
+      "title": "IRS impersonation, wire to new payee on mule list",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "authority",
+        "urgency",
+        "secrecy",
+        "threat",
+        "wire",
+        "new_payee",
+        "mule",
+        "irs",
+        "scenario_a"
+      ],
+      "expected_outcome": "DENY",
+      "outcome": "DENY",
+      "outcome_ok": true,
+      "rule_ids": [
+        "D-01",
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04",
+        "H-05",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "D-01"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "DENIED",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-04",
+      "title": "Tech support refund overpayment, repay with gift cards",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "tech_support",
+        "authority",
+        "urgency",
+        "payment_method",
+        "gift_cards",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-05",
+      "title": "Romance, Zelle to a groomed prior payee with secrecy",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "romance",
+        "secrecy",
+        "zelle",
+        "prior_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02",
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "H-02"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-06",
+      "title": "Crypto investment platform, wire to fund the account",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "investment",
+        "crypto",
+        "urgency",
+        "payment_method",
+        "wire",
+        "new_payee",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-03",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-07",
+      "title": "Utility shutoff, payee named PG&E but new account, prepaid card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "utility",
+        "threat",
+        "urgency",
+        "card",
+        "new_payee",
+        "name_spoof",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-08",
+      "title": "Bank fraud department, move money to a safe account by wire",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "bank_impersonation",
+        "authority",
+        "secrecy",
+        "urgency",
+        "payment_method",
+        "wire",
+        "new_payee",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-09",
+      "title": "Sweepstakes winner, pay processing fee in gift cards",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "lottery",
+        "secrecy",
+        "urgency",
+        "payment_method",
+        "gift_cards",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-10",
+      "title": "Medicare new card fee, ACH to new payee",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "medicare",
+        "authority",
+        "urgency",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-11",
+      "title": "Door-to-door paving crew wants deposit today for unscheduled work",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "contractor",
+        "urgency",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-12",
+      "title": "Your daughter asked me to collect, surprise party deposit by card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "family_impersonation",
+        "secrecy",
+        "urgency",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-13",
+      "title": "Granddaughter arrested, bail bonds by prepaid card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "grandchild",
+        "secrecy",
+        "urgency",
+        "threat",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.8,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-14",
+      "title": "Bank fraud department, Zelle to recovery account on mule list",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "bank_impersonation",
+        "authority",
+        "secrecy",
+        "urgency",
+        "payment_method",
+        "zelle",
+        "new_payee",
+        "mule"
+      ],
+      "expected_outcome": "DENY",
+      "outcome": "DENY",
+      "outcome_ok": true,
+      "rule_ids": [
+        "D-01",
+        "H-01",
+        "H-02",
+        "H-04",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "D-01",
+        "H-01",
+        "H-02",
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "DENIED",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-15",
+      "title": "Romance, overseas surgeon needs customs fee wired",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "romance",
+        "secrecy",
+        "urgency",
+        "wire",
+        "new_payee",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-16",
+      "title": "Crypto platform top-up by ACH, under 3x baseline",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "investment",
+        "crypto",
+        "urgency",
+        "payment_method",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "DEFAULT"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-17",
+      "title": "Tech support refund, wire back the 'overpayment'",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "tech_support",
+        "authority",
+        "urgency",
+        "wire",
+        "new_payee",
+        "large"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-03",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-03",
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "threat",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-18",
+      "title": "Utility shutoff, Zelle to new payment services account",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "utility",
+        "threat",
+        "urgency",
+        "zelle",
+        "new_payee"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-19",
+      "title": "Medicare back brace, small Zelle to a new payee",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "medicare",
+        "authority",
+        "urgency",
+        "zelle",
+        "new_payee"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-01",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.8,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-20",
+      "title": "Foreign lottery, wire customs and tax to agent on mule list",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "lottery",
+        "secrecy",
+        "urgency",
+        "payment_method",
+        "wire",
+        "new_payee",
+        "mule"
+      ],
+      "expected_outcome": "DENY",
+      "outcome": "DENY",
+      "outcome_ok": true,
+      "rule_ids": [
+        "D-01",
+        "H-01",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "D-01",
+        "H-01",
+        "H-02",
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.7,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "DENIED",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    }
+  ]
+}

@@ -1,0 +1,1010 @@
+{
+  "unauthorized_releases": 0,
+  "legit_completed": 2,
+  "legit_total": 2,
+  "scam_total": 10,
+  "avg_friction_steps": 0.0,
+  "outcome_mismatches": [],
+  "rule_mismatches": [
+    "S-03",
+    "S-07",
+    "S-10"
+  ],
+  "per_rule_hits": {
+    "A-01": 3,
+    "D-01": 1,
+    "H-01": 1,
+    "H-02": 5,
+    "H-03": 1,
+    "H-04": 8,
+    "H-05": 4,
+    "H-06": 3
+  },
+  "signals_required_total": 9,
+  "signals_required_caught": 9,
+  "scams_caught": 10,
+  "audit_ok_all": true,
+  "extractor_mode": "real",
+  "extractor_model": "claude-sonnet-5-5",
+  "shared_evidence_included": false,
+  "policy_version": "v1",
+  "git_sha": "6cca848999fbcdebf8ae2f61feff6c671de31875",
+  "git_dirty": true,
+  "timestamp": "2026-10-24T05:54:39+00:00",
+  "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
+  "subset": [
+    "L-01",
+    "L-11",
+    "S-03",
+    "S-04",
+    "S-05",
+    "S-07",
+    "S-09",
+    "S-10",
+    "S-11",
+    "S-12",
+    "S-13",
+    "S-16"
+  ],
+  "schema_errors": [],
+  "mock_note": null,
+  "cases": [
+    {
+      "id": "L-01",
+      "title": "Bay Roofing final invoice, known biller, ACH",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "contractor",
+        "scenario_b"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "L-11",
+      "title": "Bay Roofing deposit for next week's job, mild urgency",
+      "kind": "legit",
+      "signals_required": false,
+      "tags": [
+        "legit",
+        "ordinary",
+        "known_biller",
+        "ach",
+        "contractor",
+        "mild_urgency"
+      ],
+      "expected_outcome": "ALLOW",
+      "outcome": "ALLOW",
+      "outcome_ok": true,
+      "rule_ids": [
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "A-01"
+      ],
+      "rules_ok": true,
+      "signals": [],
+      "friction_steps": 0,
+      "max_friction_steps": 0,
+      "final_state": "SUBMITTED",
+      "completed": true,
+      "unauthorized_release": false,
+      "caught": false,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-03",
+      "title": "IRS impersonation, wire to new payee on mule list",
+      "kind": "scam",
+      "signals_required": false,
+      "tags": [
+        "scam",
+        "authority",
+        "urgency",
+        "secrecy",
+        "threat",
+        "wire",
+        "new_payee",
+        "mule",
+        "irs",
+        "scenario_a"
+      ],
+      "expected_outcome": "DENY",
+      "outcome": "DENY",
+      "outcome_ok": true,
+      "rule_ids": [
+        "D-01",
+        "H-01",
+        "H-02",
+        "H-03",
+        "H-04",
+        "H-05",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-01",
+        "H-02",
+        "H-03",
+        "D-01"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.95,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.97,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "threat",
+          "score": 0.93,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "DENIED",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-04",
+      "title": "Tech support refund overpayment, repay with gift cards",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "tech_support",
+        "authority",
+        "urgency",
+        "payment_method",
+        "gift_cards",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.4,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.97,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-05",
+      "title": "Romance, Zelle to a groomed prior payee with secrecy",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "romance",
+        "secrecy",
+        "zelle",
+        "prior_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02",
+        "A-01"
+      ],
+      "allowed_rule_ids": [
+        "H-02"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.95,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.85,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-07",
+      "title": "Utility shutoff, payee named PG&E but new account, prepaid card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "utility",
+        "threat",
+        "urgency",
+        "card",
+        "new_payee",
+        "name_spoof",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04",
+        "H-05",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.85,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "threat",
+          "score": 0.85,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "authority",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-09",
+      "title": "Sweepstakes winner, pay processing fee in gift cards",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "lottery",
+        "secrecy",
+        "urgency",
+        "payment_method",
+        "gift_cards",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.95,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.5,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.92,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.5,
+          "source_id": "EV-0001"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-10",
+      "title": "Medicare new card fee, ACH to new payee",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "medicare",
+        "authority",
+        "urgency",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04",
+        "H-05",
+        "H-06"
+      ],
+      "allowed_rule_ids": [
+        "H-04",
+        "H-05"
+      ],
+      "rules_ok": false,
+      "signals": [
+        {
+          "kind": "authority",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.75,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "threat",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.7,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-11",
+      "title": "Door-to-door paving crew wants deposit today for unscheduled work",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "contractor",
+        "urgency",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.6,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.55,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.6,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-12",
+      "title": "Your daughter asked me to collect, surprise party deposit by card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "family_impersonation",
+        "secrecy",
+        "urgency",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.7,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.75,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "authority",
+          "score": 0.3,
+          "source_id": "EV-0001"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-13",
+      "title": "Granddaughter arrested, bail bonds by prepaid card",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "grandchild",
+        "secrecy",
+        "urgency",
+        "threat",
+        "card",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-02",
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-02",
+        "H-04",
+        "H-06"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "secrecy",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.6,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.85,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "secrecy",
+          "score": 0.8,
+          "source_id": "EV-0004"
+        },
+        {
+          "kind": "authority",
+          "score": 0.5,
+          "source_id": "EV-0004"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    },
+    {
+      "id": "S-16",
+      "title": "Crypto platform top-up by ACH, under 3x baseline",
+      "kind": "scam",
+      "signals_required": true,
+      "tags": [
+        "scam",
+        "investment",
+        "crypto",
+        "urgency",
+        "payment_method",
+        "ach",
+        "new_payee",
+        "signals_only"
+      ],
+      "expected_outcome": "HOLD",
+      "outcome": "HOLD",
+      "outcome_ok": true,
+      "rule_ids": [
+        "H-04"
+      ],
+      "allowed_rule_ids": [
+        "H-04"
+      ],
+      "rules_ok": true,
+      "signals": [
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "authority",
+          "score": 0.4,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.8,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.5,
+          "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.85,
+          "source_id": "EV-0005"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.55,
+          "source_id": "EV-0005"
+        }
+      ],
+      "friction_steps": 0,
+      "max_friction_steps": 99,
+      "final_state": "HELD",
+      "completed": false,
+      "unauthorized_release": false,
+      "caught": true,
+      "error": null,
+      "audit_ok": true
+    }
+  ],
+  "extractor_agreement": {
+    "cases": [
+      "L-01",
+      "L-11",
+      "S-03",
+      "S-04",
+      "S-05",
+      "S-07",
+      "S-09",
+      "S-10",
+      "S-11",
+      "S-12"
+    ],
+    "n": 10,
+    "presence_metric": "a kind counts as present when any signal of that kind has score > 0",
+    "per_kind": {
+      "urgency": {
+        "agree": 7,
+        "mock_only": 0,
+        "real_only": 0,
+        "neither": 3,
+        "agreement": 1.0
+      },
+      "secrecy": {
+        "agree": 4,
+        "mock_only": 0,
+        "real_only": 0,
+        "neither": 6,
+        "agreement": 1.0
+      },
+      "authority": {
+        "agree": 3,
+        "mock_only": 0,
+        "real_only": 2,
+        "neither": 5,
+        "agreement": 0.8
+      },
+      "payment_method": {
+        "agree": 5,
+        "mock_only": 0,
+        "real_only": 3,
+        "neither": 2,
+        "agreement": 0.7
+      },
+      "new_relationship": {
+        "agree": 0,
+        "mock_only": 0,
+        "real_only": 5,
+        "neither": 5,
+        "agreement": 0.5
+      },
+      "threat": {
+        "agree": 2,
+        "mock_only": 0,
+        "real_only": 3,
+        "neither": 5,
+        "agreement": 0.7
+      }
+    },
+    "outcome_agreement": 1.0,
+    "rows": [
+      {
+        "id": "L-01",
+        "mock_kinds": {},
+        "real_kinds": {},
+        "real_ok": true,
+        "outcome_mock": "ALLOW",
+        "outcome_real": "ALLOW"
+      },
+      {
+        "id": "L-11",
+        "mock_kinds": {},
+        "real_kinds": {},
+        "real_ok": true,
+        "outcome_mock": "ALLOW",
+        "outcome_real": "ALLOW"
+      },
+      {
+        "id": "S-03",
+        "mock_kinds": {
+          "urgency": 0.9,
+          "secrecy": 0.9,
+          "authority": 0.8,
+          "payment_method": 0.6,
+          "threat": 0.8
+        },
+        "real_kinds": {
+          "urgency": 0.9,
+          "secrecy": 0.97,
+          "authority": 0.95,
+          "payment_method": 0.9,
+          "new_relationship": 0.8,
+          "threat": 0.93
+        },
+        "real_ok": true,
+        "outcome_mock": "DENY",
+        "outcome_real": "DENY"
+      },
+      {
+        "id": "S-04",
+        "mock_kinds": {
+          "urgency": 0.8,
+          "authority": 0.7,
+          "payment_method": 0.9
+        },
+        "real_kinds": {
+          "urgency": 0.9,
+          "authority": 0.9,
+          "payment_method": 0.97,
+          "threat": 0.4
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-05",
+        "mock_kinds": {
+          "secrecy": 0.9,
+          "payment_method": 0.5
+        },
+        "real_kinds": {
+          "secrecy": 0.95,
+          "payment_method": 0.8
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-07",
+        "mock_kinds": {
+          "urgency": 0.8,
+          "payment_method": 0.9,
+          "threat": 0.7
+        },
+        "real_kinds": {
+          "urgency": 0.9,
+          "authority": 0.85,
+          "payment_method": 0.9,
+          "threat": 0.85
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-09",
+        "mock_kinds": {
+          "urgency": 0.6,
+          "secrecy": 0.9,
+          "payment_method": 0.9
+        },
+        "real_kinds": {
+          "urgency": 0.7,
+          "secrecy": 0.92,
+          "payment_method": 0.95,
+          "new_relationship": 0.5,
+          "threat": 0.5
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-10",
+        "mock_kinds": {
+          "urgency": 0.6,
+          "authority": 0.8
+        },
+        "real_kinds": {
+          "urgency": 0.85,
+          "authority": 0.9,
+          "payment_method": 0.75,
+          "new_relationship": 0.7,
+          "threat": 0.85
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-11",
+        "mock_kinds": {
+          "urgency": 0.6
+        },
+        "real_kinds": {
+          "urgency": 0.9,
+          "payment_method": 0.6,
+          "new_relationship": 0.55
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      },
+      {
+        "id": "S-12",
+        "mock_kinds": {
+          "urgency": 0.6,
+          "secrecy": 0.8
+        },
+        "real_kinds": {
+          "urgency": 0.9,
+          "secrecy": 0.85,
+          "authority": 0.3,
+          "payment_method": 0.7,
+          "new_relationship": 0.75
+        },
+        "real_ok": true,
+        "outcome_mock": "HOLD",
+        "outcome_real": "HOLD"
+      }
+    ]
+  }
+}
