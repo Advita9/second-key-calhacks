@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from hypothesis import event, given, settings
 
-from kernel.models import Capability, Invariant, Outcome, State
+from kernel.models import Capability, Invariant, Outcome, State, normalize_ref
 from kernel.service import Attest, Mutate, Release
 from tests.property.driver import Cancel, Driver
 from tests.property.strategies import SymCmd, make_kernel, traces
@@ -58,7 +58,7 @@ def test_held_leaves_only_via_bank_review_fresh_review_or_cancel(trace: list[Sym
             assert s.cmd.capability is Capability.BANK_REVIEW
             assert s.state_after is State.ELIGIBLE_TO_SUBMIT
             assert s.payment_before is not None
-            assert s.cmd.actor_id != s.payment_before.beneficiary.account_ref
+            assert normalize_ref(s.cmd.actor_id) != s.payment_before.beneficiary.account_ref
         elif isinstance(s.cmd, Cancel):
             event("held payment cancelled")
             assert s.state_after is State.CANCELLED

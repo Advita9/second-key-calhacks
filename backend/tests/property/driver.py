@@ -114,9 +114,16 @@ class Driver:
             return None
 
     def _actor(self, actor: str | BeneficiaryActor, payment: Payment | None) -> str:
-        if isinstance(actor, BeneficiaryActor):
-            return payment.beneficiary.account_ref if payment else "ext_nobody"
-        return actor
+        if not isinstance(actor, BeneficiaryActor):
+            return actor
+        ref = payment.beneficiary.account_ref if payment else "ext_nobody"
+        if actor.variant == "upper":
+            return ref.upper()
+        if actor.variant == "padded":
+            return f" {ref} "
+        if actor.variant == "zwsp":
+            return ref + "\u200b"
+        return ref
 
     def _cert(self, sym: SRelease, payment_id: str) -> tuple[str, CertInfo | None]:
         ref = sym.cert

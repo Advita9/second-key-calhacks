@@ -9,7 +9,7 @@ from typing import Any
 from hypothesis import event, given, settings
 
 from kernel.fingerprint import fingerprint
-from kernel.models import Invariant, Payment, PaymentIn, State
+from kernel.models import Invariant, Payment, PaymentIn, State, normalize_ref
 from kernel.service import Mutate, Release
 from tests.property.driver import Driver
 from tests.property.strategies import POLICY, SymCmd, make_kernel, traces
@@ -23,7 +23,8 @@ def _patch_landed(after: Payment, patch: Mapping[str, Any]) -> None:
     for k, v in patch.items():
         if k == "beneficiary":
             for kk, vv in v.items():
-                assert getattr(after.beneficiary, kk) == vv
+                want = normalize_ref(vv) if kk == "account_ref" else vv  # refs are stored folded
+                assert getattr(after.beneficiary, kk) == want
         else:
             assert getattr(after, k) == v
 

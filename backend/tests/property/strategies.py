@@ -216,7 +216,13 @@ def patches() -> st.SearchStrategy[Mapping[str, Any]]:
 
 @dataclass(frozen=True)
 class BeneficiaryActor:
-    """Resolved at run time to the target payment's current beneficiary.account_ref."""
+    """Resolved at run time to the target payment's current beneficiary.account_ref, spelled
+    exactly or in a form `normalize_ref` folds onto it (upper case, padding, zero-width)."""
+
+    variant: str = "exact"
+
+
+BENEFICIARY_SPELLINGS: tuple[str, ...] = ("exact", "exact", "upper", "padded", "zwsp")
 
 
 ActorRef = str | BeneficiaryActor
@@ -302,8 +308,8 @@ def slots() -> st.SearchStrategy[int]:
 def actor_refs() -> st.SearchStrategy[ActorRef]:
     return st.one_of(
         st.sampled_from(ACTOR_IDS),
-        st.just(BeneficiaryActor()),
-        st.just(BeneficiaryActor()),
+        st.builds(BeneficiaryActor, variant=st.sampled_from(BENEFICIARY_SPELLINGS)),
+        st.builds(BeneficiaryActor, variant=st.sampled_from(BENEFICIARY_SPELLINGS)),
         ids(),
     )
 
@@ -354,9 +360,10 @@ def eligible_creates(draw: st.DrawFn) -> SCreate:
     ref = p.beneficiary.account_ref
     if p.beneficiary.is_new and p.rail in (Rail.WIRE, Rail.ZELLE, Rail.CRYPTO):
         p = p.model_copy(update={"rail": Rail.ACH})
+    # Name on the biller list so H-07 (P2P rail, > $1,000, name not on list) cannot fire.
     ctx = AccountContext(
         baseline_90d_cents=max(p.amount_cents, 1),
-        known_billers=draw(st.sampled_from(NAME_SUBSETS)),
+        known_billers=[p.beneficiary.name, *draw(st.sampled_from(NAME_SUBSETS))],
         prior_payees=[ref, *draw(st.sampled_from(REF_SUBSETS))],
         mule_list=[r for r in draw(st.sampled_from(MULE_SUBSETS)) if r != ref],
         known_biller_cap_cents=max(p.amount_cents, 1_500_000),

@@ -1,9 +1,7 @@
 """I7: the audit log is hash-chained. After any trace it verifies; after any single edit of
 a past row it does not, and the reported seq is at or before the edited row.
 
-Deleting a middle row is detected too, but the kernel currently reports the seq of the row
-after the gap (see test_found_i7_delete_reports_next_seq.py), so that location claim lives
-in the regression test rather than here."""
+Deleting a row (tail or middle) is detected and the reported seq is the gap itself."""
 
 from __future__ import annotations
 
@@ -115,8 +113,7 @@ def test_deleting_any_row_is_detected(trace: list[SymCmd], data: st.DataObject) 
     assert not r.ok
     assert r.first_bad_seq is not None
     assert r.length == n - 1
-    if seq == n:
-        assert r.first_bad_seq == seq
+    assert r.first_bad_seq == seq
 
 
 @settings(deadline=None)

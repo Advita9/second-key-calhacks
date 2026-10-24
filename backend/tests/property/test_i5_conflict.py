@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from hypothesis import event, given, settings
 
-from kernel.models import Capability, Invariant, State
+from kernel.models import Capability, Invariant, State, normalize_ref
 from kernel.service import Attest, IssueCert
 from tests.property.driver import TERMINAL, Driver
 from tests.property.strategies import SymCmd, make_kernel, traces
@@ -20,7 +20,9 @@ def test_beneficiary_as_actor_is_always_refused(trace: list[SymCmd]) -> None:
     for s in d.run(trace):
         if not isinstance(s.cmd, Attest | IssueCert) or s.payment_before is None:
             continue
-        if s.cmd.actor_id != s.payment_before.beneficiary.account_ref:
+        # Stored refs are normalized; the actor may be spelled EXT_X, " ext_x " or with a
+        # zero-width space. All of them are the beneficiary.
+        if normalize_ref(s.cmd.actor_id) != s.payment_before.beneficiary.account_ref:
             continue
         event(f"beneficiary {type(s.cmd).__name__} in {s.state_before}")
         assert not s.result.ok
@@ -58,14 +60,14 @@ def test_no_attestation_or_certificate_row_is_ever_by_the_beneficiary(
     for s in d.run(trace):
         if isinstance(s.cmd, Attest | IssueCert) and s.result.ok:
             assert s.payment_before is not None
-            assert s.cmd.actor_id != s.payment_before.beneficiary.account_ref
+            assert normalize_ref(s.cmd.actor_id) != s.payment_before.beneficiary.account_ref
     for info in d.certs:
         rec = kernel.get(info.payment_id)
         for c in rec.certificates:
             # The beneficiary ref at issue time is bound by the fingerprint; an unvoided
             # cert still matches the current beneficiary, so the check is direct.
             if c.voided_at is None:
-                assert c.actor_id != rec.payment.beneficiary.account_ref
+                assert normalize_ref(c.actor_id) != rec.payment.beneficiary.account_ref
 
 
 @settings(deadline=None)
