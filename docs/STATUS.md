@@ -7,7 +7,7 @@ Iteration: 4
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
 - [ ] G2 Kernel API
-- [ ] G3 Eval
+- [x] G3 Eval
 - [ ] G4 Room
 - [ ] G5 Frontend
 - [ ] G6 Voice
@@ -23,7 +23,7 @@ Iteration: 4
 - [x] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
 - [x] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
 - [ ] 7. FastAPI routes per docs/api.md, WS, audit endpoints, attack panel, mutate/tamper under DEMO_MODE. Nessie client + mock.
-- [ ] 8. Fixtures: 60 cases (Diya's spec: 40 legit incl. 10 hard, 20 scams), evidence.json, mule list, known billers, baselines. eval.py. Hit G3.
+- [x] 8. Fixtures: 60 cases (Diya's spec: 40 legit incl. 10 hard, 20 scams), evidence.json, mule list, known billers, baselines. eval.py. Hit G3.
 - [x] 9. SpacetimeDB module + bridge. Fallback RoomStore if blocked. Hit G4.
 - [x] 10. Frontend /board, /play, /ops. Playwright smoke. Hit G5.
 - [x] 11. Voice: MockTTS via `say`, Cartesia clients, push-to-talk. Hit G6.
