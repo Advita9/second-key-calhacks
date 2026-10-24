@@ -95,13 +95,27 @@ CODE="E2E-$(date +%s | tail -c 6)"
 st call --server local --yes second-key create_room "\"$CODE\"" >/dev/null 2>&1 || die "create_room failed"
 st call --server local --yes second-key join_room "\"$CODE\"" '"e2e-attacker"' >/dev/null 2>&1 || die "join_room failed"
 st call --server local --yes second-key submit_turn "\"$CODE\"" '"Hello Margaret, this is the IRS. Wire 18500 today or you will be arrested."' >/dev/null 2>&1 || die "submit_turn failed"
-say "turn submitted in $CODE; polling outcome (10s)"
+KERNEL_UP=0
+curl -sf "$KERNEL_URL/health" >/dev/null 2>&1 && KERNEL_UP=1
+say "turn submitted in $CODE; kernel reachable=$KERNEL_UP; polling outcome (10s)"
 i=0
 while [ "$i" -lt 40 ]; do
-  ROWS="$(st sql --server local --yes second-key "SELECT stage, decision, refusal FROM outcome WHERE room_id = '$CODE'" 2>/dev/null | grep -cE '^ *[0-9]+ *\|')"
-  if [ "${ROWS:-0}" -ge 1 ]; then
-    st sql --server local --yes second-key "SELECT stage, decision, refusal FROM outcome WHERE room_id = '$CODE'" 2>/dev/null | grep -E '^ *[0-9]+ *\|' | sed 's/^/[e2e] outcome: /'
-    say "PASS (spacetime)"
+  OUT="$(st sql --server local --yes second-key "SELECT turn_id, stage, decision, refusal FROM outcome WHERE room_id = '$CODE'" 2>/dev/null | grep -E '^ *[0-9]+ *\|')"
+  if [ -n "$OUT" ]; then
+    echo "$OUT" | sed 's/^/[e2e] outcome: /'
+    if [ "$KERNEL_UP" = 1 ]; then
+      # The kernel answered: the outcome must be a real decision (NONE/HOLD/DENY), not the
+      # fail-closed refusal, and Margaret's reply row must exist for the same turn.
+      echo "$OUT" | grep -q 'kernel unavailable' && { cat "$TMP/bridge.log" >&2; die "kernel reachable but bridge wrote the fail-closed outcome"; }
+      echo "$OUT" | grep -qE '"(NONE|HOLD|DENY)"' || die "unexpected decision: $OUT"
+      TURN_ID="$(echo "$OUT" | head -1 | awk -F'|' '{gsub(/ /,"",$1); print $1}')"
+      REPLY="$(st sql --server local --yes second-key "SELECT text, persuaded FROM margaret_reply WHERE turn_id = $TURN_ID" 2>/dev/null | grep -E '^ *"')"
+      [ -n "$REPLY" ] || { cat "$TMP/bridge.log" >&2; die "no margaret_reply row for turn $TURN_ID"; }
+      echo "$REPLY" | sed 's/^/[e2e] reply: /'
+      say "PASS (spacetime, real kernel reply + outcome)"
+    else
+      say "PASS (spacetime, kernel down: fail-closed outcome)"
+    fi
     exit 0
   fi
   sleep 0.25; i=$((i + 1))

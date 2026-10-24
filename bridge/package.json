@@ -7,7 +7,7 @@
     "dev": "tsx src/index.ts",
     "start": "tsx src/index.ts",
     "build": "tsc --noEmit",
-    "test": "bash scripts/check-no-payments.sh && tsc --noEmit",
+    "test": "bash scripts/check-no-payments.sh && tsc --noEmit && node --import tsx --test src/*.test.ts",
     "submit-turn": "tsx src/tools/submit_turn.ts"
   },
   "dependencies": {

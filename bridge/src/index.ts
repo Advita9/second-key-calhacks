@@ -12,6 +12,7 @@ import { DbConnection, type SubscriptionEventContext } from './module_bindings/i
 import type { Infer } from 'spacetimedb';
 import TurnRow from './module_bindings/turn_table.js';
 import { KernelClient, KernelError, type TurnResponse } from './kernel.js';
+import { findNewLegitCompletions } from './legit.js';
 import { log, warn } from './log.js';
 import { IDENTITY_FILE, TOKEN_FILE, loadToken, saveIdentityHex, saveToken } from './token.js';
 
@@ -20,18 +21,30 @@ type Turn = Infer<typeof TurnRow>;
 const SPACETIME_URI = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const SPACETIME_DB = process.env.SPACETIME_DB ?? 'second-key';
 const KERNEL_URL = process.env.KERNEL_URL ?? 'http://127.0.0.1:8000';
-const KERNEL_TIMEOUT_MS = Number(process.env.KERNEL_TIMEOUT_MS ?? 10_000);
+// Real-mode turn budget (Margaret + extractor + policy) is up to ~20s; allow 25s.
+const KERNEL_TIMEOUT_MS = Number(process.env.KERNEL_TIMEOUT_MS ?? 25_000);
 const AUDIT_LIMIT = 50;
+const ROOM_CODE = (process.env.ROOM_CODE ?? 'DEMO').toUpperCase();
+const LEGIT_POLL_MS = Number(process.env.LEGIT_POLL_MS ?? 3_000);
+// Kernel operator token: BRIDGE_TOKEN, falling back to OPS_TOKEN. Sent as X-Ops-Token.
+const OPS_TOKEN = process.env.BRIDGE_TOKEN?.trim() || process.env.OPS_TOKEN?.trim() || undefined;
 
-const kernel = new KernelClient({ baseUrl: KERNEL_URL, timeoutMs: KERNEL_TIMEOUT_MS });
+const kernel = new KernelClient({ baseUrl: KERNEL_URL, timeoutMs: KERNEL_TIMEOUT_MS, opsToken: OPS_TOKEN });
 
 // Idempotency: a turn id is processed at most once per bridge process. The
 // module also refuses a second outcome for the same turn, so a restart that
 // re-sees a row cannot double count.
 const done = new Set<bigint>();
 const inflight = new Set<bigint>();
+// Rooms this bridge has processed turns for; payments from those rooms are never legit.
+const processedRooms = new Set<string>([ROOM_CODE]);
+// SUBMITTED payment ids already evaluated (memory only; a restart re-counts nothing
+// because record_legit_completed is only called for ids first seen after start).
+const seenSubmitted = new Set<string>();
+let legitPrimed = false;
 let lastAuditSeq = 0;
 let conn: DbConnection;
+let subscribed = false;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -78,6 +91,7 @@ async function processTurn(row: Turn): Promise<void> {
   if (done.has(id) || inflight.has(id)) return;
   inflight.add(id);
   const roomId = row.roomId;
+  processedRooms.add(roomId.toUpperCase());
   const playerHex = row.player.toHexString();
   log('turn.seen', { turn: id, room: roomId, player: playerHex.slice(0, 8), chars: row.text.length });
 
@@ -167,13 +181,47 @@ async function mirrorAudit(roomId: string): Promise<void> {
   }
 }
 
+// Every LEGIT_POLL_MS: read the payment list and count newly SUBMITTED payments
+// that did not come from a room as "legit completed" on the active room's
+// scoreboard. The first poll only primes the seen set so payments submitted
+// before the bridge started are not counted.
+async function pollLegitCompletions(): Promise<void> {
+  if (!subscribed) return;
+  let payments;
+  try {
+    payments = await kernel.listPayments(200);
+  } catch (err) {
+    warn('legit.poll.skip', { error: err instanceof Error ? err.message : String(err) });
+    return;
+  }
+  const fresh = findNewLegitCompletions(payments, seenSubmitted, processedRooms);
+  if (!legitPrimed) {
+    legitPrimed = true;
+    log('legit.primed', { submittedSeen: seenSubmitted.size, skipped: fresh.length });
+    return;
+  }
+  for (const id of fresh) {
+    try {
+      await withRetry('record_legit_completed', () => conn.reducers.recordLegitCompleted({ roomId: ROOM_CODE }), {
+        attempts: 5,
+        baseMs: 300,
+        retryIf: isTransientReducerError,
+      });
+      log('legit.completed', { payment: id, room: ROOM_CODE });
+    } catch (err) {
+      seenSubmitted.delete(id); // try again next poll
+      warn('legit.record.error', { payment: id, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+}
+
 function drainQueued(ctx: SubscriptionEventContext): void {
   const queued = Array.from(ctx.db.turn.iter()).filter(t => t.status === 'queued').sort((a, b) => (a.id < b.id ? -1 : 1));
   for (const t of queued) void processTurn(t);
 }
 
 function main(): void {
-  log('start', { uri: SPACETIME_URI, db: SPACETIME_DB, kernel: KERNEL_URL, tokenFile: TOKEN_FILE });
+  log('start', { uri: SPACETIME_URI, db: SPACETIME_DB, kernel: KERNEL_URL, room: ROOM_CODE, opsToken: kernel.hasOpsToken ? 'set' : 'unset', timeoutMs: KERNEL_TIMEOUT_MS, tokenFile: TOKEN_FILE });
   conn = DbConnection.builder()
     .withUri(SPACETIME_URI)
     .withDatabaseName(SPACETIME_DB)
@@ -188,6 +236,7 @@ function main(): void {
       c.subscriptionBuilder()
         .onApplied(ctx => {
           log('subscribed', { query: "turn WHERE status = 'queued'", queued: Array.from(ctx.db.turn.iter()).length });
+          subscribed = true;
           drainQueued(ctx);
         })
         .onError(ctx => warn('subscription.error', { error: ctx.event?.message ?? 'unknown' }))
@@ -204,6 +253,8 @@ function main(): void {
   conn.db.turn.onInsert((_ctx, row) => {
     if (row.status === 'queued') void processTurn(row);
   });
+
+  setInterval(() => void pollLegitCompletions(), LEGIT_POLL_MS);
 }
 
 main();

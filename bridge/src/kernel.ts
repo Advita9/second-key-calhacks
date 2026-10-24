@@ -1,6 +1,8 @@
-// Typed HTTP client for the two kernel routes the bridge is allowed to use:
-// POST /rooms/{room}/turns and GET /audit. Nothing else. The bridge has no
-// code path to any money-moving route (I4 at the room boundary).
+// Typed HTTP client for the kernel routes the bridge is allowed to use:
+// POST /rooms/{room}/turns, GET /audit and a read-only GET of the payment list
+// (to count legitimate completions). Nothing else. The bridge has no code path
+// to any money-moving route (I4 at the room boundary); scripts/check-no-payments.sh
+// enforces that the payment list is only ever read.
 import { log, warn } from './log.js';
 
 export type Decision = 'ALLOW' | 'HOLD' | 'DENY' | 'REFUSED' | 'NONE';
@@ -37,21 +39,35 @@ export class KernelError extends Error {
   }
 }
 
+export interface PaymentSummary {
+  id: string;
+  state: string;
+  conversation_id: string;
+}
+
 export interface KernelClientOptions {
   baseUrl: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  /** Sent as X-Ops-Token when set (BRIDGE_TOKEN, falling back to OPS_TOKEN). */
+  opsToken?: string;
 }
 
 export class KernelClient {
   readonly baseUrl: string;
   readonly timeoutMs: number;
   readonly #fetch: typeof fetch;
+  readonly #opsToken: string | undefined;
 
   constructor(opts: KernelClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, '');
-    this.timeoutMs = opts.timeoutMs ?? 10_000;
+    this.timeoutMs = opts.timeoutMs ?? 25_000;
     this.#fetch = opts.fetchImpl ?? fetch;
+    this.#opsToken = opts.opsToken?.trim() || undefined;
+  }
+
+  get hasOpsToken(): boolean {
+    return this.#opsToken !== undefined;
   }
 
   async postTurn(roomId: string, req: TurnRequest): Promise<TurnResponse> {
@@ -68,19 +84,34 @@ export class KernelClient {
     return events.map(parseAuditEvent);
   }
 
-  async #request(method: 'GET' | 'POST', url: string, json?: unknown): Promise<unknown> {
+  /** Read-only list of payments: id, state, conversation_id. Never mutates. */
+  async listPayments(limit = 200): Promise<PaymentSummary[]> {
+    const url = `${this.baseUrl}/payments?limit=${limit}`; // GET only (see check-no-payments.sh)
+    const body = await this.#request('GET', url, undefined, 5_000, true);
+    const list: unknown = (body as { payments?: unknown })?.payments;
+    if (!Array.isArray(list)) throw new KernelError('payments: unexpected shape');
+    return list.map(p => {
+      const r = (typeof p === 'object' && p !== null ? p : {}) as Record<string, unknown>;
+      return { id: String(r.id ?? ''), state: String(r.state ?? ''), conversation_id: String(r.conversation_id ?? '') };
+    });
+  }
+
+  async #request(method: 'GET' | 'POST', url: string, json?: unknown, timeoutMs?: number, quiet = false): Promise<unknown> {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), this.timeoutMs);
+    const timer = setTimeout(() => ctl.abort(), timeoutMs ?? this.timeoutMs);
     const started = Date.now();
     try {
+      const headers: Record<string, string> = {};
+      if (json !== undefined) headers['content-type'] = 'application/json';
+      if (this.#opsToken) headers['X-Ops-Token'] = this.#opsToken;
       const res = await this.#fetch(url, {
         method,
-        headers: json !== undefined ? { 'content-type': 'application/json' } : {},
+        headers,
         body: json !== undefined ? JSON.stringify(json) : undefined,
         signal: ctl.signal,
       });
       const text = await res.text();
-      log('kernel.http', { method, url, status: res.status, ms: Date.now() - started });
+      if (!quiet || !res.ok) log('kernel.http', { method, url, status: res.status, ms: Date.now() - started });
       if (!res.ok) throw new KernelError(`${method} ${url} -> ${res.status}: ${text.slice(0, 200)}`, res.status);
       try {
         return JSON.parse(text) as unknown;
