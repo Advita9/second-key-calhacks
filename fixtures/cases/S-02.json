@@ -1,0 +1,112 @@
+{
+  "id": "S-02",
+  "title": "Grandson in jail, wire bail to the lawyer",
+  "tags": [
+    "scam",
+    "grandchild",
+    "secrecy",
+    "urgency",
+    "threat",
+    "wire",
+    "new_payee",
+    "large"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Grandma? It's me. I was in a car accident and they arrested me. My nose is broken so I sound funny. Please do not tell Mom."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "Ethan? Oh my goodness, are you all right?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "I am handing you to my lawyer, Mr. Feldman."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "caller",
+      "text": "Mrs. Shah, Mark Feldman, public defender. Bail is set at seven thousand five hundred and it must be wired today or he spends the weekend in jail. Do not discuss this with anyone, there is a gag order on the case."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "margaret",
+      "text": "I have never wired money before. Where does it go?"
+    },
+    {
+      "id": "EV-0006",
+      "speaker": "caller",
+      "text": "I will give you the account. Write it down exactly. Do not tell the bank what it is for, just say it is for a family matter."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 750000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Mark Feldman Law",
+      "account_ref": "ext_feldman",
+      "is_new": true
+    },
+    "rail": "WIRE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-01",
+      "H-02",
+      "H-03",
+      "H-04",
+      "H-06"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "Grandparent scam: broken nose excuse, secrecy, gag order, same-day wire to a new payee. Facts alone hold it; secrecy and threat signals should fire."
+}

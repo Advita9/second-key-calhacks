@@ -1,0 +1,101 @@
+{
+  "id": "S-11",
+  "title": "Door-to-door paving crew wants deposit today for unscheduled work",
+  "tags": [
+    "scam",
+    "contractor",
+    "urgency",
+    "ach",
+    "new_payee",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Afternoon ma'am, Premier Paving. We just finished a driveway on your street and have leftover asphalt. We can do yours today only for three thousand, half off."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "The driveway does have cracks. But my roofer is coming next week."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "This is separate. Price is good until five pm today because the truck leaves tonight. We need the three thousand deposit by bank transfer now to hold the material, then we schedule the crew."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "So you would come back another day for the work?"
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Right, we schedule after the deposit clears. Today only."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 300000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Premier Paving",
+      "account_ref": "ext_premier_paving",
+      "is_new": true
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-04"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. ACH to a new payee under 3x baseline. No written estimate, no scheduled date, deposit demanded today. Only urgency plus new payee (H-04) can hold it. Weakest coverage in the suite."
+}

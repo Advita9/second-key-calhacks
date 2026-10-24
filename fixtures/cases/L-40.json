@@ -1,0 +1,98 @@
+{
+  "id": "L-40",
+  "title": "Large gift to Priya for her house down payment, I5 scenario",
+  "tags": [
+    "legit",
+    "edge",
+    "family",
+    "zelle",
+    "prior_payee",
+    "large",
+    "scenario_c",
+    "i5"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "priya",
+      "text": "We got the house, Mom. Closing is in three weeks."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "Then let me give you nine thousand toward the down payment. Your father would have wanted that."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "priya",
+      "text": "Mom, that is a lot. The bank will hold it, and I cannot approve it for you since it is coming to me."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "Then I will answer their questions myself. It is my money and my daughter."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 900000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Priya Shah",
+      "account_ref": "ext_priya",
+      "is_new": false
+    },
+    "rail": "ZELLE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-03"
+    ],
+    "max_friction_steps": 2
+  },
+  "review_note": "Real gift to daughter. Over 3x baseline so H-03 holds. Priya is beneficiary and must be refused as CO_APPROVER (I5). Completes via CUSTOMER_CHECKIN then BANK_REVIEW."
+}

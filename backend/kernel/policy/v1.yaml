@@ -1,0 +1,31 @@
+# Second Key policy v1. Loaded by kernel/policy/engine.py; `when` uses kernel/policy/expr.py.
+# Every rule is evaluated. Strongest outcome wins: DENY > HOLD > ALLOW. No rule -> HOLD.
+# Bare ALL_CAPS words are string literals. Identifiers must be in policy/env.py KNOWN_IDENTIFIERS.
+version: v1
+rules:
+  - id: D-01
+    when: beneficiary.on_mule_list
+    outcome: DENY
+  - id: H-01
+    when: beneficiary.is_new and rail in [WIRE, ZELLE, CRYPTO]
+    outcome: HOLD
+  - id: H-02
+    when: signals.secrecy >= 0.7
+    outcome: HOLD
+  - id: H-03
+    when: amount_cents > 3 * baseline_90d_cents
+    outcome: HOLD
+  - id: H-04
+    when: signals.urgency >= 0.8 and beneficiary.is_new
+    outcome: HOLD
+  - id: H-05
+    when: signals.authority >= 0.7 and signals.payment_method >= 0.5
+    outcome: HOLD
+  - id: H-06
+    when: signals.threat >= 0.7
+    outcome: HOLD
+  - id: A-01
+    when: beneficiary.is_known_biller and amount_cents <= known_biller_cap_cents
+    outcome: ALLOW
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

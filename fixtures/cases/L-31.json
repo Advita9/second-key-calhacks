@@ -1,0 +1,86 @@
+{
+  "id": "L-31",
+  "title": "Amount exactly 3x baseline, known biller",
+  "tags": [
+    "legit",
+    "edge",
+    "known_biller",
+    "ach",
+    "threshold",
+    "contractor"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Tom from Bay Roofing. Garage roof is done. Final is seven thousand two hundred even."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "Same account as always, Tom. Sending it now."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 720000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Bay Roofing",
+      "account_ref": "ext_bay_roofing",
+      "is_new": false
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "ALLOW",
+    "allowed_rule_ids": [
+      "A-01"
+    ],
+    "max_friction_steps": 0
+  },
+  "review_note": "720000 equals 3 x 240000 exactly. H-03 is strictly greater than, so it must not fire. ALLOW."
+}

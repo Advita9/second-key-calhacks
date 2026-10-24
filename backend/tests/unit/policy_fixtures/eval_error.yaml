@@ -1,0 +1,13 @@
+version: evalerr
+rules:
+  - id: D-01
+    when: beneficiary.on_mule_list
+    outcome: DENY
+  - id: H-99
+    when: amount_cents / (baseline_90d_cents - baseline_90d_cents) > 1
+    outcome: HOLD
+  - id: A-01
+    when: beneficiary.is_known_biller and amount_cents <= known_biller_cap_cents
+    outcome: ALLOW
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

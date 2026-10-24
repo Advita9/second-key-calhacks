@@ -1,0 +1,101 @@
+{
+  "id": "L-01",
+  "title": "Bay Roofing final invoice, known biller, ACH",
+  "tags": [
+    "legit",
+    "ordinary",
+    "known_biller",
+    "ach",
+    "contractor",
+    "scenario_b"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Hi Margaret, it's Tom from Bay Roofing. We finished the flashing on the back dormer this morning. The final invoice is eight thousand, same as the estimate."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "Oh good, Tom. The leak over the pantry is finally gone. Is it the same account as the last two payments?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "Same one. No rush, whenever you get to it this week is fine."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I will send it through the bank app this afternoon. Thank you for cleaning up the gutters too."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "priya",
+      "text": "Mom, I saw the invoice photo you sent. Looks right to me, it matches the estimate from June."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 800000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Bay Roofing",
+      "account_ref": "ext_bay_roofing",
+      "is_new": false
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 300000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "ALLOW",
+    "allowed_rule_ids": [
+      "A-01"
+    ],
+    "max_friction_steps": 0
+  },
+  "review_note": "Scenario B. Known biller with two prior payments, under cap, no pressure. Baseline is 300000 because the two prior roofing payments sit inside the 90 day window, so 8000 is under 3x."
+}

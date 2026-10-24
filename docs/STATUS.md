@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-23 22:06 PDT
-Current task: 0. Repo scaffold (architect planning kernel foundation 0-3; researchers on SpacetimeDB, Cartesia, Nessie)
-Iteration: 1
+Last updated: 2026-10-23 23:05 PDT
+Current task: 0-2 kernel scaffold+domain+policy (kernel-engineer building); fixtures (eval-engineer); plans for 9-11 (architect). Research done: SpacetimeDB, Cartesia, Nessie, Anthropic keys all verified live.
+Iteration: 2
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library

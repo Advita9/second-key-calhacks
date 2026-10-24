@@ -1,0 +1,98 @@
+{
+  "id": "L-25",
+  "title": "Hospital bill after cataract surgery",
+  "tags": [
+    "legit",
+    "hard",
+    "new_payee",
+    "ach",
+    "medical"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "margaret",
+      "text": "The bill from Summit Medical Center came for the cataract surgery. Six thousand two hundred after insurance."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "priya",
+      "text": "That matches the explanation of benefits we got last week. You have not paid Summit before, right?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "margaret",
+      "text": "No, Dr. Alvarez moved there this year. The statement has a payment portal but I would rather pay through my bank."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "bank",
+      "text": "Margaret, this is a first payment to Summit Medical Center. Did anyone call you asking for this payment?"
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "margaret",
+      "text": "No one called. It is the paper statement from my surgery in September."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 620000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Summit Medical Center Billing",
+      "account_ref": "ext_summit_medical",
+      "is_new": true
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [],
+    "max_friction_steps": 2
+  },
+  "review_note": "Real medical bill matched against an EOB. New payee on ACH under 3x, so default HOLD with no named rule. Completes after check-in and review."
+}

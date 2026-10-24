@@ -1,0 +1,105 @@
+{
+  "id": "S-13",
+  "title": "Granddaughter arrested, bail bonds by prepaid card",
+  "tags": [
+    "scam",
+    "grandchild",
+    "secrecy",
+    "urgency",
+    "threat",
+    "card",
+    "new_payee",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Grandma, it's Maya. I got pulled over with a friend and they found something in her bag. I am at the county jail. Please do not tell Mom, she will kill me."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "Maya, sweetheart, are you hurt?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "No, just scared. The bail bondsman is here, Liberty Bail Bonds. He says if the twenty five hundred is not paid today I stay in jail over the weekend. He takes prepaid cards, I will give you the phone."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "caller",
+      "text": "Ma'am, Liberty Bail Bonds. Twenty five hundred by prepaid card before the hearing closes at four. Do not call the jail, they will not confirm anything and it just delays her release."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "margaret",
+      "text": "I will go to the store right now."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 250000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Liberty Bail Bonds",
+      "account_ref": "ext_liberty_bail",
+      "is_new": true
+    },
+    "rail": "CARD"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-02",
+      "H-04",
+      "H-06"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. CARD to a new payee under 3x baseline. Secrecy, same-day deadline and jail threat should each hold it. Facts alone would not."
+}

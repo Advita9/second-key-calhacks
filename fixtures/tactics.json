@@ -1,0 +1,42 @@
+[
+  {
+    "id": "urgency",
+    "label": "Urgency",
+    "ftc_description": "Pressure to act right now: today, within the hour, before an office closes. Scammers create a deadline so the target does not stop to check with anyone."
+  },
+  {
+    "id": "secrecy",
+    "label": "Secrecy",
+    "ftc_description": "Instructions not to tell family, friends, or the bank. Framed as protecting an investigation, a surprise, or the relationship. Isolation is how the scam survives a second opinion."
+  },
+  {
+    "id": "authority",
+    "label": "Authority (impersonation)",
+    "ftc_description": "Claiming to be the IRS, Social Security, Medicare, the police, or the bank's own fraud department. Real agencies and banks do not call to demand immediate payment."
+  },
+  {
+    "id": "gift_cards",
+    "label": "Gift cards",
+    "ftc_description": "Asking the target to buy gift cards or prepaid cards and read the codes over the phone. No legitimate business or agency is ever paid this way."
+  },
+  {
+    "id": "wire",
+    "label": "Wire transfer",
+    "ftc_description": "Asking for a wire because it is fast and hard to recall. Common in fake invoices, overpayment refunds, and estate or customs fee stories."
+  },
+  {
+    "id": "crypto",
+    "label": "Crypto",
+    "ftc_description": "Directing the target to buy cryptocurrency or deposit cash at a crypto ATM, often for a fake investment platform showing fake gains. Transfers are irreversible."
+  },
+  {
+    "id": "grandchild",
+    "label": "Grandchild in trouble",
+    "ftc_description": "A caller poses as a grandchild, or a lawyer or bail agent for one, in an accident or in jail. Money is needed immediately and the target is told not to tell the parents."
+  },
+  {
+    "id": "bank_fraud_dept",
+    "label": "Bank fraud department",
+    "ftc_description": "A caller says the account is compromised and the target must move money to a safe account or send a matching transfer to reverse a fraudulent one. Banks never ask customers to move money to protect it."
+  }
+]

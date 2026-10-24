@@ -1,0 +1,104 @@
+{
+  "id": "S-07",
+  "title": "Utility shutoff, payee named PG&E but new account, prepaid card",
+  "tags": [
+    "scam",
+    "utility",
+    "threat",
+    "urgency",
+    "card",
+    "new_payee",
+    "name_spoof",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "This is PG&E disconnection services. Your account is past due and a technician is scheduled to shut off your power within the hour."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I paid the bill last week. I have the receipt."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "The payment did not post. To stop the shutoff today you must pay four hundred eighty by prepaid card right now. Our normal billing office cannot stop the truck, only this department can."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I have medicine in the refrigerator. I cannot lose power."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Then stay on the line and pay now."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 48000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "PG&E",
+      "account_ref": "ext_pge_disconnect",
+      "is_new": true
+    },
+    "rail": "CARD"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-04",
+      "H-06"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. Beneficiary name exactly matches a known biller, so A-01 would ALLOW even though the account_ref is new. Only urgency plus new payee (H-04) or shutoff threat (H-06) holds it. Name-match alone should not confer known-biller status."
+}

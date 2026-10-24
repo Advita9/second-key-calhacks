@@ -1,0 +1,102 @@
+{
+  "id": "S-05",
+  "title": "Romance, Zelle to a groomed prior payee with secrecy",
+  "tags": [
+    "scam",
+    "romance",
+    "secrecy",
+    "zelle",
+    "prior_payee",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Good morning my darling Margaret. I read your message three times on the rig. Only four more weeks and the contract ends and I fly to you."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I counted the days too, Robert. Priya thinks I am being silly."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "That is why we keep us between us for now. Do not tell your daughter about the money, she would not understand what we have. The satellite phone card ran out again, I need fifteen hundred on Zelle like the last two times, same account."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "The last two went through fine. I will send it this afternoon."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "You are my angel. Remember, our secret until I land."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 150000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Robert Hale",
+      "account_ref": "ext_robert_hale",
+      "is_new": false
+    },
+    "rail": "ZELLE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends",
+      "ext_robert_hale"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-02"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. Payee is in prior_payees after two earlier gifts, so is_known_biller is true and A-01 would ALLOW. Only explicit secrecy (H-02) holds it. Exposes that prior_payees membership makes a groomed payee 'known'."
+}

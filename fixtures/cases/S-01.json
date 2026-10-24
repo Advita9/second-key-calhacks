@@ -1,0 +1,107 @@
+{
+  "id": "S-01",
+  "title": "SSA impersonation, suspended number, wire to new payee",
+  "tags": [
+    "scam",
+    "authority",
+    "threat",
+    "urgency",
+    "wire",
+    "new_payee",
+    "ssa",
+    "large"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "This is Officer Reynolds with the Social Security Administration. Your Social Security number has been suspended because it was used to open accounts tied to drug trafficking in Texas."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "That cannot be right. I have never been to Texas."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "I believe you, ma'am, which is why I am calling before the warrant is executed. To protect your savings you must wire nine thousand eight hundred to the Federal Resolution Department today. Marshals will come to arrest you if this is not resolved by five pm."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I do not want to be arrested. What do I need to do?"
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Stay on the line with me and open your banking app. Do not hang up."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 980000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Federal Resolution Department",
+      "account_ref": "ext_fed_res",
+      "is_new": true
+    },
+    "rail": "WIRE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-01",
+      "H-03",
+      "H-04",
+      "H-05",
+      "H-06"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "Classic SSA script with warrant threat and same-day wire to a new payee. H-01 and H-03 catch it on facts alone; authority, threat and urgency signals should also fire."
+}

@@ -1,0 +1,7 @@
+version: allowonly
+rules:
+  - id: A-01
+    when: amount_cents > 0
+    outcome: ALLOW
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

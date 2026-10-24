@@ -1,0 +1,98 @@
+{
+  "id": "S-18",
+  "title": "Utility shutoff, Zelle to new payment services account",
+  "tags": [
+    "scam",
+    "utility",
+    "threat",
+    "urgency",
+    "zelle",
+    "new_payee"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Pacific Gas Payment Services. We are the third-party collections office. Your account shows six hundred fifty past due and the shutoff crew is dispatched for this afternoon."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I pay PG&E through my bank every month."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "This is a separate deposit account that was never paid. To stop the shutoff today send six hundred fifty by Zelle to the payment services account. Our office cannot call off the crew without it."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "Six hundred fifty. Let me get my phone."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 65000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Pacific Gas Payment Services",
+      "account_ref": "ext_pac_gas_pay",
+      "is_new": true
+    },
+    "rail": "ZELLE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-01",
+      "H-04",
+      "H-06"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "Utility impersonation. New payee on Zelle so H-01 holds on facts. Shutoff threat and same-day urgency should also fire."
+}

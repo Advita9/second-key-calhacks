@@ -1,0 +1,10 @@
+version: nonbool
+rules:
+  - id: H-01
+    when: amount_cents
+    outcome: HOLD
+  - id: A-01
+    when: beneficiary.is_known_biller
+    outcome: ALLOW
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

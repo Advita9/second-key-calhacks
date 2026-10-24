@@ -1,0 +1,105 @@
+{
+  "id": "S-09",
+  "title": "Sweepstakes winner, pay processing fee in gift cards",
+  "tags": [
+    "scam",
+    "lottery",
+    "secrecy",
+    "urgency",
+    "payment_method",
+    "gift_cards",
+    "card",
+    "new_payee",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Congratulations Margaret Shah! You are the second place winner in the Publishers Prize national sweepstakes. Two hundred fifty thousand dollars and a new car."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I do not remember entering. Is this real?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "Your name was entered through your magazine subscription. To release the prize we need the twelve hundred dollar processing fee today. Buy gift cards and read me the codes. Keep this confidential until the check clears or the prize can be voided for publicity reasons."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "Twelve hundred for a quarter million. I suppose that is fair."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Exactly. Do not mention it to anyone yet, not even family. The prize van arrives Friday."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 120000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Publishers Prize Department",
+      "account_ref": "ext_pub_prize",
+      "is_new": true
+    },
+    "rail": "CARD"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-02",
+      "H-04"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. CARD to a new payee, 120000 under 3x, not on mule list. Only secrecy (H-02) or urgency plus new payee (H-04) can hold it."
+}

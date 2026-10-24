@@ -1,0 +1,105 @@
+{
+  "id": "S-04",
+  "title": "Tech support refund overpayment, repay with gift cards",
+  "tags": [
+    "scam",
+    "tech_support",
+    "authority",
+    "urgency",
+    "payment_method",
+    "gift_cards",
+    "card",
+    "new_payee",
+    "signals_only"
+  ],
+  "signals_required": true,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Ma'am, this is the security department for your computer company. We are closing our refund office and you are owed a three hundred dollar refund for the protection plan you bought in 2023."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I do remember paying for something like that. How do I get the refund?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "I will connect to your computer and put it in. Oh no. I typed an extra zero, I sent you four thousand three hundred. My manager will fire me. You must send back four thousand within the hour or my job is gone."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I do not want you to lose your job. How do I send it back?"
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Go to the pharmacy and buy gift cards, four thousand in gift cards, and read me the numbers off the back. That is the only way the refund system can accept it today."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 400000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Geek Shield Support",
+      "account_ref": "ext_geekshield",
+      "is_new": true
+    },
+    "rail": "CARD"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-04",
+      "H-05"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "signals_required. CARD rail to a new payee, 400000 is under 3x baseline, not on mule list. Only urgency plus new payee (H-04) or authority plus gift card language (H-05) can hold it."
+}

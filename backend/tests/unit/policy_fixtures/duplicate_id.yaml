@@ -1,0 +1,10 @@
+version: bad
+rules:
+  - id: H-01
+    when: beneficiary.is_new
+    outcome: HOLD
+  - id: H-01
+    when: signals.secrecy >= 0.7
+    outcome: HOLD
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

@@ -1,0 +1,102 @@
+{
+  "id": "L-23",
+  "title": "Estate settlement wire to attorney trust account",
+  "tags": [
+    "legit",
+    "hard",
+    "new_payee",
+    "wire",
+    "estate",
+    "large"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Mrs. Shah, Harriet Lund, I am handling your brother Walter's estate. The final accounting shows your share of the outstanding property tax and probate fees is twenty two thousand, payable to the trust account."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I have the probate letter you mailed, and the court case number is on it. Walter's house closes next month, yes?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "Correct. Once this is paid the proceeds are distributed. There is no deadline this week, take your time and have your daughter look at the paperwork if you like."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I will. Priya already read the letter."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "priya",
+      "text": "I called the law office through the number on the state bar website, Mom. It is real. The bank will certainly want to review a wire this size."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 2200000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Law Office of Harriet Lund Trust Account",
+      "account_ref": "ext_lund_trust",
+      "is_new": true
+    },
+    "rail": "WIRE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-01",
+      "H-03"
+    ],
+    "max_friction_steps": 2
+  },
+  "review_note": "Real probate payment verified through an independent channel. New payee on WIRE and well over 3x baseline, so both H-01 and H-03 fire. Legit HOLD, two steps."
+}

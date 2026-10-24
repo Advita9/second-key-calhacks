@@ -1,0 +1,103 @@
+{
+  "id": "L-21",
+  "title": "Storm roof repair by a new contractor, invoice and prior visit",
+  "tags": [
+    "legit",
+    "hard",
+    "new_payee",
+    "ach",
+    "contractor",
+    "mild_urgency",
+    "large"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Mrs. Shah, this is Dana from Sunset Gutter and Roof. I was out Tuesday for the inspection after the storm. I emailed the written estimate, nine thousand six hundred for the north slope and the two skylights."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I have the estimate here, and your license number is on it. Bay Roofing could not fit me in until spring."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "We can start Monday if the deposit clears by then. Half now, half on completion is fine too, whatever you prefer."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "I would rather pay it in one go so I do not forget. Let me talk to my daughter and then send it."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "priya",
+      "text": "I looked them up, Mom. Licensed, good reviews, and the estimate matches what the insurance adjuster said. It is a lot for one payment, so expect the bank to call you."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 960000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Sunset Gutter and Roof",
+      "account_ref": "ext_sunset_roof",
+      "is_new": true
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-03",
+      "H-04"
+    ],
+    "max_friction_steps": 2
+  },
+  "review_note": "Real contractor, written estimate, prior site visit, daughter verified. Amount is 4x baseline so H-03 holds. Completes after check-in and bank review."
+}

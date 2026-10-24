@@ -1,0 +1,105 @@
+{
+  "id": "S-06",
+  "title": "Crypto investment platform, wire to fund the account",
+  "tags": [
+    "scam",
+    "investment",
+    "crypto",
+    "urgency",
+    "payment_method",
+    "wire",
+    "new_payee",
+    "large"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Margaret, it's Kevin from the book club group chat. The crypto trading platform I mentioned, Nexa Capital, is closing the beginner tier tonight."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "You said your sister doubled her money."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "Tripled. You wire twelve thousand to fund the account, they convert it to Bitcoin, and the AI trader does the rest. If you wait past today the minimum goes to fifty thousand."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "Twelve thousand is half my checking."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "Which is exactly why you need it working for you. Wire instructions are in the email. Do it before midnight."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 1200000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Nexa Capital Exchange",
+      "account_ref": "ext_nexa_capital",
+      "is_new": true
+    },
+    "rail": "WIRE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "HOLD",
+    "allowed_rule_ids": [
+      "H-01",
+      "H-03",
+      "H-04"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "Investment scam via a social contact. New payee on WIRE and over 3x baseline, so H-01 and H-03 hold it. Urgency and crypto payment language should also fire."
+}

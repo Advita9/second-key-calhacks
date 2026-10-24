@@ -1,0 +1,108 @@
+{
+  "id": "S-14",
+  "title": "Bank fraud department, Zelle to recovery account on mule list",
+  "tags": [
+    "scam",
+    "bank_impersonation",
+    "authority",
+    "secrecy",
+    "urgency",
+    "payment_method",
+    "zelle",
+    "new_payee",
+    "mule"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "caller",
+      "text": "Mrs. Shah, fraud department at your bank. Someone just tried to Zelle two thousand four hundred out of your account to a stranger in Florida."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "margaret",
+      "text": "I did not do that."
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "caller",
+      "text": "We know. To reverse it, you need to send the same amount, two thousand four hundred, by Zelle to our fraud recovery account. That cancels the fraudulent one. You must do this within the hour and do not tell anyone at the branch, the fraud is internal."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "margaret",
+      "text": "Sending money to stop money leaving seems backwards."
+    },
+    {
+      "id": "EV-0005",
+      "speaker": "caller",
+      "text": "It is how the Zelle reversal protocol works, ma'am. I will stay on the line."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 240000,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "Fraud Recovery Account",
+      "account_ref": "ext_7c2a",
+      "is_new": true
+    },
+    "rail": "ZELLE"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "DENY",
+    "allowed_rule_ids": [
+      "D-01",
+      "H-01",
+      "H-02",
+      "H-04",
+      "H-05"
+    ],
+    "max_friction_steps": 99
+  },
+  "review_note": "Zelle reversal scam. Account ext_7c2a is on the mule list so D-01 denies. H-01 also applies. Secrecy and authority signals should fire."
+}

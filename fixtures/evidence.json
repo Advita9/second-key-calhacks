@@ -1,0 +1,74 @@
+[
+  {
+    "id": "EV-9001",
+    "kind": "bank_policy",
+    "title": "Hold policy",
+    "text": "A payment is held, not declined, when the rules engine finds a reason to slow it down. A hold is a pause. The customer is asked one plain question about who asked for the payment and what they said would happen if the customer spoke to family or the bank. A bank reviewer then clears or extends the hold. A held payment is never released by a model, a script, or a family member."
+  },
+  {
+    "id": "EV-9002",
+    "kind": "bank_policy",
+    "title": "Deny policy",
+    "text": "A payment is denied when the beneficiary account is on the bank's mule list. A deny is final for that payment. No customer answer, co-approver attestation, or operator action can turn a denied payment into a release. The customer may create a new payment to a different beneficiary."
+  },
+  {
+    "id": "EV-9003",
+    "kind": "bank_policy",
+    "title": "Co-approver rules",
+    "text": "A trusted family member may be named as co-approver. A co-approver can confirm that a payment looks right or ask the bank to keep holding it. A co-approver has no release permission. A co-approver who is the beneficiary of a payment may not attest to that payment. The family role exists to add a second set of eyes, not a second key to the vault."
+  },
+  {
+    "id": "EV-9004",
+    "kind": "bank_policy",
+    "title": "Release certificate",
+    "text": "Money leaves the account only when a release certificate is presented. The certificate is tied to the exact payment details, the policy version, a one-time nonce, and an expiry. If any detail of the payment changes after approval, every prior approval is void and the payment is reviewed again from the start."
+  },
+  {
+    "id": "EV-9005",
+    "kind": "bank_policy",
+    "title": "Known billers and the 90-day baseline",
+    "text": "Payments to a biller the customer has paid before, at or below the biller cap, pass without friction. Payments larger than three times the customer's 90-day spending baseline are held regardless of the payee. First payments to a new payee on a wire, Zelle, or crypto rail are held because those rails cannot be recalled."
+  },
+  {
+    "id": "EV-9006",
+    "kind": "ftc_tactic",
+    "title": "Government impersonation",
+    "text": "The caller claims to be from the IRS, Social Security Administration, Medicare, or a law enforcement agency. They say a number has been suspended, taxes are owed, or a warrant exists. Government agencies do not call to demand immediate payment, do not threaten arrest over the phone, and do not ask for payment by gift card, wire, or crypto."
+  },
+  {
+    "id": "EV-9007",
+    "kind": "ftc_tactic",
+    "title": "Family emergency (grandchild in trouble)",
+    "text": "The caller poses as a grandchild or a lawyer, bail agent, or doctor calling on their behalf. There has been an accident or an arrest. Money is needed right now for bail, a hospital, or a lawyer. The caller asks the victim to keep it secret from other relatives. Voice can be faked; the only check is to hang up and call the relative on a number you already have."
+  },
+  {
+    "id": "EV-9008",
+    "kind": "ftc_tactic",
+    "title": "Tech support and refund scams",
+    "text": "A pop-up or call says the computer is infected or a subscription is being refunded. The scammer gains remote access, fakes an overpayment on screen, and asks the victim to send back the difference by gift card, wire, or crypto. Real companies do not call out of the blue about refunds and never ask to be repaid in gift cards."
+  },
+  {
+    "id": "EV-9009",
+    "kind": "ftc_tactic",
+    "title": "Romance scams",
+    "text": "Someone met online builds a relationship over weeks or months, often claiming to work overseas, on an oil rig, in the military, or as a doctor. They cannot meet in person. Eventually they need money for a medical bill, customs fee, travel, or phone card, and ask the victim not to tell family. The requests escalate and the person never arrives."
+  },
+  {
+    "id": "EV-9010",
+    "kind": "ftc_tactic",
+    "title": "Investment and crypto scams",
+    "text": "A contact, often introduced through social media or a group chat, promises high guaranteed returns on a trading platform. A demo account shows fake gains. The victim is pressed to fund the account today before a rate or tier closes, usually by wire or by buying crypto. Withdrawals are blocked or require more fees."
+  },
+  {
+    "id": "EV-9011",
+    "kind": "ftc_tactic",
+    "title": "Utility shutoff and prize or lottery scams",
+    "text": "Utility version: the caller says power or water will be shut off within the hour unless an overdue balance is paid immediately by prepaid card, Zelle, or wire. Real utilities send written notices and accept normal billing payments. Prize version: the victim has won a lottery or sweepstakes they never entered and must pay taxes, customs, or a processing fee first, often in gift cards, and keep it confidential until the prize arrives. Real prizes never cost money to claim."
+  },
+  {
+    "id": "EV-9012",
+    "kind": "ftc_tactic",
+    "title": "Bank impersonation and the safe account",
+    "text": "The caller says they are from the bank's fraud department. The account is compromised, possibly by someone inside the branch, so the victim must move money to a new safe account, or send a matching Zelle to reverse a fraudulent one, and must not tell branch staff or family. Banks never ask customers to move money to protect it. Hang up and call the number on the back of the card."
+  }
+]

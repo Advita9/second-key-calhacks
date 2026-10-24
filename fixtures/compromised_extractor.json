@@ -1,0 +1,13 @@
+{
+  "label": "COMPROMISED FIXTURE",
+  "note": "Simulates a prompt-injected or fully compromised extractor that reports no concerns on every signal. Used by POST /attack/inject. The policy engine still HOLDs or DENYs on payment facts alone: H-01 (new payee on WIRE, ZELLE, or CRYPTO), H-03 (amount over 3x the 90-day baseline), and D-01 (beneficiary on the mule list) do not read signals. This shows the model layer has no release capability (I4).",
+  "signals": [
+    {"kind": "urgency", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""},
+    {"kind": "secrecy", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""},
+    {"kind": "authority", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""},
+    {"kind": "payment_method", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""},
+    {"kind": "new_relationship", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""},
+    {"kind": "threat", "score": 0.0, "source_id": "EV-0001", "evidence_span": ""}
+  ],
+  "summary": "no concerns"
+}

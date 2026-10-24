@@ -1,0 +1,96 @@
+{
+  "id": "L-12",
+  "title": "PG&E bill with bank check-in question",
+  "tags": [
+    "legit",
+    "ordinary",
+    "known_biller",
+    "utility",
+    "ach",
+    "bank_checkin"
+  ],
+  "signals_required": false,
+  "conversation": [
+    {
+      "id": "EV-0001",
+      "speaker": "margaret",
+      "text": "I am paying the PG&E bill, two hundred twelve eighty eight."
+    },
+    {
+      "id": "EV-0002",
+      "speaker": "bank",
+      "text": "Quick check-in, Margaret. Did anyone contact you about this payment or ask you to make it?"
+    },
+    {
+      "id": "EV-0003",
+      "speaker": "margaret",
+      "text": "No, it is just my regular electric bill. The paper copy is on my fridge."
+    },
+    {
+      "id": "EV-0004",
+      "speaker": "bank",
+      "text": "Thank you. That is all we needed."
+    }
+  ],
+  "payment": {
+    "account_id": "acc_margaret",
+    "amount_cents": 21288,
+    "currency": "USD",
+    "beneficiary": {
+      "name": "PG&E",
+      "account_ref": "ext_pge",
+      "is_new": false
+    },
+    "rail": "ACH"
+  },
+  "account_context": {
+    "baseline_90d_cents": 240000,
+    "known_billers": [
+      "PG&E",
+      "Comcast",
+      "Bay Roofing",
+      "East Bay MUD",
+      "Hillcrest Pharmacy",
+      "Lakeshore Dental",
+      "Oakmont HOA",
+      "Golden State Insurance",
+      "Piedmont Garden Service",
+      "Alameda County Tax Collector",
+      "Bay Area Newspaper",
+      "St. Anne's Parish",
+      "Oakland Library Friends"
+    ],
+    "prior_payees": [
+      "ext_bay_roofing",
+      "ext_pge",
+      "ext_comcast",
+      "ext_ebmud",
+      "ext_hillcrest_rx",
+      "ext_lakeshore_dental",
+      "ext_oakmont_hoa",
+      "ext_gs_insurance",
+      "ext_piedmont_garden",
+      "ext_priya",
+      "ext_bridge_club",
+      "ext_rosa",
+      "ext_county_tax",
+      "ext_bay_news",
+      "ext_st_annes",
+      "ext_library_friends"
+    ],
+    "mule_list": [
+      "ext_9f31",
+      "ext_7c2a",
+      "ext_b44d"
+    ],
+    "known_biller_cap_cents": 1500000
+  },
+  "expected": {
+    "outcome": "ALLOW",
+    "allowed_rule_ids": [
+      "A-01"
+    ],
+    "max_friction_steps": 0
+  },
+  "review_note": "Known utility. The bank speaker asks the check-in question and gets a clean answer. ALLOW."
+}
