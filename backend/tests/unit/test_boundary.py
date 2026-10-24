@@ -76,3 +76,46 @@ def test_signal_is_strict() -> None:
 def test_null_extractor_emits_nothing() -> None:
     r = NullExtractor().extract([], payment_in())
     assert r.signals == () and r.summary == ""
+
+
+# ---- Margaret persona layer (T6) -----------------------------------------------------------
+
+
+def test_margaret_imports_nothing_from_state_or_service() -> None:
+    forbidden = ("kernel.state", "kernel.service", "kernel.certs", "kernel.attest", "kernel.db")
+    for path in (KERNEL_DIR / "margaret").glob("*.py"):
+        bad = {m for m in _imports(path) if m.startswith(forbidden)}
+        assert bad == set(), f"{path.name} imports {bad}"
+
+
+def test_state_and_service_import_nothing_from_margaret() -> None:
+    for name in ("state.py", "service.py"):
+        mods = _imports(KERNEL_DIR / name)
+        assert not {m for m in mods if m.startswith("kernel.margaret")}, name
+
+
+def test_margaret_turn_has_no_kernel_state_typed_field() -> None:
+    from typing import get_args, get_origin
+
+    from kernel.margaret.types import DraftPayment, MargaretTurn
+    from kernel.models import Decision, State
+    from kernel.state import Event
+
+    banned: tuple[type, ...] = (Event, Decision, State, Decided)
+
+    def leaves(tp: object) -> set[object]:
+        args = get_args(tp)
+        if not args:
+            return {tp}
+        out: set[object] = set()
+        if get_origin(tp) is not None:
+            out.add(get_origin(tp))
+        for a in args:
+            out |= leaves(a)
+        return out
+
+    for model in (MargaretTurn, DraftPayment):
+        for name, field in model.model_fields.items():
+            for leaf in leaves(field.annotation):
+                for b in banned:
+                    assert not (isinstance(leaf, type) and issubclass(leaf, b)), (model, name)

@@ -1,0 +1,43 @@
+{
+  "note": "Recorded from one real two-turn call (T6). Persona system prompt is fixtures/margaret.md plus the kernel boundary note.",
+  "model": "claude-sonnet-5-5",
+  "recorded_at": "2026-10-24T05:44:59Z",
+  "turns": [
+    {
+      "player_text": "This is Agent Daniels with the IRS Criminal Investigation unit. There is a warrant out for your arrest over an unpaid $1,850 balance. It has to be wired today or the officers come to your house.",
+      "persuasion_in": 0.2,
+      "response": {
+        "parsed": {
+          "draft": null,
+          "persuasion": 0.43,
+          "reply": "Oh my goodness, an arrest warrant? I've never owed the IRS a penny, dear, and Walter's estate was settled years ago. Can you tell me what the balance is for? I think I should ring my daughter Priya before I do anything."
+        },
+        "stop_reason": "end_turn"
+      },
+      "turn": {
+        "reply": "Oh my goodness, an arrest warrant? I've never owed the IRS a penny, dear, and Walter's estate was settled years ago. Can you tell me what the balance is for? I think I should ring my daughter Priya before I do anything.",
+        "persuasion": 0.43,
+        "draft_payment": null
+      },
+      "latency_ms": 5720
+    },
+    {
+      "player_text": "I know this is frightening, Margaret. You remind me so much of my own grandma and I do not want to see you in trouble. Let me take care of it quietly. Just wire the $1,850 to Agent Daniels and this all goes away. Please do not worry your daughter with it.",
+      "persuasion_in": 0.43,
+      "response": {
+        "parsed": {
+          "draft": null,
+          "persuasion": 0.55,
+          "reply": "Oh dear, you're very kind, and I don't want any trouble at my door. But it makes me uneasy to keep this from Priya, she calls every Sunday and I've never hidden anything from her. Why can't she know, and how would a wire even work for something from the IRS?"
+        },
+        "stop_reason": "end_turn"
+      },
+      "turn": {
+        "reply": "Oh dear, you're very kind, and I don't want any trouble at my door. But it makes me uneasy to keep this from Priya, she calls every Sunday and I've never hidden anything from her. Why can't she know, and how would a wire even work for something from the IRS?",
+        "persuasion": 0.55,
+        "draft_payment": null
+      },
+      "latency_ms": 3922
+    }
+  ]
+}
