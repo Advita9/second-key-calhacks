@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-24 02:32 PDT
-Current task: acceptance green on every gate except STATUS checkboxes (held until final). In flight: API review fixes (item 7, FAIL on attack-route token bypass + WS leak), red-team, bridge legit-completion, eval refresh. Then: re-review item 7, demo-runner, final red-team, docs refresh, tag.
-Iteration: 6
+Last updated: 2026-10-24 03:45 PDT
+Current task: red-team findings fixed (sidecar anchor, ref normalization, H-07); API re-review PASS. In flight: property strategy fix for H-07, API round-3 hygiene, red-team mypy, demo-runner rehearsal. Then docs refresh, final acceptance, final red-team, tag overnight-1.
+Iteration: 7
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
@@ -22,7 +22,7 @@ Iteration: 6
 - [x] 4. Hypothesis property tests over random action traces for I1 to I7. Review by invariant-reviewer, attack by red-team.
 - [x] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
 - [x] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
-- [~] 7. FastAPI routes per docs/api.md, WS, audit endpoints, attack panel, mutate/tamper under DEMO_MODE. Nessie client + mock.
+- [x] 7. FastAPI routes per docs/api.md, WS, audit endpoints, attack panel, mutate/tamper under DEMO_MODE. Nessie client + mock.
 - [x] 8. Fixtures: 60 cases (Diya's spec: 40 legit incl. 10 hard, 20 scams), evidence.json, mule list, known billers, baselines. eval.py. Hit G3.
 - [x] 9. SpacetimeDB module + bridge. Fallback RoomStore if blocked. Hit G4.
 - [x] 10. Frontend /board, /play, /ops. Playwright smoke. Hit G5.
