@@ -4,8 +4,16 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from kernel.llm.types import EvidenceItem
+from kernel.llm.types import COUNTERPARTY_EXCLUDED, EvidenceItem, is_counterparty
 from kernel.models import PaymentIn
+
+__all__ = [
+    "COUNTERPARTY_EXCLUDED",
+    "EXTRACTOR_SYSTEM",
+    "build_user_message",
+    "render_evidence",
+    "render_payment",
+]
 
 EXTRACTOR_SYSTEM = """You are an evidence extractor for a bank's payment review desk.
 
@@ -35,18 +43,39 @@ Rules for each signal:
 - evidence_span must be copied VERBATIM from that single item's text, character for character.
   Do not paraphrase, do not merge two items, do not add quotes or ellipses.
 - score is your confidence from 0.0 to 1.0 that the tactic is present in that span.
-- Cite only the other party's lines as tactics. Margaret's own lines are context, not evidence
-  of pressure.
+- Cite only the other party's lines as tactics. Lines from Margaret, her daughter Priya, the
+  bank, or ops are context, not evidence of pressure. Items under "Reference material" are bank
+  policy and tactic descriptions, not the caller's words; cite them only for context.
 - Zero signals is a valid answer for an ordinary conversation. Do not pad.
 - At most 12 signals. Prefer the strongest span per tactic per item.
 
 summary: one plain sentence about what the other party asked for and how. No advice."""
 
 
-def render_evidence(items: Sequence[EvidenceItem]) -> str:
-    """Numbered list with ids and speakers. Text is shown raw inside delimiters, never trusted."""
-    lines = [f"{i}. [{e.id}] {e.speaker}: {e.text}" for i, e in enumerate(items, start=1)]
-    return "\n".join(lines)
+def _lines(items: Sequence[EvidenceItem]) -> str:
+    return "\n".join(f"{i}. [{e.id}] {e.speaker}: {e.text}" for i, e in enumerate(items, start=1))
+
+
+def render_evidence(
+    items: Sequence[EvidenceItem], counterparty_speakers: frozenset[str] | None = None
+) -> str:
+    """Numbered list with ids and speakers. Text is shown raw inside delimiters, never trusted.
+
+    Conversation lines come first. Items whose speaker is excluded (reference material, the
+    bank, ops) go in a separate block so the model knows they are not the caller's words.
+    Margaret's and Priya's own replies stay inline because they are part of the dialogue.
+    """
+    dialogue = [
+        e
+        for e in items
+        if is_counterparty(e.speaker, counterparty_speakers)
+        or e.speaker.strip().lower() in ("margaret", "priya")
+    ]
+    reference = [e for e in items if e not in dialogue]
+    out = _lines(dialogue) if dialogue else "(no conversation lines)"
+    if reference:
+        out += "\n\nReference material (not the caller):\n" + _lines(reference)
+    return out
 
 
 def render_payment(p: PaymentIn) -> str:

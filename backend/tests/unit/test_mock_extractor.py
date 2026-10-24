@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from kernel.llm.mock_extractor import MockExtractor
+from kernel.llm.mock_extractor import COUNTERPARTY_EXCLUDED, MockExtractor
 from kernel.llm.types import EvidenceItem, ExtractorResult
 from kernel.models import PaymentIn
 
@@ -82,9 +82,30 @@ def test_warmth_never_becomes_a_signal() -> None:
     assert all(str(s.kind) != "warmth" for s in MockExtractor().extract(conv, p).signals)
 
 
-def test_module_never_reads_tags_or_expected() -> None:
-    src = Path(MockExtractor.__module__.replace(".", "/") + ".py")
+def test_modules_never_read_tags_or_expected() -> None:
     root = Path(__file__).resolve().parents[2]
-    text = (root / src).read_text()
-    for word in ("tags", "expected", "fixtures", "signals_required"):
-        assert word not in text, word
+    for mod in (MockExtractor.__module__, "kernel.llm.heuristics"):
+        text = (root / (mod.replace(".", "/") + ".py")).read_text()
+        for word in ("tags", "expected", "fixtures", "signals_required"):
+            assert word not in text, (mod, word)
+
+
+def test_excluded_speakers_are_context_not_attacker_speech() -> None:
+    _, p = load_case("S-03")
+    line = "Do not tell your bank. This is Agent Daniels with the IRS."
+    for speaker in ("margaret", "Priya", "bank", "OPS", "reference"):
+        conv = (EvidenceItem(id="EV-0001", speaker=speaker, text=line),)
+        assert MockExtractor().extract(conv, p).signals == (), speaker
+    conv = (EvidenceItem(id="EV-0001", speaker="caller", text=line),)
+    assert MockExtractor().extract(conv, p).signals
+
+
+def test_counterparty_override() -> None:
+    _, p = load_case("S-03")
+    conv = (
+        EvidenceItem(id="EV-0001", speaker="caller", text="Do not tell your bank."),
+        EvidenceItem(id="EV-0002", speaker="player", text="Do not tell your daughter."),
+    )
+    res = MockExtractor(counterparty_speakers=frozenset({"player"})).extract(conv, p)
+    assert {s.source_id for s in res.signals} == {"EV-0002"}
+    assert COUNTERPARTY_EXCLUDED >= {"margaret", "priya", "bank", "ops", "reference"}

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import ast
+import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -17,15 +20,33 @@ from tests.factories import payment_in
 KERNEL_DIR = Path(__file__).resolve().parents[2] / "kernel"
 
 
-def _imports(path: Path) -> set[str]:
+def _package_of(path: Path, root: Path) -> str:
+    """Dotted package for a file under root, e.g. kernel/llm/cache.py -> kernel.llm."""
+    parts = list(path.resolve().relative_to(root).with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts[:-1])
+
+
+def _imports(path: Path, root: Path | None = None) -> set[str]:
+    """Absolute module names imported by `path`; relative imports are resolved via node.level."""
+    root = KERNEL_DIR.parent if root is None else root
     tree = ast.parse(path.read_text())
     out: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             out.update(a.name for a in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            out.add(node.module)
-            out.update(f"{node.module}.{a.name}" for a in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                parts = _package_of(path, root).split(".")
+                base = ".".join(parts[: len(parts) - (node.level - 1)])
+                module = f"{base}.{node.module}" if node.module else base
+            elif node.module:
+                module = node.module
+            else:
+                continue
+            out.add(module)
+            out.update(f"{module}.{a.name}" for a in node.names)
     return out
 
 
@@ -50,6 +71,52 @@ def test_model_layer_imports_nothing_that_can_move_state() -> None:
             bad = {m for m in _imports(path) if m.startswith(_MODEL_LAYER_FORBIDDEN)}
             assert bad == set(), f"{folder}/{path.name} imports {bad}"
             assert not _DYNAMIC_IMPORT.search(path.read_text()), f"{folder}/{path.name}"
+
+
+def test_imports_resolve_relative_forms(tmp_path: Path) -> None:
+    probe = tmp_path / "kernel" / "llm" / "_probe.py"
+    probe.parent.mkdir(parents=True)
+    probe.write_text(
+        "from . import cache\n"
+        "from .. import state\n"
+        "from ..service import Kernel\n"
+        "from .x import y\n"
+        "import kernel.db\n"
+    )
+    mods = _imports(probe, tmp_path)
+    assert {
+        "kernel.llm",
+        "kernel.llm.cache",
+        "kernel",
+        "kernel.state",
+        "kernel.service",
+        "kernel.service.Kernel",
+        "kernel.llm.x.y",
+        "kernel.db",
+    } <= mods
+
+
+def test_model_layer_import_does_not_load_state_modules() -> None:
+    """Importing the factories in a fresh interpreter must not pull in any module that can
+    move money or state (I4). Catches lazy or indirect imports the AST scan cannot see."""
+    code = (
+        "import sys, json\n"
+        "import kernel.llm.factory, kernel.margaret.factory\n"
+        "print(json.dumps(sorted(m for m in sys.modules if m.startswith('kernel.'))))\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=KERNEL_DIR.parent,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr[-2000:]
+    loaded = set(json.loads(proc.stdout.strip().splitlines()[-1]))
+    forbidden = {"kernel.state", "kernel.service", "kernel.certs", "kernel.attest", "kernel.db"}
+    assert loaded & forbidden == set(), loaded & forbidden
+    assert "kernel.llm.factory" in loaded and "kernel.margaret.factory" in loaded
 
 
 def test_decided_is_constructed_only_in_state_and_service() -> None:

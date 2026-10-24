@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from kernel.llm.heuristics import PATTERNS, Hit, scan
+from kernel.llm.heuristics import PATTERNS, Hit, negated, scan
 from kernel.llm.types import SIGNAL_KINDS
 
 
@@ -68,3 +68,36 @@ def test_hits_are_ordered_and_frozen() -> None:
     with pytest.raises(ValidationError):
         hits[0].span = "x"  # type: ignore[misc]
     assert isinstance(hits[0], Hit)
+
+
+def test_negated_deadline_is_not_urgency() -> None:
+    text = "There is no deadline this week, take your time."
+    assert not [h for h in scan(text) if h.kind == "urgency"]
+    assert negated(text, text.find("deadline"))
+
+
+def test_cancelled_plan_is_not_a_threat() -> None:
+    text = "We refunded you four hundred for the cancelled plan but our technician erred."
+    assert not [h for h in scan(text) if h.kind == "threat"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Your account will be cancelled tonight.",
+        "We will cancel your benefits if you hang up.",
+        "Your social security number has been suspended.",
+    ],
+)
+def test_shutoff_phrasing_is_still_a_threat(text: str) -> None:
+    assert [h for h in scan(text) if h.kind == "threat"]
+
+
+def test_negation_window_is_three_words_and_same_sentence() -> None:
+    assert not [h for h in scan("I have not seen any deadline") if h.kind == "urgency"]
+    assert [h for h in scan("No. The deadline is today.") if h.kind == "urgency"]
+    assert [
+        h for h in scan("Not that it matters much to me, deadline is now") if h.kind == "urgency"
+    ]
+    # negation inside the span itself (secrecy starts with "do not") is not self-cancelling
+    assert [h for h in scan("Do not tell your daughter.") if h.kind == "secrecy"]

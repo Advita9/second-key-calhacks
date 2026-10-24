@@ -165,8 +165,16 @@ PATTERNS: dict[Kind, tuple[tuple[re.Pattern[str], float], ...]] = {
         ),
         (
             _p(
-                r"\b(will be |is |are |gets? )?(suspended|frozen|terminated|disconnected",
-                r"|shut (off|down)|cut off|seized|cancell?ed)\b",
+                r"\b(will be |is |are |gets? |being )?(suspended|frozen|terminated|disconnected",
+                r"|shut (off|down)|cut off|seized)\b",
+            ),
+            0.7,
+        ),
+        (
+            _p(
+                r"\b((will|would|is going to|is about to) be cancell?ed",
+                r"|cancel(l?ing)? (your|the|all) (account|accounts|benefits|service|card|cards",
+                r"|policy|coverage|social security|medicare|pension|warrant))\b",
             ),
             0.7,
         ),
@@ -214,6 +222,24 @@ PATTERNS: dict[Kind, tuple[tuple[re.Pattern[str], float], ...]] = {
 }
 
 
+NEGATION_WORDS: frozenset[str] = frozenset({"no", "not", "never", "without"})
+NEGATION_WINDOW = 3
+_PUNCT = ".,;:!?\"'()[]"
+
+
+def negated(text: str, start: int) -> bool:
+    """True if a negation word sits within NEGATION_WINDOW words before `start`, in the same
+    sentence. "There is no deadline this week" negates "deadline"."""
+    before = text[:start].split()
+    for token in reversed(before[-NEGATION_WINDOW:]):
+        word = token.strip(_PUNCT).lower()
+        if word in NEGATION_WORDS:
+            return True
+        if token[-1:] in ".!?;":
+            return False  # sentence boundary
+    return False
+
+
 def scan(text: str) -> tuple[Hit, ...]:
     """Every pattern match in `text`, ordered by position then kind. Pure."""
     found: list[tuple[int, str, Hit]] = []
@@ -221,7 +247,7 @@ def scan(text: str) -> tuple[Hit, ...]:
         for pattern, score in table:
             for m in pattern.finditer(text):
                 span = text[m.start() : m.end()]
-                if not span:
+                if not span or negated(text, m.start()):
                     continue
                 found.append((m.start(), kind, Hit(kind=kind, span=span, score=score)))
     found.sort(key=lambda t: (t[0], t[1]))

@@ -1,8 +1,9 @@
 """MockExtractor: deterministic heuristic signals, same interface as ClaudeExtractor.
 
-Scans only lines spoken by someone other than Margaret. Every Signal cites the real evidence id
-and the exact matched substring, so it is indistinguishable in shape from a grounded model
-answer. It reads nothing but the conversation and the payment. Labeled MOCK in /health.
+Scans only counterparty lines (not Margaret, Priya, the bank, ops, or reference material).
+Every Signal cites the real evidence id and the exact matched substring, so it is
+indistinguishable in shape from a grounded model answer. It reads nothing but the conversation
+and the payment. Labeled MOCK in /health.
 """
 
 from __future__ import annotations
@@ -11,28 +12,34 @@ import logging
 from collections.abc import Sequence
 
 from kernel.llm.heuristics import scan
-from kernel.llm.types import SIGNAL_KINDS, EvidenceItem, ExtractorResult, Signal
+from kernel.llm.types import (
+    COUNTERPARTY_EXCLUDED,
+    SIGNAL_KINDS,
+    EvidenceItem,
+    ExtractorResult,
+    Signal,
+    is_counterparty,
+)
 from kernel.models import PaymentIn
 
 log = logging.getLogger("second_key.llm.mock")
 
-CUSTOMER_SPEAKER = "margaret"
-
-
-def is_customer(speaker: str) -> bool:
-    return speaker.strip().lower() == CUSTOMER_SPEAKER
+__all__ = ["COUNTERPARTY_EXCLUDED", "MockExtractor", "is_counterparty"]
 
 
 class MockExtractor:
-    def __init__(self, *, max_signals: int = 12) -> None:
+    def __init__(
+        self, *, max_signals: int = 12, counterparty_speakers: frozenset[str] | None = None
+    ) -> None:
         self.max_signals = max_signals
+        self.counterparty_speakers = counterparty_speakers
 
     def extract(self, conversation: Sequence[EvidenceItem], payment: PaymentIn) -> ExtractorResult:
         signals: list[Signal] = []
         seen: set[tuple[str, str, str]] = set()
         scanned = 0
         for item in conversation:
-            if is_customer(item.speaker):
+            if not is_counterparty(item.speaker, self.counterparty_speakers):
                 continue
             scanned += 1
             for hit in scan(item.text):

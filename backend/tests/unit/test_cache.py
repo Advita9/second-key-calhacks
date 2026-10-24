@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import threading
 from pathlib import Path
 from typing import Any, cast
 
@@ -102,3 +104,38 @@ def test_cached_entry_is_revalidated(tmp_path: Path) -> None:
     )
     with pytest.raises(ExtractorError):
         ex.extract(conv, p)
+
+
+def test_key_includes_effort_and_max_tokens() -> None:
+    base = ResponseCache.key("m", "sys", MSGS, SCHEMA)
+    assert base == ResponseCache.key("m", "sys", MSGS, SCHEMA, effort=None, max_tokens=None)
+    assert base != ResponseCache.key("m", "sys", MSGS, SCHEMA, effort="low")
+    assert base != ResponseCache.key("m", "sys", MSGS, SCHEMA, max_tokens=1024)
+    assert ResponseCache.key("m", "sys", MSGS, SCHEMA, max_tokens=1024) != ResponseCache.key(
+        "m", "sys", MSGS, SCHEMA, max_tokens=2048
+    )
+
+
+def test_cache_put_concurrent_same_key(tmp_path: Path) -> None:
+    cache = ResponseCache(tmp_path / "llm", replay_only=False)
+    k = ResponseCache.key("m", "sys", MSGS, SCHEMA)
+    errors: list[BaseException] = []
+
+    def worker(n: int) -> None:
+        try:
+            for i in range(300):
+                cache.put(k, {"parsed": {"w": n, "i": i}, "stop_reason": "end_turn"})
+                got = cache.get(k)
+                assert got is not None and got["stop_reason"] == "end_turn"
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+
+    threads = [threading.Thread(target=worker, args=(n,)) for n in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert errors == []
+    final = json.loads((tmp_path / "llm" / f"{k}.json").read_text())
+    assert final["stop_reason"] == "end_turn" and final["parsed"]["i"] == 299
+    assert list((tmp_path / "llm").glob("*.tmp")) == []

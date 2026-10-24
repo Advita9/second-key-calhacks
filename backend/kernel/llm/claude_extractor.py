@@ -60,8 +60,9 @@ class ClaudeExtractor:
         except ExtractorError:
             raise
         except Exception as e:  # noqa: BLE001  anything else at the model boundary is X-00
+            # Only the exception type is recorded. str(e) may carry prompt text or headers.
             log.warning("extractor.error", extra={"error": type(e).__name__})
-            raise ExtractorError(f"{type(e).__name__}: {e}") from e
+            raise ExtractorError(type(e).__name__) from e
 
     def _extract(
         self, conversation: tuple[EvidenceItem, ...], payment: PaymentIn
@@ -73,7 +74,14 @@ class ClaudeExtractor:
         messages: list[dict[str, Any]] = [
             {"role": "user", "content": build_user_message(conversation, payment)}
         ]
-        key = ResponseCache.key(self.model, EXTRACTOR_SYSTEM, messages, schema)
+        key = ResponseCache.key(
+            self.model,
+            EXTRACTOR_SYSTEM,
+            messages,
+            schema,
+            effort=self.effort,
+            max_tokens=self.max_tokens,
+        )
 
         started = time.perf_counter()
         cached = self.cache.get(key)

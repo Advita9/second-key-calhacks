@@ -20,6 +20,23 @@ SignalKind = Literal[
 SIGNAL_KINDS: tuple[str, ...] = tuple(get_args(SignalKind))
 
 
+# Speakers whose lines are context, never attacker speech: the customer, her co-approver, the
+# bank, operators, and shared reference material (fixtures/evidence.json, speaker="reference").
+COUNTERPARTY_EXCLUDED: frozenset[str] = frozenset({"margaret", "priya", "bank", "ops", "reference"})
+
+
+def is_counterparty(speaker: str, counterparty_speakers: frozenset[str] | None = None) -> bool:
+    """True if this speaker's words count as the other party's tactics.
+
+    With `counterparty_speakers` set, only those speakers count (exact, case-insensitive).
+    Otherwise everyone not in COUNTERPARTY_EXCLUDED counts.
+    """
+    name = speaker.strip().lower()
+    if counterparty_speakers is not None:
+        return name in {c.strip().lower() for c in counterparty_speakers}
+    return name not in COUNTERPARTY_EXCLUDED
+
+
 class Signal(StrictModel):
     kind: SignalKind
     score: float = Field(ge=0.0, le=1.0)

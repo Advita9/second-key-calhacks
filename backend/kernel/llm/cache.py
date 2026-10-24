@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -38,9 +39,21 @@ class ResponseCache:
         system: str,
         messages: list[dict[str, Any]],
         schema: Mapping[str, Any],
+        *,
+        effort: str | None = None,
+        max_tokens: int | None = None,
     ) -> str:
+        """sha256 of the canonical request. `v` bumps when the stored value shape changes."""
         canonical = json.dumps(
-            {"model": model, "system": system, "messages": messages, "schema": schema},
+            {
+                "v": 1,
+                "model": model,
+                "system": system,
+                "messages": messages,
+                "schema": schema,
+                "effort": effort,
+                "max_tokens": max_tokens,
+            },
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
@@ -66,8 +79,17 @@ class ResponseCache:
         return raw
 
     def put(self, k: str, value: dict[str, Any]) -> None:
+        """Atomic: unique temp file per writer, then os.replace. Concurrent puts never raise."""
         path = self._path(k)
         self.root.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(value, sort_keys=True, ensure_ascii=False), encoding="utf-8")
-        os.replace(tmp, path)
+        body = json.dumps(value, sort_keys=True, ensure_ascii=False)
+        with tempfile.NamedTemporaryFile(
+            "w", dir=self.root, suffix=".tmp", delete=False, encoding="utf-8"
+        ) as tmp:
+            tmp.write(body)
+            tmp_name = tmp.name
+        try:
+            os.replace(tmp_name, path)
+        except OSError:
+            Path(tmp_name).unlink(missing_ok=True)
+            raise
