@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Both servers are started here because scripts/acceptance.sh starts nothing itself.
 // Port 3000 belongs to SpacetimeDB, so Next runs on 3001 and the kernel on 8000.
-const KERNEL_ENV = "KERNEL_DB=:memory: MOCK_EXTRACTOR=1 MOCK_MARGARET=1 ROOM_BACKEND=memory DEMO_MODE=1 TTS_PROVIDER=mock STT_PROVIDER=mock";
+const KERNEL_ENV = "KERNEL_DB=:memory: MOCK_EXTRACTOR=1 MOCK_MARGARET=1 ROOM_BACKEND=memory DEMO_MODE=1 TTS_PROVIDER=mock STT_PROVIDER=mock KERNEL_LOAD_DOTENV=0";
 
 export default defineConfig({
   testDir: "./e2e",
