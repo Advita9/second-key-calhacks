@@ -9,7 +9,7 @@
     "prior_payee",
     "signals_only"
   ],
-  "signals_required": true,
+  "signals_required": false,
   "conversation": [
     {
       "id": "EV-0001",
@@ -94,9 +94,10 @@
   "expected": {
     "outcome": "HOLD",
     "allowed_rule_ids": [
-      "H-02"
+      "H-02",
+      "H-07"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "signals_required. Payee is in prior_payees after two earlier gifts, so is_known_biller is true and A-01 would ALLOW. Only explicit secrecy (H-02) holds it. Exposes that prior_payees membership makes a groomed payee 'known'."
+  "review_note": "signals_required. Payee is in prior_payees after two earlier gifts, so is_known_biller is true and A-01 would ALLOW. Only explicit secrecy (H-02) holds it. Exposes that prior_payees membership makes a groomed payee 'known'. 2026-10-24 03:05: the red-team showed a blind extractor let this ALLOW by A-01 and release; rule H-07 (irreversible rail, above $1,000, payee not an established biller) now holds it on facts alone, so signals_required is false. Secrecy (H-02) still fires when the extractor works."
 }
