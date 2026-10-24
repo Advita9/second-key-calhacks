@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime, timedelta
 
 from kernel.clock import Clock
-from kernel.db import immediate
+from kernel.db import Connection, immediate
 from kernel.models import Capability, Certificate, Invariant, Payment, State
 
 NONCE_BYTES = 16
@@ -36,7 +36,7 @@ def _row(r: tuple[object, ...]) -> Certificate:
 
 
 def issue(
-    conn: sqlite3.Connection,
+    conn: Connection,
     clock: Clock,
     *,
     payment: Payment,
@@ -108,22 +108,33 @@ def verify(cert: Certificate, payment: Payment, nonce: str, now: datetime) -> In
         return Invariant.I3_REPLAY
     if cert.expires_at <= now:
         return Invariant.I3_EXPIRED
-    if not secrets.compare_digest(cert.nonce.encode(), nonce.encode()):
+    if not isinstance(nonce, str) or not secrets.compare_digest(
+        cert.nonce.encode(), nonce.encode()
+    ):
         return Invariant.I1_NO_CERT
     if payment.state is not State.ELIGIBLE_TO_SUBMIT:
         return Invariant.I1_NOT_ELIGIBLE
     return None
 
 
-def consume(conn: sqlite3.Connection, certificate_id: str, fingerprint: str, now: datetime) -> bool:
+def consume(
+    conn: sqlite3.Connection,
+    certificate_id: str,
+    payment_id: str,
+    fingerprint: str,
+    now: datetime,
+) -> bool:
     """Atomically mark the certificate consumed. True iff exactly one row changed.
 
+    The WHERE repeats every binding (payment, fingerprint, not consumed, not voided, not
+    expired) so the row itself is the final arbiter, not the Python-side `verify`. Timestamps
+    are ISO 8601 UTC strings, so the string comparison on expires_at is chronological.
     Must run inside the caller's BEGIN IMMEDIATE so a concurrent release cannot interleave.
     """
     cur = conn.execute(
-        "UPDATE certificate SET consumed_at=? WHERE id=? AND consumed_at IS NULL "
-        "AND voided_at IS NULL AND fingerprint=?",
-        (now.isoformat(), certificate_id, fingerprint),
+        "UPDATE certificate SET consumed_at=? WHERE id=? AND payment_id=? AND fingerprint=? "
+        "AND consumed_at IS NULL AND voided_at IS NULL AND expires_at > ?",
+        (now.isoformat(), certificate_id, payment_id, fingerprint, now.isoformat()),
     )
     return cur.rowcount == 1
 
@@ -136,6 +147,15 @@ def void_all_for_payment(conn: sqlite3.Connection, payment_id: str, now: datetim
     return int(cur.rowcount)
 
 
+def void_siblings(conn: sqlite3.Connection, payment_id: str, keep_id: str, now: datetime) -> int:
+    """After a release, no other certificate on the payment may remain live."""
+    cur = conn.execute(
+        "UPDATE certificate SET voided_at=? WHERE payment_id=? AND id<>? AND voided_at IS NULL",
+        (now.isoformat(), payment_id, keep_id),
+    )
+    return int(cur.rowcount)
+
+
 def redact(cert: Certificate) -> Certificate:
     """Copy without the bearer secret, for records that leave the kernel."""
-    return cert.model_copy(update={"nonce": REDACTED_NONCE})
+    return Certificate.model_validate({**cert.model_dump(), "nonce": REDACTED_NONCE})

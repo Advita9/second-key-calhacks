@@ -1,0 +1,7 @@
+version: smoke
+rules:
+  - id: H-01
+    when: amount_cents / (baseline_90d_cents - baseline_90d_cents) > 1
+    outcome: HOLD
+default: HOLD
+precedence: [DENY, HOLD, ALLOW]

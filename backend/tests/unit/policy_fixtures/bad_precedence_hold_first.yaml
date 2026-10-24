@@ -1,0 +1,7 @@
+version: bad
+rules:
+  - id: H-01
+    when: beneficiary.is_new
+    outcome: HOLD
+default: HOLD
+precedence: [HOLD, DENY, ALLOW]

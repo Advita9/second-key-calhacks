@@ -1,13 +1,15 @@
 """`Kernel`: the facade every caller (API, eval, demo, property tests) goes through.
 
 Responsibilities, in order of importance:
-- Only this module turns a policy `Decision` into a state `Event` (`_apply_decision`).
+- Only this module turns a policy `Decision` into a state `Event` (`_decide_and_apply`).
 - The extractor runs OUTSIDE the lock and its result is only data; any failure or timeout
   gives `fail_closed(decision, "X-00")`.
-- `release` verifies the certificate in a fixed order, then consumes it, submits to the rail
-  and transitions inside one BEGIN IMMEDIATE. The rail failing rolls everything back.
+- `release` verifies the certificate in a fixed order, then consumes it, submits to the rail,
+  transitions and voids sibling certificates inside one BEGIN IMMEDIATE. The rail failing
+  rolls everything back. A failure after the rail succeeded is audited as RELEASE_UNRECORDED
+  with the transfer id and every certificate on the payment is voided.
 - Every refusal is audited as kind REFUSED before the `Refusal` is raised.
-- An RLock serialises every public method; SQLite sees one writer at a time.
+- An RLock serialises every public method; `db.immediate()` adds its own per-connection lock.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from kernel import attest as attest_mod
 from kernel import certs as certs_mod
 from kernel.audit import AuditEvent, AuditLog, VerifyResult
 from kernel.clock import Clock, SystemClock
-from kernel.db import connect, immediate, insert_payment, load_payment, update_payment_fields
+from kernel.db import connect, immediate, insert_payment, load_payment
 from kernel.fingerprint import fingerprint
 from kernel.llm.types import EvidenceItem, Extractor, ExtractorResult, NullExtractor, Signal
 from kernel.models import (
@@ -44,11 +46,11 @@ from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, Policy, decide, fail_cl
 from kernel.rail import NullTransferRail, RailError, TransferRail
 from kernel.state import (
     Decided,
+    EnteredReview,
     HoldLifted,
     IllegalTransition,
     Mutated,
     Released,
-    Submitted,
     transition,
 )
 
@@ -166,7 +168,7 @@ class Kernel:
     ) -> tuple[Payment, Decision]:
         conv = tuple(conversation)
         extracted, extractor_ok = self._extract(conv, p)  # outside the lock: data only
-        with self._lock:
+        with self._lock, immediate(self.conn):
             payment = Payment(
                 **p.model_dump(),
                 id=f"pay_{secrets.token_hex(8)}",
@@ -182,7 +184,7 @@ class Kernel:
                 "CREATED",
                 {"payment_id": payment.id, "fingerprint": payment.fingerprint},
             )
-            payment = transition(payment, Submitted(), audit=self.audit, actor=SYSTEM_ACTOR)
+            payment = transition(payment, EnteredReview(), audit=self.audit, actor=SYSTEM_ACTOR)
             payment, decision = self._decide_and_apply(payment, ctx, extracted, extractor_ok)
         log.info(
             "payment.created",
@@ -209,27 +211,28 @@ class Kernel:
             conflict = attest_mod.conflict(payment, actor_id)
             if conflict is not None:
                 self._refuse(payment, actor, conflict, "attest", reason="ACTOR_IS_BENEFICIARY")
-            att = attest_mod.insert(
-                self.conn,
-                self.clock,
-                payment=payment,
-                actor_id=actor_id,
-                capability=capability,
-                note=note,
-            )
-            self.audit.append(
-                actor,
-                "ATTESTED",
-                {
-                    "payment_id": payment.id,
-                    "attestation_id": att.id,
-                    "capability": capability.value,
-                    "fingerprint": payment.fingerprint,
-                    "has_note": note is not None,
-                },
-            )
-            if payment.state is State.HELD and capability in attest_mod.CAN_LIFT_HOLD:
-                payment = transition(payment, HoldLifted(), audit=self.audit, actor=actor)
+            with immediate(self.conn):
+                att = attest_mod.insert(
+                    self.conn,
+                    self.clock,
+                    payment=payment,
+                    actor_id=actor_id,
+                    capability=capability,
+                    note=note,
+                )
+                self.audit.append(
+                    actor,
+                    "ATTESTED",
+                    {
+                        "payment_id": payment.id,
+                        "attestation_id": att.id,
+                        "capability": capability.value,
+                        "fingerprint": payment.fingerprint,
+                        "has_note": note is not None,
+                    },
+                )
+                if payment.state is State.HELD and capability in attest_mod.CAN_LIFT_HOLD:
+                    payment = transition(payment, HoldLifted(), audit=self.audit, actor=actor)
         log.info(
             "payment.attested",
             extra={
@@ -269,25 +272,26 @@ class Kernel:
                 self._refuse(
                     payment, actor, conflict, "issue_certificate", reason="ACTOR_IS_BENEFICIARY"
                 )
-            cert = certs_mod.issue(
-                self.conn,
-                self.clock,
-                payment=payment,
-                actor_id=actor_id,
-                capability=capability,
-                ttl_s=self.cert_ttl_s,
-            )
-            self.audit.append(
-                actor,
-                "CERT_ISSUED",
-                {
-                    "payment_id": payment.id,
-                    "certificate_id": cert.id,
-                    "fingerprint": cert.fingerprint,
-                    "policy_version": cert.policy_version,
-                    "expires_at": cert.expires_at,
-                },
-            )
+            with immediate(self.conn):
+                cert = certs_mod.issue(
+                    self.conn,
+                    self.clock,
+                    payment=payment,
+                    actor_id=actor_id,
+                    capability=capability,
+                    ttl_s=self.cert_ttl_s,
+                )
+                self.audit.append(
+                    actor,
+                    "CERT_ISSUED",
+                    {
+                        "payment_id": payment.id,
+                        "certificate_id": cert.id,
+                        "fingerprint": cert.fingerprint,
+                        "policy_version": cert.policy_version,
+                        "expires_at": cert.expires_at,
+                    },
+                )
         log.info("cert.issued", extra={"payment_id": payment.id, "certificate_id": cert.id})
         return cert
 
@@ -304,9 +308,12 @@ class Kernel:
             failed = certs_mod.verify(cert, payment, nonce, now)
             if failed is not None:
                 self._refuse(payment, actor, failed, "release", certificate_id=cert.id)
+            transfer_id: str | None = None
             try:
                 with immediate(self.conn):
-                    if not certs_mod.consume(self.conn, cert.id, payment.fingerprint, now):
+                    if not certs_mod.consume(
+                        self.conn, cert.id, payment.id, payment.fingerprint, now
+                    ):
                         raise Refusal(Invariant.I3_REPLAY, "consume affected no row")
                     self.audit.append(
                         actor,
@@ -323,6 +330,13 @@ class Kernel:
                         audit=self.audit,
                         actor=actor,
                     )
+                    voided = certs_mod.void_siblings(self.conn, payment.id, cert.id, now)
+                    if voided:
+                        self.audit.append(
+                            actor,
+                            "SIBLING_CERTS_VOIDED",
+                            {"payment_id": payment.id, "certificates": voided},
+                        )
             except Refusal as r:
                 # Transaction rolled back; record the refusal outside it.
                 self._refuse(payment, actor, r.invariant, "release", certificate_id=cert.id)
@@ -333,6 +347,34 @@ class Kernel:
                     {"payment_id": payment.id, "certificate_id": cert.id, "error": str(e)},
                 )
                 log.error("rail.failed", extra={"payment_id": payment.id, "error": str(e)})
+                raise
+            except Exception as e:
+                if transfer_id is not None:
+                    # The rail moved money but the transaction rolled back. Record the transfer
+                    # id so it is never lost, and void every certificate so nothing on this
+                    # payment can release again without a human re-issuing one.
+                    with immediate(self.conn):
+                        voided = certs_mod.void_all_for_payment(self.conn, payment.id, now)
+                        self.audit.append(
+                            actor,
+                            "RELEASE_UNRECORDED",
+                            {
+                                "payment_id": payment.id,
+                                "certificate_id": cert.id,
+                                "transfer_id": transfer_id,
+                                "error": f"{type(e).__name__}: {e}",
+                                "certificates_voided": voided,
+                            },
+                        )
+                    log.critical(
+                        "release.unrecorded",
+                        extra={
+                            "payment_id": payment.id,
+                            "certificate_id": cert.id,
+                            "transfer_id": transfer_id,
+                            "error": str(e),
+                        },
+                    )
                 raise
         log.info(
             "payment.released",
@@ -345,25 +387,21 @@ class Kernel:
     ) -> tuple[Payment, Decision]:
         actor = "mutate"
         with self._lock:
-            payment = self._load(payment_id)
-            self._refuse_if_terminal(payment, actor, "mutate")
-            new_in = _apply_patch(payment, patch)
-            conv = self._conversations.get(payment.id, ())
-            state_before = payment.state
+            before = self._load(payment_id)
+            self._refuse_if_terminal(before, actor, "mutate")
+            new_in = _apply_patch(before, patch)
+            conv = self._conversations.get(before.id, ())
         extracted, extractor_ok = self._extract(conv, new_in)  # outside the lock
         with self._lock:
             payment = self._load(payment_id)
-            if payment.state is not state_before:
+            self._refuse_if_terminal(payment, actor, "mutate")  # I6 first if denied meanwhile
+            if payment != before:
                 self._refuse(
                     payment, actor, Invariant.I1_NOT_ELIGIBLE, "mutate", reason="STATE_CHANGED"
                 )
             new_fp = fingerprint(new_in, self.policy.version)
             now = self.clock.now()
             with immediate(self.conn):
-                patched = payment.model_copy(
-                    update={k: getattr(new_in, k) for k in PaymentIn.model_fields}
-                )
-                update_payment_fields(self.conn, patched)
                 voided_att = attest_mod.void_all_for_payment(self.conn, payment.id, now)
                 voided_cert = certs_mod.void_all_for_payment(self.conn, payment.id, now)
                 self.audit.append(
@@ -379,7 +417,10 @@ class Kernel:
                     },
                 )
                 payment = transition(
-                    patched, Mutated(new_fingerprint=new_fp), audit=self.audit, actor=actor
+                    payment,
+                    Mutated(new=new_in, new_fingerprint=new_fp, policy_version=self.policy.version),
+                    audit=self.audit,
+                    actor=actor,
                 )
                 payment, decision = self._decide_and_apply(payment, ctx, extracted, extractor_ok)
         log.info(
@@ -395,12 +436,6 @@ class Kernel:
     def get(self, payment_id: str) -> PaymentRecord:
         with self._lock:
             payment = self._load(payment_id)
-            rows = self.conn.execute(
-                "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
-                "WHERE json_extract(payload, '$.payment_id') = ? ORDER BY seq",
-                (payment_id,),
-            ).fetchall()
-            history = [self._audit_row(r) for r in rows]
             return PaymentRecord(
                 payment=payment,
                 decision=self._decisions.get(payment_id),
@@ -409,7 +444,7 @@ class Kernel:
                 certificates=[
                     certs_mod.redact(c) for c in certs_mod.list_for_payment(self.conn, payment_id)
                 ],
-                history=history,
+                history=self.audit.for_payment(payment_id),
             )
 
     def audit_verify(self) -> VerifyResult:
@@ -444,6 +479,9 @@ class Kernel:
         except Refusal as r:
             return CmdResult(ok=False, invariant=r.invariant, error=r.text)
         except (KeyError, ValueError, IllegalTransition, RailError) as e:
+            return CmdResult(ok=False, error=f"{type(e).__name__}: {e}")
+        except Exception as e:  # noqa: BLE001  apply is the never-raises boundary
+            log.exception("apply.unexpected", extra={"cmd": type(cmd).__name__})
             return CmdResult(ok=False, error=f"{type(e).__name__}: {e}")
 
     # ---------------------------------------------------------------- internals
@@ -549,23 +587,11 @@ class Kernel:
         )
         return payment, decision
 
-    @staticmethod
-    def _audit_row(r: tuple[Any, ...]) -> AuditEvent:
-        import json
-
-        return AuditEvent(
-            seq=r[0],
-            ts=r[1],
-            actor=r[2],
-            kind=r[3],
-            payload=json.loads(r[4]),
-            prev_hash=r[5],
-            hash=r[6],
-        )
-
 
 def _apply_patch(payment: Payment, patch: Mapping[str, Any]) -> PaymentIn:
     """Merge a partial PaymentIn over the current one. Unknown keys and bad values raise."""
+    if not isinstance(patch, Mapping):
+        raise ValueError("mutate: patch must be a mapping")
     allowed = set(PaymentIn.model_fields)
     unknown = set(patch) - allowed
     if unknown:

@@ -282,6 +282,14 @@ def test_huge_numbers_do_not_crash() -> None:
         ev(f"{big} / 3")  # int too large for float -> EvalError, never OverflowError
 
 
+def test_non_finite_literals_and_results_are_rejected() -> None:
+    with pytest.raises(ParseError):
+        parse("9" * 400 + ".5")  # float('999...9.5') would be inf
+    assert ev("1" * 300 + ".0 > 1") is True  # finite large float (1.1e299) is fine
+    with pytest.raises(EvalError):
+        ev("1" + "0" * 200 + ".0 * 1" + "0" * 200 + ".0")  # overflows to inf -> EvalError
+
+
 def test_parse_is_pure_and_repeatable() -> None:
     assert parse("1 + a") == parse("1 + a")
 

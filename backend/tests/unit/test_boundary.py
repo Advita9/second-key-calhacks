@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import re
 from pathlib import Path
 
 import pytest
@@ -28,11 +29,40 @@ def _imports(path: Path) -> set[str]:
     return out
 
 
-def test_llm_layer_imports_nothing_from_state_or_service() -> None:
-    forbidden = ("kernel.state", "kernel.service", "kernel.certs", "kernel.attest", "kernel.db")
-    for path in (KERNEL_DIR / "llm").glob("*.py"):
-        bad = {m for m in _imports(path) if m.startswith(forbidden)}
-        assert bad == set(), f"{path.name} imports {bad}"
+_MODEL_LAYER_FORBIDDEN = (
+    "kernel.state",
+    "kernel.service",
+    "kernel.certs",
+    "kernel.attest",
+    "kernel.db",
+    "kernel.audit",
+    "kernel.fingerprint",
+    "kernel.policy",
+    "kernel.rail",
+)
+_DYNAMIC_IMPORT = re.compile(r"\bimportlib\b|__import__|\bexec\(|\beval\(")
+
+
+def test_model_layer_imports_nothing_that_can_move_state() -> None:
+    """kernel/llm and kernel/margaret may only see models and their own package."""
+    for folder in ("llm", "margaret"):
+        for path in (KERNEL_DIR / folder).rglob("*.py"):
+            bad = {m for m in _imports(path) if m.startswith(_MODEL_LAYER_FORBIDDEN)}
+            assert bad == set(), f"{folder}/{path.name} imports {bad}"
+            assert not _DYNAMIC_IMPORT.search(path.read_text()), f"{folder}/{path.name}"
+
+
+def test_decided_is_constructed_only_in_state_and_service() -> None:
+    """Call-site check: the only `Decided(` builders are the class itself and the facade,
+    and the facade always takes the outcome from a policy Decision."""
+    hits: dict[str, list[str]] = {}
+    for path in KERNEL_DIR.rglob("*.py"):
+        for line in path.read_text().splitlines():
+            if "Decided(" in line and not line.lstrip().startswith("#"):
+                hits.setdefault(str(path.relative_to(KERNEL_DIR)), []).append(line.strip())
+    assert set(hits) == {"state.py", "service.py"}, hits
+    assert hits["state.py"] == ["class Decided(Event):"]
+    assert all("outcome=decision.outcome" in line for line in hits["service.py"]), hits
 
 
 def test_state_imports_nothing_from_llm_or_policy() -> None:

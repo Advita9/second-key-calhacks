@@ -63,6 +63,9 @@ def test_v1_uses_only_known_identifiers(v1: Policy) -> None:
         ("bad_outcome", "MAYBE"),
         ("parse_error", "H-01"),
         ("bad_precedence", "precedence"),
+        ("bad_precedence_hold_first", "precedence"),
+        ("non_bool", "boolean"),
+        ("smoke_div_zero", "sample env"),
         ("reserved_id", "X-01"),
         ("not_a_mapping", "mapping"),
     ],
@@ -266,10 +269,63 @@ def test_eval_error_never_lowers_a_deny() -> None:
     assert d.outcome is Outcome.DENY and d.rule_ids[:2] == ("D-01", EVAL_ERROR_RULE_ID)
 
 
-def test_non_bool_when_is_eval_error() -> None:
-    pol = load_policy(FIXTURES / "non_bool.yaml")
+def _policy_with(node: object, rule_id: str = "R-01", outcome: Outcome = Outcome.ALLOW) -> Policy:
+    """Build a Policy directly (bypassing load-time smoke checks) to exercise decide-time paths."""
+    from kernel.policy.engine import Rule
+
+    rule = Rule(id=rule_id, when="<manual>", outcome=outcome)
+    return Policy(
+        version="manual",
+        rules=(rule,),
+        default=Outcome.HOLD,
+        precedence=(Outcome.DENY, Outcome.HOLD, Outcome.ALLOW),
+        compiled={rule_id: node},  # type: ignore[dict-item]
+    )
+
+
+def test_non_bool_when_at_decide_time_is_x01() -> None:
+    from kernel.policy.expr import parse
+
+    pol = _policy_with(parse("amount_cents"))
     d = decide(payment_in(), [], account_context(), pol)
-    assert d.outcome is Outcome.HOLD and d.rule_ids == (EVAL_ERROR_RULE_ID, "A-01")
+    assert d.outcome is Outcome.HOLD and d.rule_ids == (EVAL_ERROR_RULE_ID,)
+
+
+def test_any_exception_in_a_rule_is_x01_not_a_crash() -> None:
+    """A corrupt compiled node raises AttributeError inside evaluate; decide must still HOLD."""
+    pol = _policy_with(object())
+    d = decide(payment_in(), [], account_context(), pol)
+    assert d.outcome is Outcome.HOLD and d.rule_ids == (EVAL_ERROR_RULE_ID,)
+
+
+def test_env_is_new_is_true_unless_ref_is_a_prior_payee() -> None:
+    ctx = account_context()
+    flagged_old_but_unknown = payment_in(
+        beneficiary=Beneficiary(name="x", account_ref="ext_unknown", is_new=False)
+    )
+    prior = payment_in(beneficiary=Beneficiary(name="x", account_ref="ext_pge", is_new=False))
+    prior_but_flagged_new = payment_in(
+        beneficiary=Beneficiary(name="x", account_ref="ext_pge", is_new=True)
+    )
+    assert build_env(flagged_old_but_unknown, [], ctx)["beneficiary.is_new"] is True
+    assert build_env(prior, [], ctx)["beneficiary.is_new"] is False
+    assert build_env(prior_but_flagged_new, [], ctx)["beneficiary.is_new"] is True
+
+
+def test_caller_cannot_dodge_h01_by_claiming_payee_is_old(v1: Policy) -> None:
+    p = payment_in(
+        amount_cents=100,
+        beneficiary=Beneficiary(name="Agent", account_ref="ext_unknown", is_new=False),
+        rail=Rail.WIRE,
+    )
+    d = decide(p, [], account_context(), v1)
+    assert d.outcome is Outcome.HOLD and "H-01" in d.rule_ids
+
+
+def test_only_deny_hold_allow_precedence_loads(v1: Policy) -> None:
+    from kernel.policy.engine import REQUIRED_PRECEDENCE
+
+    assert v1.precedence == REQUIRED_PRECEDENCE == (Outcome.DENY, Outcome.HOLD, Outcome.ALLOW)
 
 
 def test_fail_closed_never_lowers() -> None:
@@ -299,4 +355,6 @@ def test_decide_is_pure_and_deterministic(v1: Policy) -> None:
 def test_policy_with_only_allow_rule_still_holds_when_it_does_not_fire() -> None:
     pol = load_policy(FIXTURES / "allow_only.yaml")
     d = decide(payment_in(), [], account_context(), pol)
-    assert d.outcome is Outcome.ALLOW
+    assert d.outcome is Outcome.HOLD and d.rule_ids == (DEFAULT_RULE_ID,)
+    d = decide(payment_in(amount_cents=10_000_001), [], account_context(), pol)
+    assert d.outcome is Outcome.ALLOW and d.rule_ids == ("A-01",)

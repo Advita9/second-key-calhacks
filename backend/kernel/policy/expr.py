@@ -16,6 +16,7 @@ Rules:
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -279,7 +280,10 @@ def _number(t: Token) -> int | float:
     text = t.value.replace("_", "")
     try:
         if "." in text:
-            return float(text)
+            value = float(text)
+            if not math.isfinite(value):
+                raise ParseError(f"non-finite number at {t.pos}")
+            return value
         return int(text)
     except ValueError as e:  # e.g. int string longer than the interpreter's digit limit
         raise ParseError(f"bad number at {t.pos}: {e}") from None
@@ -384,13 +388,17 @@ def evaluate(node: Node, env: Mapping[str, object]) -> object:
         if op == ">=":
             return a >= b
         if op == "+":
-            return a + b
-        if op == "-":
-            return a - b
-        if op == "*":
-            return a * b
-        if op == "/":
-            return a / b
+            out = a + b
+        elif op == "-":
+            out = a - b
+        elif op == "*":
+            out = a * b
+        elif op == "/":
+            out = a / b
+        else:
+            raise EvalError(f"unknown operator {op!r}")
     except (ZeroDivisionError, OverflowError, ValueError) as e:
         raise EvalError(f"{op!r}: {e}") from None
-    raise EvalError(f"unknown operator {op!r}")
+    if isinstance(out, float) and not math.isfinite(out):
+        raise EvalError(f"{op!r}: non-finite result")
+    return out

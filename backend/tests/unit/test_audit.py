@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import threading
 
 import pytest
 
-from kernel.audit import GENESIS_HASH, AuditLog, chain_hash
+from kernel.audit import GENESIS_HASH, AuditChainError, AuditLog, chain_hash
 from kernel.clock import FakeClock
-from kernel.db import connect
+from kernel.db import connect, immediate
 
 
 @pytest.fixture
@@ -101,3 +102,64 @@ def test_payload_with_datetime_is_canonical(log: AuditLog, clock: FakeClock) -> 
 def test_no_secrets_in_kind_or_actor_types(log: AuditLog) -> None:
     ev = log.append("bank_review:ops1", "CERT_ISSUED", {"certificate_id": "c1"})
     assert ev.kind == "CERT_ISSUED" and ev.actor == "bank_review:ops1"
+
+
+def test_audit_verify_ok_after_rolled_back_in_txn_append(log: AuditLog) -> None:
+    """The head advances only on commit: a rolled-back append must not leave verify red."""
+    log.append("t", "K", {"n": 1})
+    with pytest.raises(RuntimeError):
+        with immediate(log.conn):
+            log.append("t", "K", {"n": 2})
+            log.append("t", "K", {"n": 3})
+            raise RuntimeError("boom")
+    r = log.verify()
+    assert r.ok and r.length == 1
+    ev = log.append("t", "K", {"n": 4})
+    assert ev.seq == 2 and log.verify().ok and log.verify().length == 2
+
+
+def test_joined_transaction_commit_advances_head(log: AuditLog) -> None:
+    with immediate(log.conn):
+        log.append("t", "A", {})
+        log.append("t", "B", {})
+    assert log.verify().ok and log.verify().length == 2
+
+
+def test_append_refuses_when_tail_does_not_match_anchor(log: AuditLog) -> None:
+    """A rewritten or truncated table cannot be silently extended."""
+    for i in range(3):
+        log.append("t", "K", {"n": i})
+    log.conn.execute("DELETE FROM audit WHERE seq=3")
+    with pytest.raises(AuditChainError):
+        log.append("t", "K", {"n": 9})
+    assert log.conn.execute("SELECT count(*) FROM audit").fetchone()[0] == 2
+    assert not log.verify().ok
+
+
+def test_tamper_does_not_block_later_appends(log: AuditLog) -> None:
+    for i in range(3):
+        log.append("t", "K", {"n": i})
+    log.tamper(2, {"n": 99})
+    log.append("t", "K", {"n": 3})  # chain tail unchanged, append still allowed
+    r = log.verify()
+    assert not r.ok and r.first_bad_seq == 2
+
+
+def test_concurrent_appends_without_kernel_lock_lose_nothing(clock: FakeClock) -> None:
+    """immediate() locks the connection itself, so callers cannot interleave transactions."""
+    log = AuditLog(connect(":memory:"), clock)
+    n_threads, per_thread = 8, 25
+    barrier = threading.Barrier(n_threads)
+
+    def go(i: int) -> None:
+        barrier.wait()
+        for j in range(per_thread):
+            log.append(f"t{i}", "K", {"i": i, "j": j})
+
+    threads = [threading.Thread(target=go, args=(i,)) for i in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    r = log.verify()
+    assert r.ok and r.length == n_threads * per_thread

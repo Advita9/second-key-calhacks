@@ -5,9 +5,9 @@ All responses JSON. All state changes append an audit event. Errors never leak r
 ## Payments
 
 `POST /payments`
-body `{account_id, amount_cents, currency, beneficiary: {name, account_ref, is_new}, rail: WIRE|ACH|ZELLE|CARD, conversation_id}`
+body `{account_id, amount_cents, currency, beneficiary: {name, account_ref, is_new}, rail: WIRE|ACH|ZELLE|CARD|CRYPTO, conversation_id}`
 → `{id, state: "PENDING_REVIEW", fingerprint, decision: {outcome: ALLOW|HOLD|DENY, rule_ids[], signals[]}}`
-(DRAFT → PENDING_REVIEW happens inside this call: extractor + policy run synchronously, fail closed to HOLD on any error or timeout > 8s.)
+(DRAFT → PENDING_REVIEW happens inside this call and is audited as `ENTERED_REVIEW`; `SUBMITTED` in the audit log always means money moved. Extractor + policy run synchronously, fail closed to HOLD on any error or timeout > 8s.)
 
 `GET /payments/{id}` → full record incl. `state, fingerprint, attestations[], certificates[], history[]`
 
@@ -73,12 +73,27 @@ rules:
   - id: H-03
     when: amount_cents > 3 * baseline_90d_cents
     outcome: HOLD
+  - id: H-04
+    when: signals.urgency >= 0.8 and beneficiary.is_new
+    outcome: HOLD
+  - id: H-05
+    when: signals.authority >= 0.7 and signals.payment_method >= 0.5
+    outcome: HOLD
+  - id: H-06
+    when: signals.threat >= 0.7
+    outcome: HOLD
   - id: A-01
     when: beneficiary.is_known_biller and amount_cents <= known_biller_cap_cents
     outcome: ALLOW
 default: HOLD
 precedence: [DENY, HOLD, ALLOW]
 ```
+
+Every rule is evaluated; the strongest outcome among the rules that fired wins (DENY > HOLD > ALLOW, the only precedence the loader accepts). No rule firing gives the default (HOLD, rule id `DEFAULT`). A rule that errors counts as HOLD with rule id `X-01`. Extractor failure adds `X-00` and never lowers the outcome.
+
+Environment identifiers (`kernel/policy/env.py`): `amount_cents, currency, rail, baseline_90d_cents, known_biller_cap_cents, beneficiary.is_new, beneficiary.is_known_biller, beneficiary.name_on_biller_list, beneficiary.on_mule_list, signals.<kind>, signals.count`. `is_new` is true when the caller says so OR the account_ref is not a prior payee. `is_known_biller` and `on_mule_list` match on account_ref only; display names are never trusted.
+
+Audit kinds on a payment: `CREATED, ENTERED_REVIEW, EXTRACTED | EXTRACTOR_FAILED, DECIDED, ATTESTED, HOLD_LIFTED, CERT_ISSUED, CERT_CONSUMED, RELEASED, SIBLING_CERTS_VOIDED, VOIDED, MUTATED, REFUSED, RAIL_FAILED, RELEASE_UNRECORDED`.
 
 `when` is a tiny safe expression language (no eval): comparisons, and/or/not, `in`. Parser has its own tests.
 

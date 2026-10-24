@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kernel.llm.types import SIGNAL_KINDS, Signal
-from kernel.models import AccountContext, PaymentIn
+from kernel.models import AccountContext, Beneficiary, PaymentIn, Rail
 
 KNOWN_IDENTIFIERS: frozenset[str] = frozenset(
     {
@@ -27,6 +27,8 @@ KNOWN_IDENTIFIERS: frozenset[str] = frozenset(
 def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> dict[str, object]:
     """Pure. Keys are exactly KNOWN_IDENTIFIERS (tested).
 
+    - is_new: the caller's flag OR account_ref not in prior_payees. The caller alone is never
+      trusted to say a payee is old.
     - is_known_biller: account_ref in prior_payees. ONLY by ref: a display name is attacker
       controlled ("PG&E" with a fresh account_ref must not be trusted).
     - name_on_biller_list: name in known_billers. Informational only; no v1 rule may ALLOW on it.
@@ -43,7 +45,9 @@ def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> d
         "rail": p.rail.value,
         "baseline_90d_cents": ctx.baseline_90d_cents,
         "known_biller_cap_cents": ctx.known_biller_cap_cents,
-        "beneficiary.is_new": p.beneficiary.is_new,
+        "beneficiary.is_new": (
+            p.beneficiary.is_new or p.beneficiary.account_ref not in ctx.prior_payees
+        ),
         "beneficiary.is_known_biller": p.beneficiary.account_ref in ctx.prior_payees,
         "beneficiary.name_on_biller_list": p.beneficiary.name in ctx.known_billers,
         "beneficiary.on_mule_list": p.beneficiary.account_ref in ctx.mule_list,
@@ -52,3 +56,19 @@ def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> d
     for kind in SIGNAL_KINDS:
         env[f"signals.{kind}"] = maxes[kind]
     return env
+
+
+def sample_env() -> dict[str, object]:
+    """A representative environment used to smoke-evaluate every rule at load time."""
+    p = PaymentIn(
+        account_id="acc_sample",
+        amount_cents=100,
+        currency="USD",
+        beneficiary=Beneficiary(name="Sample Payee", account_ref="ext_sample", is_new=True),
+        rail=Rail.ACH,
+        conversation_id="conv_sample",
+    )
+    ctx = AccountContext(
+        baseline_90d_cents=400_000, known_billers=[], prior_payees=[], mule_list=[]
+    )
+    return build_env(p, [], ctx)

@@ -1,22 +1,30 @@
-"""Hash-chained audit log (I7). Each row hashes its content plus the previous row's hash."""
+"""Hash-chained audit log (I7). Each row hashes its content plus the previous row's hash.
+
+The log keeps an in-process anchor (seq, hash) of the last row it committed. `append`
+refuses to extend a chain whose tail does not match the anchor, and the anchor only moves
+when the enclosing transaction commits, so a rolled-back append never leaves `verify()` red.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-import sqlite3
 from collections.abc import Mapping
 
 from pydantic import BaseModel, ConfigDict
 
 from kernel.clock import Clock
-from kernel.db import immediate
+from kernel.db import Connection, immediate
 from kernel.fingerprint import canonical_json
 
 log = logging.getLogger("second_key.audit")
 
 GENESIS_HASH = "0" * 64
+
+
+class AuditChainError(RuntimeError):
+    """The table tail no longer matches what this process last wrote. Refuse to append."""
 
 
 class AuditEvent(BaseModel):
@@ -43,17 +51,43 @@ def chain_hash(seq: int, ts: str, actor: str, kind: str, payload_json: str, prev
     return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
+def _event(r: tuple[object, ...]) -> AuditEvent:
+    return AuditEvent(
+        seq=int(str(r[0])),
+        ts=str(r[1]),
+        actor=str(r[2]),
+        kind=str(r[3]),
+        payload=json.loads(str(r[4])),
+        prev_hash=str(r[5]),
+        hash=str(r[6]),
+    )
+
+
 class AuditLog:
     """Append-only log. `verify()` recomputes the whole chain; `tamper()` exists for the demo."""
 
-    def __init__(self, conn: sqlite3.Connection, clock: Clock) -> None:
+    def __init__(self, conn: Connection, clock: Clock) -> None:
         self.conn = conn
         self._clock = clock
         row = conn.execute("SELECT seq, hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
-        # In-process anchor of the last row we wrote. Catches a consistent full rewrite or a
-        # truncation of the table within this process; an external anchor would extend that.
         self._head_seq: int = row[0] if row else 0
         self._head: str = row[1] if row else GENESIS_HASH
+        self._pending: tuple[int, str] | None = None
+        conn.commit_hooks.append(self._on_commit)
+        conn.rollback_hooks.append(self._on_rollback)
+
+    # The head only advances on commit. Inside a transaction, `_pending` is the tail we
+    # expect to see; a rollback discards it.
+    def _on_commit(self) -> None:
+        if self._pending is not None:
+            self._head_seq, self._head = self._pending
+            self._pending = None
+
+    def _on_rollback(self) -> None:
+        self._pending = None
+
+    def _expected_tail(self) -> tuple[int, str]:
+        return self._pending if self._pending is not None else (self._head_seq, self._head)
 
     def append(self, actor: str, kind: str, payload: Mapping[str, object]) -> AuditEvent:
         payload_json = canonical_json(dict(payload))
@@ -62,16 +96,20 @@ class AuditLog:
             last = self.conn.execute(
                 "SELECT seq, hash FROM audit ORDER BY seq DESC LIMIT 1"
             ).fetchone()
-            seq = (last[0] + 1) if last else 1
-            prev_hash = last[1] if last else GENESIS_HASH
+            tail = (last[0], last[1]) if last else (0, GENESIS_HASH)
+            if tail != self._expected_tail():
+                raise AuditChainError(
+                    f"audit tail {tail[0]} does not match anchor {self._expected_tail()[0]}"
+                )
+            seq = tail[0] + 1
+            prev_hash = tail[1]
             h = chain_hash(seq, ts, actor, kind, payload_json, prev_hash)
             self.conn.execute(
                 "INSERT INTO audit (seq, ts, actor, kind, payload, prev_hash, hash) "
                 "VALUES (?,?,?,?,?,?,?)",
                 (seq, ts, actor, kind, payload_json, prev_hash, h),
             )
-        self._head = h
-        self._head_seq = seq
+            self._pending = (seq, h)
         log.info("audit.append", extra={"seq": seq, "kind": kind, "actor": actor})
         return AuditEvent(
             seq=seq,
@@ -96,10 +134,11 @@ class AuditLog:
                 return VerifyResult(ok=False, length=len(rows), first_bad_seq=seq)
             prev = h
             expected_seq += 1
-        if len(rows) < self._head_seq:
+        head_seq, head = self._expected_tail()
+        if len(rows) < head_seq:
             # Tail rows were deleted. The first missing seq is the bad one.
             return VerifyResult(ok=False, length=len(rows), first_bad_seq=len(rows) + 1)
-        if prev != self._head:
+        if prev != head:
             # Chain is internally consistent but does not end where this process left it:
             # rows were rewritten wholesale. Blame the head row.
             return VerifyResult(ok=False, length=len(rows), first_bad_seq=max(len(rows), 1))
@@ -124,15 +163,12 @@ class AuditLog:
             "ORDER BY seq DESC LIMIT ?",
             (limit,),
         ).fetchall()
-        return [
-            AuditEvent(
-                seq=r[0],
-                ts=r[1],
-                actor=r[2],
-                kind=r[3],
-                payload=json.loads(r[4]),
-                prev_hash=r[5],
-                hash=r[6],
-            )
-            for r in reversed(rows)
-        ]
+        return [_event(r) for r in reversed(rows)]
+
+    def for_payment(self, payment_id: str) -> list[AuditEvent]:
+        rows = self.conn.execute(
+            "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
+            "WHERE json_extract(payload, '$.payment_id') = ? ORDER BY seq",
+            (payment_id,),
+        ).fetchall()
+        return [_event(r) for r in rows]

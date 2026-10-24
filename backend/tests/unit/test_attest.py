@@ -25,6 +25,7 @@ from kernel.models import (
 from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, V1_PATH, load_policy
 from kernel.rail import RailError
 from kernel.service import Kernel
+from kernel.state import IllegalTransition, Released
 from tests.factories import account_context, payment_in
 
 
@@ -126,6 +127,19 @@ def test_cert_needs_eligible_state(kernel: Kernel) -> None:
     assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
 
 
+def test_bank_review_who_is_beneficiary_cannot_lift_hold(kernel: Kernel) -> None:
+    pid = held(kernel)  # beneficiary account_ref is ext_priya
+    with pytest.raises(Refusal) as ei:
+        kernel.attest(pid, "ext_priya", Capability.BANK_REVIEW, "approving my own payment")
+    assert ei.value.invariant is Invariant.I5_CONFLICT
+    rec = kernel.get(pid)
+    assert rec.payment.state is State.HELD and rec.attestations == []
+    kernel.attest(pid, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(Refusal) as ei:
+        kernel.issue_certificate(pid, "ext_priya", Capability.BANK_REVIEW)
+    assert ei.value.invariant is Invariant.I5_CONFLICT
+
+
 # I6 ------------------------------------------------------------------------------------
 
 
@@ -191,6 +205,88 @@ def test_rail_failure_leaves_payment_and_cert_untouched(clock: FakeClock) -> Non
     # Nothing was consumed, so the same certificate still works once the rail is back.
     p2 = kernel.release(p.id, cert.id, cert.nonce)
     assert p2.state is State.SUBMITTED and p2.nessie_transfer_id == "tr_2"
+
+
+def test_rail_failure_has_no_cert_consumed_row(clock: FakeClock) -> None:
+    rail = FlakyRail()
+    kernel = Kernel(":memory:", policy=load_policy(V1_PATH), clock=clock, rail=rail)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    cert = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(RailError):
+        kernel.release(p.id, cert.id, cert.nonce)
+    row = kernel.conn.execute(
+        "SELECT consumed_at, voided_at FROM certificate WHERE id=?", (cert.id,)
+    ).fetchone()
+    assert row == (None, None)
+    assert kernel.conn.execute(
+        "SELECT state, nessie_transfer_id FROM payment WHERE id=?", (p.id,)
+    ).fetchone() == ("ELIGIBLE_TO_SUBMIT", None)
+    assert "CERT_CONSUMED" not in [e.kind for e in kernel.get(p.id).history]
+
+
+class _RailThatBreaksTheCert:
+    """Submits, then voids the certificate row so transition(Released) must refuse (A5)."""
+
+    def __init__(self, kernel_ref: list[Kernel]) -> None:
+        self.kernel_ref = kernel_ref
+
+    def submit(self, payment: Payment, certificate: Certificate) -> str:
+        self.kernel_ref[0].conn.execute(
+            "UPDATE certificate SET voided_at='2026-01-01T00:00:00+00:00' WHERE id=?",
+            (certificate.id,),
+        )
+        return "tr_money_moved"
+
+
+def test_transition_failure_after_rail_success_is_audited(clock: FakeClock) -> None:
+    """B1: if anything fails after the rail returned, the transfer id must be in the audit log,
+    verify() must stay green, and no certificate on the payment may release again."""
+    ref: list[Kernel] = []
+    kernel = Kernel(
+        ":memory:", policy=load_policy(V1_PATH), clock=clock, rail=_RailThatBreaksTheCert(ref)
+    )
+    ref.append(kernel)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    c1 = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    c2 = kernel.issue_certificate(p.id, "ops_2", Capability.BANK_REVIEW)
+    with pytest.raises(IllegalTransition):
+        kernel.release(p.id, c1.id, c1.nonce)
+    rec = kernel.get(p.id)
+    assert rec.payment.state is State.ELIGIBLE_TO_SUBMIT  # transaction rolled back
+    last = rec.history[-1]
+    assert last.kind == "RELEASE_UNRECORDED"
+    assert (
+        last.payload["transfer_id"] == "tr_money_moved" and last.payload["certificate_id"] == c1.id
+    )
+    assert kernel.audit_verify().ok
+    assert all(c.voided_at is not None for c in rec.certificates)
+    for c in (c1, c2):
+        with pytest.raises(Refusal) as ei:
+            kernel.release(p.id, c.id, c.nonce)
+        assert ei.value.invariant is Invariant.I2_FINGERPRINT
+
+
+def test_transition_failure_after_rail_success_via_monkeypatch(
+    clock: FakeClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from kernel.state import transition as real
+
+    def broken(p: Payment, ev: object, **kw: object) -> Payment:
+        if isinstance(ev, Released):
+            raise RuntimeError("db hiccup after rail")
+        return real(p, ev, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr("kernel.service.transition", broken)
+    kernel = Kernel(":memory:", policy=load_policy(V1_PATH), clock=clock)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    cert = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(RuntimeError):
+        kernel.release(p.id, cert.id, cert.nonce)
+    rec = kernel.get(p.id)
+    assert rec.history[-1].kind == "RELEASE_UNRECORDED"
+    assert str(rec.history[-1].payload["transfer_id"]).startswith("mock_tr_")
+    assert kernel.audit_verify().ok
+    assert rec.certificates[0].voided_at is not None and rec.certificates[0].consumed_at is None
 
 
 # extractor paths (I4) ----------------------------------------------------------------------

@@ -1,9 +1,16 @@
-"""SQLite plumbing: schema, connection, explicit write transactions, payment rows."""
+"""SQLite plumbing: schema, connection, explicit write transactions, payment rows.
+
+Writes go through `immediate()`, which takes the connection's own RLock before BEGIN
+IMMEDIATE, so two threads can never interleave inside one SQLite transaction even if a
+caller forgets the Kernel lock. Commit and rollback hooks let the audit log advance its
+head only when the transaction actually commits.
+"""
 
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterator
+import threading
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -63,14 +70,24 @@ CREATE INDEX IF NOT EXISTS certificate_payment ON certificate(payment_id);
 """
 
 
-def connect(path: str = ":memory:") -> sqlite3.Connection:
+class Connection(sqlite3.Connection):
+    """sqlite3 connection with its own reentrant lock and transaction hooks."""
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        self.lock = threading.RLock()
+        self.commit_hooks: list[Callable[[], None]] = []
+        self.rollback_hooks: list[Callable[[], None]] = []
+
+
+def connect(path: str = ":memory:") -> Connection:
     """Open a connection in manual-transaction mode and apply the schema once.
 
-    `isolation_level=None` disables sqlite3's implicit BEGIN so `immediate()` owns
-    every write transaction. `check_same_thread=False` because the Kernel facade
-    serialises access with its own lock; never open a second connection to `:memory:`.
+    `isolation_level=None` disables sqlite3's implicit BEGIN so `immediate()` owns every
+    write transaction. `check_same_thread=False` because `immediate()` serialises writers
+    with the connection lock; never open a second connection to `:memory:`.
     """
-    conn = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    conn = sqlite3.connect(path, isolation_level=None, check_same_thread=False, factory=Connection)
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA journal_mode=MEMORY" if path == ":memory:" else "PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
@@ -78,27 +95,39 @@ def connect(path: str = ":memory:") -> sqlite3.Connection:
 
 
 @contextmanager
-def immediate(conn: sqlite3.Connection) -> Iterator[sqlite3.Connection]:
-    """BEGIN IMMEDIATE write transaction. Joins an already-open transaction instead of nesting."""
-    if conn.in_transaction:
-        yield conn
-        return
-    conn.execute("BEGIN IMMEDIATE")
-    try:
-        yield conn
-    except BaseException:
-        conn.execute("ROLLBACK")
-        raise
-    conn.execute("COMMIT")
+def immediate(conn: Connection) -> Iterator[Connection]:
+    """BEGIN IMMEDIATE write transaction under the connection lock.
+
+    Joins an already-open transaction (same thread, lock is reentrant) instead of nesting.
+    Hooks fire only when the outermost transaction commits or rolls back.
+    """
+    with conn.lock:
+        if conn.in_transaction:
+            yield conn
+            return
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield conn
+        except BaseException:
+            conn.execute("ROLLBACK")
+            for hook in conn.rollback_hooks:
+                hook()
+            raise
+        conn.execute("COMMIT")
+        for hook in conn.commit_hooks:
+            hook()
 
 
-def insert_payment(conn: sqlite3.Connection, p: Payment) -> None:
+def insert_payment(conn: Connection, p: Payment) -> None:
+    """Insert a new payment. Only DRAFT rows can be born; every later state is a transition."""
+    if p.state is not State.DRAFT or p.nessie_transfer_id is not None:
+        raise ValueError("insert_payment: new payments must be DRAFT with no transfer id")
     with immediate(conn):
         conn.execute(
             """INSERT INTO payment (id, account_id, amount_cents, currency, beneficiary_name,
                beneficiary_account_ref, beneficiary_is_new, rail, conversation_id, state,
                fingerprint, policy_version, created_at, nessie_transfer_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)""",
             (
                 p.id,
                 p.account_id,
@@ -109,11 +138,10 @@ def insert_payment(conn: sqlite3.Connection, p: Payment) -> None:
                 int(p.beneficiary.is_new),
                 p.rail.value,
                 p.conversation_id,
-                p.state.value,
+                State.DRAFT.value,
                 p.fingerprint,
                 p.policy_version,
                 p.created_at.isoformat(),
-                p.nessie_transfer_id,
             ),
         )
 
@@ -142,26 +170,3 @@ def load_payment(conn: sqlite3.Connection, payment_id: str) -> Payment:
         created_at=datetime.fromisoformat(row[12]),
         nessie_transfer_id=row[13],
     )
-
-
-def update_payment_fields(conn: sqlite3.Connection, p: Payment) -> None:
-    """Rewrite the money-moving fields of a payment row. Never touches state; see state.py."""
-    with immediate(conn):
-        cur = conn.execute(
-            """UPDATE payment SET account_id=?, amount_cents=?, currency=?, beneficiary_name=?,
-               beneficiary_account_ref=?, beneficiary_is_new=?, rail=?, conversation_id=?
-               WHERE id=?""",
-            (
-                p.account_id,
-                p.amount_cents,
-                p.currency,
-                p.beneficiary.name,
-                p.beneficiary.account_ref,
-                int(p.beneficiary.is_new),
-                p.rail.value,
-                p.conversation_id,
-                p.id,
-            ),
-        )
-        if cur.rowcount != 1:
-            raise KeyError(p.id)

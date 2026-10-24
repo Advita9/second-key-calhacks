@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime
 
 from kernel.clock import Clock
-from kernel.db import immediate
+from kernel.db import Connection, immediate
 from kernel.models import Attestation, Capability, Invariant, Payment
 
 # Who may do what. CO_APPROVER and CUSTOMER_CHECKIN can only add evidence.
@@ -41,7 +41,7 @@ def _row(r: tuple[object, ...]) -> Attestation:
 
 
 def insert(
-    conn: sqlite3.Connection,
+    conn: Connection,
     clock: Clock,
     *,
     payment: Payment,

@@ -2,9 +2,24 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
+
 import pytest
 
-from kernel.models import Beneficiary, Capability, Invariant, Outcome, Rail, Refusal, State
+from kernel.clock import FakeClock
+from kernel.fingerprint import fingerprint
+from kernel.llm.types import EvidenceItem, ExtractorResult
+from kernel.models import (
+    Beneficiary,
+    Capability,
+    Invariant,
+    Outcome,
+    PaymentIn,
+    Rail,
+    Refusal,
+    State,
+)
+from kernel.policy.engine import V1_PATH, load_policy
 from kernel.service import Kernel
 from tests.factories import account_context, payment_in
 
@@ -120,3 +135,93 @@ def test_mutate_from_held_voids_and_redecides(kernel: Kernel) -> None:
     )
     assert p2.state is State.ELIGIBLE_TO_SUBMIT and d2.outcome is Outcome.ALLOW
     assert all(a.voided_at is not None for a in kernel.get(p.id).attestations)
+
+
+def test_mutate_then_fresh_cert_releases(kernel: Kernel) -> None:
+    pid, old_cid, old_nonce = certified(kernel)
+    p, d = kernel.mutate(pid, {"amount_cents": 800_001}, account_context())
+    assert p.state is State.ELIGIBLE_TO_SUBMIT
+    fresh = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
+    old = next(c for c in kernel.get(pid).certificates if c.id == old_cid)
+    assert fresh.fingerprint == p.fingerprint != old.fingerprint
+    with pytest.raises(Refusal):
+        kernel.release(pid, old_cid, old_nonce)
+    released = kernel.release(pid, fresh.id, fresh.nonce)
+    assert released.state is State.SUBMITTED and released.amount_cents == 800_001
+    assert kernel.audit_verify().ok
+
+
+def test_mutate_restamps_policy_version(kernel: Kernel) -> None:
+    from pathlib import Path
+
+    from kernel.policy.engine import load_policy
+
+    pid, _, _ = certified(kernel)
+    assert kernel.get(pid).payment.policy_version == "v1"
+    kernel.policy = load_policy(Path(__file__).parent / "policy_fixtures" / "allow_only.yaml")
+    p, d = kernel.mutate(pid, {"amount_cents": 10_000_001}, account_context())
+    assert p.policy_version == "allowonly" and d.policy_version == "allowonly"
+    assert kernel.get(pid).payment.policy_version == "allowonly"
+    assert p.fingerprint == fingerprint(payment_in(amount_cents=10_000_001), "allowonly")
+    assert d.outcome is Outcome.ALLOW
+
+
+class _ActDuringExtraction:
+    """An extractor that touches the kernel while mutate has released its lock."""
+
+    def __init__(self) -> None:
+        self.kernel: Kernel | None = None
+        self.payment_id = ""
+        self.action: Callable[[Kernel, str], object] | None = None
+        self.armed = False
+
+    def extract(self, conversation: Sequence[EvidenceItem], payment: PaymentIn) -> ExtractorResult:
+        if self.armed and self.kernel is not None and self.action is not None:
+            self.armed = False
+            self.action(self.kernel, self.payment_id)
+        return ExtractorResult()
+
+
+def _kernel_with(clock: FakeClock, ext: _ActDuringExtraction) -> Kernel:
+    k = Kernel(":memory:", policy=load_policy(V1_PATH), clock=clock, extractor=ext)
+    ext.kernel = k
+    return k
+
+
+def test_mutate_refuses_when_payment_changed_during_extraction(clock: FakeClock) -> None:
+    ext = _ActDuringExtraction()
+    kernel = _kernel_with(clock, ext)
+    p, _ = kernel.create_payment(
+        payment_in(
+            beneficiary=Beneficiary(name="New", account_ref="ext_new", is_new=True), rail=Rail.WIRE
+        ),
+        account_context(),
+    )
+    assert p.state is State.HELD
+    ext.payment_id = p.id
+    ext.action = lambda k, pid: k.attest(pid, "ops_1", Capability.BANK_REVIEW)  # lifts the hold
+    ext.armed = True
+    with pytest.raises(Refusal) as ei:
+        kernel.mutate(p.id, {"amount_cents": 5}, account_context())
+    assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
+    rec = kernel.get(p.id)
+    assert rec.payment.state is State.ELIGIBLE_TO_SUBMIT and rec.payment.amount_cents == 800_000
+    assert (
+        rec.history[-1].kind == "REFUSED" and rec.history[-1].payload["reason"] == "STATE_CHANGED"
+    )
+    assert kernel.audit_verify().ok
+
+
+def test_mutate_reports_i6_when_denied_during_extraction(clock: FakeClock) -> None:
+    ext = _ActDuringExtraction()
+    kernel = _kernel_with(clock, ext)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    ext.payment_id = p.id
+    ext.action = lambda k, pid: k.mutate(
+        pid, {"beneficiary": {"account_ref": "ext_9f31"}}, account_context()
+    )
+    ext.armed = True
+    with pytest.raises(Refusal) as ei:
+        kernel.mutate(p.id, {"amount_cents": 5}, account_context())
+    assert ei.value.invariant is Invariant.I6_DENIED
+    assert kernel.get(p.id).payment.state is State.DENIED

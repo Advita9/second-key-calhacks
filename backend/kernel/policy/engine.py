@@ -19,7 +19,7 @@ import yaml
 
 from kernel.llm.types import Signal
 from kernel.models import AccountContext, Decision, Outcome, PaymentIn, StrictModel
-from kernel.policy.env import KNOWN_IDENTIFIERS, build_env
+from kernel.policy.env import KNOWN_IDENTIFIERS, build_env, sample_env
 from kernel.policy.expr import EvalError, Node, ParseError, evaluate, free_identifiers, parse
 
 log = logging.getLogger("second_key.policy")
@@ -29,6 +29,8 @@ DEFAULT_RULE_ID = "DEFAULT"
 EVAL_ERROR_RULE_ID = "X-01"
 EXTRACTOR_FAIL_RULE_ID = "X-00"
 _RESERVED_PREFIX = "X-"
+# The only precedence a policy may declare. Anything else could let a weaker outcome win.
+REQUIRED_PRECEDENCE: tuple[Outcome, Outcome, Outcome] = (Outcome.DENY, Outcome.HOLD, Outcome.ALLOW)
 
 
 class PolicyLoadError(ValueError):
@@ -83,13 +85,11 @@ def load_policy(path: Path) -> Policy:
 
     prec_raw = raw.get("precedence")
     if not isinstance(prec_raw, list) or len(prec_raw) != 3:
-        raise PolicyLoadError(f"{version}: precedence must list DENY, HOLD and ALLOW once each")
+        raise PolicyLoadError(f"{version}: precedence must be exactly [DENY, HOLD, ALLOW]")
     prec = tuple(_outcome(x, f"{version} precedence") for x in prec_raw)
-    if set(prec) != set(Outcome) or len(prec) != 3:
-        raise PolicyLoadError(f"{version}: precedence must be a permutation of DENY, HOLD, ALLOW")
-    if prec[-1] is not Outcome.ALLOW:
-        raise PolicyLoadError(f"{version}: precedence must rank ALLOW last (fail closed)")
-    precedence: tuple[Outcome, Outcome, Outcome] = (prec[0], prec[1], prec[2])
+    if prec != REQUIRED_PRECEDENCE:
+        raise PolicyLoadError(f"{version}: precedence must be exactly [DENY, HOLD, ALLOW]")
+    precedence: tuple[Outcome, Outcome, Outcome] = REQUIRED_PRECEDENCE
 
     rules_raw = raw.get("rules")
     if not isinstance(rules_raw, list) or not rules_raw:
@@ -97,6 +97,7 @@ def load_policy(path: Path) -> Policy:
 
     rules: list[Rule] = []
     compiled: dict[str, Node] = {}
+    smoke_env = sample_env()
     for idx, item in enumerate(rules_raw):
         where = f"{version} rules[{idx}]"
         if not isinstance(item, dict):
@@ -125,6 +126,14 @@ def load_policy(path: Path) -> Policy:
         unknown_ids = free_identifiers(node) - KNOWN_IDENTIFIERS
         if unknown_ids:
             raise PolicyLoadError(f"{where}: unknown identifier(s) {sorted(unknown_ids)}")
+        try:
+            smoke = evaluate(node, smoke_env)
+        except Exception as e:  # noqa: BLE001  any failure on the sample env is a bad rule
+            raise PolicyLoadError(f"{where}: 'when' failed on the sample env: {e}") from None
+        if not isinstance(smoke, bool):
+            raise PolicyLoadError(
+                f"{where}: 'when' must evaluate to a boolean, got {type(smoke).__name__}"
+            )
         rules.append(Rule(id=rid, when=when, outcome=outcome))
         compiled[rid] = node
 
@@ -150,7 +159,11 @@ def decide(
             result = evaluate(policy.compiled[rule.id], env)
             if not isinstance(result, bool):
                 raise EvalError(f"'when' must be boolean, got {type(result).__name__}")
-        except EvalError:
+        except Exception as e:  # noqa: BLE001  a broken rule must never fail open
+            log.warning(
+                "policy.rule_error",
+                extra={"policy_version": policy.version, "rule_id": rule.id, "error": str(e)},
+            )
             fired.append((EVAL_ERROR_RULE_ID, Outcome.HOLD))
             continue
         if result:

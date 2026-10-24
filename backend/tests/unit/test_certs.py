@@ -6,6 +6,7 @@ import threading
 
 import pytest
 
+from kernel import certs
 from kernel.clock import FakeClock
 from kernel.models import Capability, Invariant, Refusal, State
 from kernel.service import Kernel
@@ -145,12 +146,63 @@ def test_nonce_never_appears_in_audit_or_record(kernel: Kernel) -> None:
     assert rec.certificates[0].nonce != cert.nonce
 
 
-def test_second_certificate_can_be_issued_and_either_works_once(kernel: Kernel) -> None:
+def test_release_voids_sibling_certificates(kernel: Kernel) -> None:
     pid = eligible(kernel)
     c1 = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
     c2 = kernel.issue_certificate(pid, "ops_2", Capability.BANK_REVIEW)
     assert c1.id != c2.id and c1.nonce != c2.nonce
     kernel.release(pid, c2.id, c2.nonce)
+    rec = kernel.get(pid)
+    by_id = {c.id: c for c in rec.certificates}
+    assert by_id[c1.id].voided_at is not None and by_id[c1.id].consumed_at is None
+    assert by_id[c2.id].consumed_at is not None and by_id[c2.id].voided_at is None
+    assert "SIBLING_CERTS_VOIDED" in [e.kind for e in rec.history]
     with pytest.raises(Refusal) as ei:
         kernel.release(pid, c1.id, c1.nonce)
-    assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
+    assert ei.value.invariant is Invariant.I2_FINGERPRINT  # voided sibling, checked before state
+
+
+def test_release_rejects_sibling_nonce(kernel: Kernel) -> None:
+    """A nonce is bound to its own certificate id; a sibling's nonce is a wrong nonce."""
+    pid = eligible(kernel)
+    c1 = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
+    c2 = kernel.issue_certificate(pid, "ops_2", Capability.BANK_REVIEW)
+    with pytest.raises(Refusal) as ei:
+        kernel.release(pid, c1.id, c2.nonce)
+    assert ei.value.invariant is Invariant.I1_NO_CERT
+    with pytest.raises(Refusal) as ei:
+        kernel.release(pid, c2.id, c1.nonce)
+    assert ei.value.invariant is Invariant.I1_NO_CERT
+    assert kernel.get(pid).payment.state is State.ELIGIBLE_TO_SUBMIT
+    assert all(c.consumed_at is None and c.voided_at is None for c in kernel.get(pid).certificates)
+
+
+def test_consume_is_single_use_at_sql_level(kernel: Kernel, clock: FakeClock) -> None:
+    """certs.consume is the row-level arbiter, independent of the Python-side verify."""
+    pid = eligible(kernel)
+    cert = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
+    conn = kernel.conn
+    now = clock.now()
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is False or True
+    # Reset to test each predicate in isolation.
+    conn.execute("UPDATE certificate SET consumed_at=NULL WHERE id=?", (cert.id,))
+    assert certs.consume(conn, cert.id, "pay_other", cert.fingerprint, now) is False
+    assert certs.consume(conn, cert.id, pid, "0" * 64, now) is False
+    clock.advance(120)
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, clock.now()) is False  # expired
+    clock.advance(-120)
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is True
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is False  # already consumed
+    conn.execute(
+        "UPDATE certificate SET consumed_at=NULL, voided_at=? WHERE id=?",
+        (now.isoformat(), cert.id),
+    )
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is False  # voided
+
+
+def test_verify_treats_non_string_nonce_as_no_cert(kernel: Kernel, clock: FakeClock) -> None:
+    pid = eligible(kernel)
+    cert = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
+    payment = kernel.get(pid).payment
+    for bad in (None, 123, b"x", ["n"]):
+        assert certs.verify(cert, payment, bad, clock.now()) is Invariant.I1_NO_CERT  # type: ignore[arg-type]
