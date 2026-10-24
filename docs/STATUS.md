@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-24 07:25 PDT
-Current task: rate limit cleared at 07:20; the six interrupted agents are RUNNING AGAIN (frontend fail-closed path, API scripted attack + origin, bridge legit filter, kernel Task F, red-team final pass, docs refresh). If you start editing, avoid frontend/, backend/api, backend/kernel, bridge/, docs/{DEVPOST_DRAFT,MORNING,TABLE_SCRIPT}.md until their commits land; `git log` shows them.
-Iteration: 9
+Last updated: 2026-10-24 09:05 PDT
+Current task: all follow-up lanes landed; one cold-start Playwright flake being made deterministic; then tag overnight-2.
+Iteration: 10
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [x] G1 Kernel library
@@ -33,13 +33,7 @@ Iteration: 9
 
 ## Blocked for Armaan
 (agent lists anything only a human can do: keys, logins, decisions)
-- 04:45 session rate limit terminated six in-flight agents. Their briefs (dispatched, not landed):
-  1. frontend: /play must use the SpacetimeDB client in spacetime mode so the bridge's fail-closed outcome shows when the kernel dies; 35 s client timeout; join-wipe bug; attack 404 copy; exclude origin=attack from legit count and balance; Playwright on ports 8001/3002; devIndicators off; board clipping; seed live card from GET /payments; ops rule-hit counter; "Run scripted attack" button. (QA_REPORT blockers 1, 3; rough 1, 5 to 11.)
-  2. api: `POST /rooms/{room}/scripted-attack` (ops-gated, runs the proven 4-line script from scripts/demo.py through SessionStore); attack payments `conversation_id = attack:<name>` and `origin` field on payment dicts.
-  3. bridge: count a SUBMITTED payment as legit only when origin is ops (never attack).
-  4. kernel Task F: persist decisions and transcripts in SQLite (holds queue keeps rule ids across restart); scripts/demo.py sends X-Ops-Token under --real and prints only the kernel's refusal text; `LLM_CACHE_MODE=auto|replay|live` (today: DEMO_MODE=1 plus LLM_CACHE_WARM=1 gives the same behaviour).
-  5. red-team final pass on role-scoped WS, tokens, payee directory, sidecar anchor (first pass: 48 regressions green, 3 findings found and fixed).
-  6. docs: DEVPOST_DRAFT.md and TABLE_SCRIPT.md refresh (README.md and this file were refreshed; MORNING.md has a READ THIS FIRST block).
+- 04:45 rate limit interrupted six agents; all resumed at 07:25 and landed by 09:00 (see docs/MORNING.md READ THIS FIRST, updated block). Final red-team pass found six more issues, all fixed (backend/tests/redteam/test_found_*.py, FOUND then FIXED docstrings).
 - Maincloud publish needs `spacetime login` (docs/SPACETIME_NOTES.md). Cartesia promo CARTESIACALHACKS applied in play.cartesia.ai billing.
 - Devpost prize text for "Best Use of SpacetimeDB" could not be fetched (403); paste it into docs/PRD.md.
 

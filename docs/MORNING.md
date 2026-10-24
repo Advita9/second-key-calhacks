@@ -1,3 +1,18 @@
+# READ THIS FIRST (lead, updated 09:05 Saturday)
+
+Status after the morning follow-up pass (everything below the next heading is older and still accurate unless this block says otherwise).
+
+Fixed since 07:15, all committed and green (772 backend tests incl. 125 red-team attacks, acceptance GREEN):
+- Phone fails closed when the kernel dies: /play now uses the SpacetimeDB client (footer shows `room: spacetime`), the bridge writes its fail-closed outcome within about 4 s when the kernel is dead and 25 s when it hangs, and the phone has its own 35 s timer ("The bank did not answer. Nothing was sent."). Kill the kernel with `kill $(cat .claude/kernel.pid)`; never `lsof -ti :8000 | xargs kill`, that also kills the bridge (its socket is on port 8000).
+- Scripted attack: /ops has "Run scripted attack (4 turns)" (ops-gated `POST /rooms/DEMO/scripted-attack`, one run per 30 s). Real Margaret drafts on turn 4 of that script; it shows on the board via the kernel WS, not the leaderboard.
+- Attack-panel payments carry `origin: attack` and no longer count as legitimate completions or change Margaret's balance.
+- `scripts/demo.py --real` sends the ops token; `DEMO_MODE=1 uv run python ../scripts/demo.py --real` is PASS with cache hits only.
+- Holds queue keeps rule ids across a restart (decisions and transcripts are persisted in SQLite).
+- `LLM_CACHE_MODE=auto|replay|live` replaces the DEMO_MODE coupling; `.env` keeps `LLM_CACHE_WARM=1` (alias for auto).
+- Final red-team pass: six more findings, all fixed: H-07 no longer reads display names, the audit anchor rejects rows appended while the kernel was down, `GET /payments`, `GET /payments/{id}` and `GET /audit` need the ops token (the board and ops pages send it), rate limits are keyed on the client address as well as the player, a timed-out turn cancels any payment it created, and the attacker snapshot is bound to the player token and lists no other player's identity. Residual limits are in README "Honest limits".
+
+Still true from the 07:15 block: start with `scripts/dev.sh start --fresh`; `.env` has DEMO_MODE=1 and LLM_CACHE_WARM=1; every attack curl needs `-H "X-Ops-Token: $OPS_TOKEN"`; one shared Margaret per room; run the smoke with the stack stopped. Everything in item 9 of the 07:15 block has landed.
+
 # READ THIS FIRST (lead, 07:15 Saturday)
 
 The judge rehearsal at 04:00 (docs/QA_REPORT.md) found things the rest of this file does not yet reflect. These lines win over anything below.
