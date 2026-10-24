@@ -1,16 +1,16 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-24 00:25 PDT
-Current task: kernel review fixes (Task C) in progress; T7 nessie+rooms+api building; eval.py building; property tests (item 4) building; LLM boundary review running. Done: 0,5,6,9,10,11 (items 1-3 await re-review).
-Iteration: 4
+Last updated: 2026-10-24 01:40 PDT
+Current task: checkpoint after item 8: G2-G6 green. In flight: property oracle fix (G1), kernel hardening Task D, API review (item 7), red-team, demo.py (item 12), docs first pass (item 13), frontend strict smoke.
+Iteration: 5
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
-- [ ] G2 Kernel API
+- [x] G2 Kernel API
 - [x] G3 Eval
-- [ ] G4 Room
-- [ ] G5 Frontend
-- [ ] G6 Voice
+- [x] G4 Room
+- [x] G5 Frontend
+- [x] G6 Voice
 - [ ] G7 Demo mode
 - [ ] G8 Docs for the morning
 
