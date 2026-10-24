@@ -99,9 +99,10 @@
       "H-01",
       "H-02",
       "H-04",
-      "H-05"
+      "H-05",
+      "H-07"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "Advance fee lottery. Account ext_b44d is on the mule list so D-01 denies. New payee on WIRE also trips H-01. Secrecy and urgency should fire."
+  "review_note": "Advance fee lottery. Account ext_b44d is on the mule list so D-01 denies. New payee on WIRE also trips H-01. Secrecy and urgency should fire. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

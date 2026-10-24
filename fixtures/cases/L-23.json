@@ -94,9 +94,10 @@
     "outcome": "HOLD",
     "allowed_rule_ids": [
       "H-01",
-      "H-03"
+      "H-03",
+      "H-07"
     ],
     "max_friction_steps": 2
   },
-  "review_note": "Real probate payment verified through an independent channel. New payee on WIRE and well over 3x baseline, so both H-01 and H-03 fire. Legit HOLD, two steps."
+  "review_note": "Real probate payment verified through an independent channel. New payee on WIRE and well over 3x baseline, so both H-01 and H-03 fire. Legit HOLD, two steps. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

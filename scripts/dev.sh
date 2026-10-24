@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start, stop or inspect the local dev stack.
-#   scripts/dev.sh start    kernel :8000, SpacetimeDB :3000 (if ROOM_BACKEND=spacetime), bridge, frontend :3001
+#   scripts/dev.sh start [--fresh]   kernel :8000 (--fresh deletes the SQLite db and its audit anchor sidecar first),, SpacetimeDB :3000 (if ROOM_BACKEND=spacetime), bridge, frontend :3001
 #   scripts/dev.sh stop
 #   scripts/dev.sh status
 # Everything is logged under .claude/*.log and tracked by .claude/*.pid.
@@ -122,6 +122,10 @@ case "$cmd" in
     ;;
   start)
     load_env
+    if [ "${2:-}" = "--fresh" ]; then
+      rm -f "$ROOT/backend/second_key.db" "$ROOT/backend/second_key.db.head.json" "$ROOT/backend/second_key.db-wal" "$ROOT/backend/second_key.db-shm"
+      echo "fresh       removed backend/second_key.db and its audit anchor sidecar"
+    fi
     if [ -z "${OPS_TOKEN:-}" ]; then
       OPS_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(8))')"; export OPS_TOKEN
       echo "OPS_TOKEN not in .env; generated one for this run (add OPS_TOKEN=$OPS_TOKEN to .env to keep it)."
@@ -144,5 +148,5 @@ case "$cmd" in
     echo "stop with:  scripts/dev.sh stop"
     ;;
   *)
-    echo "usage: $0 [start|stop|status]" >&2; exit 2 ;;
+    echo "usage: $0 [start [--fresh]|stop|status]" >&2; exit 2 ;;
 esac

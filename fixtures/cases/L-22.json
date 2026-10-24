@@ -88,9 +88,10 @@
   "expected": {
     "outcome": "HOLD",
     "allowed_rule_ids": [
-      "H-01"
+      "H-01",
+      "H-07"
     ],
     "max_friction_steps": 2
   },
-  "review_note": "Real gift, but a first Zelle to a new payee is exactly what H-01 exists for. HOLD then completes in two steps."
+  "review_note": "Real gift, but a first Zelle to a new payee is exactly what H-01 exists for. HOLD then completes in two steps. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

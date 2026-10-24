@@ -92,9 +92,10 @@
       "H-01",
       "H-03",
       "H-04",
-      "H-05"
+      "H-05",
+      "H-07"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "Refund overpayment scam. New payee on WIRE and over 3x baseline, so facts alone hold. The 'larger balance' is a manipulated screen or a transfer between her own accounts."
+  "review_note": "Refund overpayment scam. New payee on WIRE and over 3x baseline, so facts alone hold. The 'larger balance' is a manipulated screen or a transfer between her own accounts. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

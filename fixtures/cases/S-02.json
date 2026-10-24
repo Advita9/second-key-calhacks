@@ -104,9 +104,10 @@
       "H-02",
       "H-03",
       "H-04",
-      "H-06"
+      "H-06",
+      "H-07"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "Grandparent scam: broken nose excuse, secrecy, gag order, same-day wire to a new payee. Facts alone hold it; secrecy and threat signals should fire."
+  "review_note": "Grandparent scam: broken nose excuse, secrecy, gag order, same-day wire to a new payee. Facts alone hold it; secrecy and threat signals should fire. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

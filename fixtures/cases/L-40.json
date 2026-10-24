@@ -90,9 +90,10 @@
   "expected": {
     "outcome": "HOLD",
     "allowed_rule_ids": [
-      "H-03"
+      "H-03",
+      "H-07"
     ],
     "max_friction_steps": 2
   },
-  "review_note": "Real gift to daughter. Over 3x baseline so H-03 holds. Priya is beneficiary and must be refused as CO_APPROVER (I5). Completes via CUSTOMER_CHECKIN then BANK_REVIEW."
+  "review_note": "Real gift to daughter. Over 3x baseline so H-03 holds. Priya is beneficiary and must be refused as CO_APPROVER (I5). Completes via CUSTOMER_CHECKIN then BANK_REVIEW. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

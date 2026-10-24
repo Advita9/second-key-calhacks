@@ -100,9 +100,10 @@
       "H-01",
       "H-02",
       "H-04",
-      "H-05"
+      "H-05",
+      "H-07"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "Zelle reversal scam. Account ext_7c2a is on the mule list so D-01 denies. H-01 also applies. Secrecy and authority signals should fire."
+  "review_note": "Zelle reversal scam. Account ext_7c2a is on the mule list so D-01 denies. H-01 also applies. Secrecy and authority signals should fire. H-07 (irreversible rail above $1,000 to a non-biller) added to allowed_rule_ids on 2026-10-24 03:40; outcome unchanged."
 }

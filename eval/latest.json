@@ -15,19 +15,20 @@
     "H-03": 14,
     "H-04": 5,
     "H-05": 7,
-    "H-06": 5
+    "H-06": 5,
+    "H-07": 15
   },
-  "signals_required_total": 9,
-  "signals_required_caught": 9,
+  "signals_required_total": 8,
+  "signals_required_caught": 8,
   "scams_caught": 20,
   "audit_ok_all": true,
   "extractor_mode": "mock",
   "extractor_model": null,
   "shared_evidence_included": false,
   "policy_version": "v1",
-  "git_sha": "a290460a748144fa9b7feb37678f3f9ad2b5484a",
+  "git_sha": "02405d89389508dfaebeb441e773b804252d35af",
   "git_dirty": true,
-  "timestamp": "2026-10-24T06:24:39+00:00",
+  "timestamp": "2026-10-24T06:47:26+00:00",
   "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
   "subset": null,
   "schema_errors": [],
@@ -87,8 +88,8 @@
     "note": "counts from a text scan of def test_*; not a pass/fail claim"
   },
   "suite_counts": {
-    "unit": 313,
-    "api": 39,
+    "unit": 332,
+    "api": 52,
     "voice": 51
   },
   "cases": [
@@ -797,10 +798,12 @@
       "outcome": "HOLD",
       "outcome_ok": true,
       "rule_ids": [
-        "H-01"
+        "H-01",
+        "H-07"
       ],
       "allowed_rule_ids": [
-        "H-01"
+        "H-01",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [],
@@ -831,11 +834,13 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [],
@@ -929,11 +934,13 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1036,10 +1043,12 @@
       "outcome": "HOLD",
       "outcome_ok": true,
       "rule_ids": [
-        "H-01"
+        "H-01",
+        "H-07"
       ],
       "allowed_rule_ids": [
-        "H-01"
+        "H-01",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1416,10 +1425,12 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-03",
+        "H-07",
         "A-01"
       ],
       "allowed_rule_ids": [
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [],
@@ -1454,14 +1465,16 @@
         "H-01",
         "H-03",
         "H-05",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-03",
         "H-04",
         "H-05",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1537,14 +1550,16 @@
         "H-01",
         "H-02",
         "H-03",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-02",
         "H-03",
         "H-04",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1605,7 +1620,8 @@
         "H-03",
         "H-04",
         "H-05",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
@@ -1614,7 +1630,8 @@
         "D-01",
         "H-04",
         "H-05",
-        "H-06"
+        "H-06",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1741,7 +1758,7 @@
       "id": "S-05",
       "title": "Romance, Zelle to a groomed prior payee with secrecy",
       "kind": "scam",
-      "signals_required": true,
+      "signals_required": false,
       "tags": [
         "scam",
         "romance",
@@ -1755,10 +1772,12 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-02",
+        "H-07",
         "A-01"
       ],
       "allowed_rule_ids": [
-        "H-02"
+        "H-02",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1817,12 +1836,14 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-03",
-        "H-04"
+        "H-04",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -1954,14 +1975,16 @@
         "H-02",
         "H-03",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-02",
         "H-03",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -2302,14 +2325,16 @@
         "H-01",
         "H-02",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "D-01",
         "H-01",
         "H-02",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -2372,13 +2397,15 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-02",
         "H-03",
-        "H-04"
+        "H-04",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -2477,13 +2504,15 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03"
+        "H-03",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-03",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
@@ -2626,14 +2655,16 @@
       "rule_ids": [
         "D-01",
         "H-01",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "allowed_rule_ids": [
         "D-01",
         "H-01",
         "H-02",
         "H-04",
-        "H-05"
+        "H-05",
+        "H-07"
       ],
       "rules_ok": true,
       "signals": [
