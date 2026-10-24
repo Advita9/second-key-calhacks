@@ -4,7 +4,27 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, ErrorText, Loading } from "@/components/shared/States";
 import { kernel } from "@/lib/kernel/rest";
+import type { PropertySuite } from "@/lib/kernel/types";
 import { useAsync } from "@/lib/useAsync";
+
+/** Invariant property tests (Hypothesis). Numbers only; pass or fail is acceptance's call, not the UI's. */
+function PropertyBadge({ suite }: { suite: PropertySuite | null }) {
+  const ci = suite?.profiles.ci;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="property-badge">
+      <Badge variant="outline">Property suite</Badge>
+      {suite && suite.properties > 0 ? (
+        <span>
+          {suite.properties} properties{ci ? `, ${ci.toLocaleString("en-US")} examples each (ci profile)` : ""}
+          {suite.modules.length > 0 ? <span className="text-muted"> covering {suite.modules.join(", ")}</span> : null}
+        </span>
+      ) : (
+        <span className="text-muted">Property suite: see</span>
+      )}
+      <span className="font-mono text-xs text-muted">backend/tests/property</span>
+    </div>
+  );
+}
 
 export function PolicyPanel({ policyVersion, liveHits }: { policyVersion: string; liveHits: Record<string, number> }) {
   const ev = useAsync(() => kernel.evalResults(), [], 30000);
@@ -44,6 +64,7 @@ export function PolicyPanel({ policyVersion, liveHits }: { policyVersion: string
             ) : null}
           </dl>
         ) : null}
+        <PropertyBadge suite={ev.data?.property_suite ?? null} />
         <div>
           <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted">Rule hits (eval / live)</p>
           {ids.length === 0 ? (

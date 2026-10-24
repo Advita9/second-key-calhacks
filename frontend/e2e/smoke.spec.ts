@@ -31,6 +31,21 @@ test.describe("board", () => {
     await shot(page, "board");
   });
 
+  test("debrief shows the three rules and the tactic list", async ({ page }) => {
+    await page.goto("/board?debrief=1");
+    const d = page.getByTestId("debrief");
+    await expect(d).toBeVisible();
+    await expect(d).toContainText("Slow it down.");
+    await expect(d).toContainText("Spot check: call the bank or a family member yourself.");
+    await expect(d).toContainText("Stop. Do not send.");
+    await expect(page.getByTestId("debrief-tactic")).toHaveCount(3);
+    await shot(page, "board-debrief");
+    await page.getByTestId("debrief-close").click();
+    await expect(d).toBeHidden();
+    await page.getByTestId("debrief-toggle").click();
+    await expect(page.getByTestId("debrief")).toBeVisible();
+  });
+
   test("MOCK badge visible when /health reports any mock", async ({ page, request }) => {
     const health = (await (await request.get(`${KERNEL}/health`)).json()) as { mode?: Record<string, string> };
     const anyMock = Object.values(health.mode ?? {}).some((v) => v === "mock" || v === "memory");
@@ -148,6 +163,8 @@ test.describe("ops", () => {
     const verify = page.getByTestId("verify-button");
     await expect(verify).toBeVisible();
     await expect(page.getByTestId("policy-panel")).toBeVisible();
+    await expect(page.getByTestId("property-badge")).toContainText(/properties|Property suite/);
+    await expect(page.getByTestId("property-badge")).toContainText("backend/tests/property");
     await expect(page.getByTestId("certificates-log")).toBeVisible();
     await expect(page.getByTestId("payment-history")).toBeVisible();
     await expect(page.getByTestId("ops-token")).toBeVisible();

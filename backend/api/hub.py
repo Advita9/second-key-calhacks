@@ -3,7 +3,8 @@
 threadpool by hopping onto the event loop with `call_soon_threadsafe`.
 
 Messages (docs/api.md):
-  {type: "payment", payment_id, state, fingerprint, reasons[], last_refusal}
+  {type: "payment", payment_id, state, fingerprint, reasons[], last_refusal, amount_cents,
+   beneficiary: {name, account_ref}, rail}        (board and ops sockets only)
   {type: "margaret", room_id, text, audio_url, persuaded}
   {type: "attack", name, invariant}
 """
@@ -33,7 +34,13 @@ class EventBus:
         self._loop_thread = threading.get_ident()
 
     def publish(self, event: Mapping[str, Any]) -> None:
-        payload = dict(event)
+        """Never raises: a WS fan-out problem must not mask the kernel result it follows."""
+        try:
+            self._publish(dict(event))
+        except Exception as e:  # noqa: BLE001
+            log.warning("ws.publish.failed", extra={"error": type(e).__name__})
+
+    def _publish(self, payload: dict[str, Any]) -> None:
         loop = self._loop
         if loop is None or loop.is_closed():
             try:
@@ -88,4 +95,7 @@ def payment_event(record: PaymentRecord, last_refusal: str | None = None) -> dic
         "fingerprint": p.fingerprint,
         "reasons": list(record.decision.rule_ids) if record.decision else [],
         "last_refusal": last_refusal if last_refusal is not None else last_refusal_of(record),
+        "amount_cents": p.amount_cents,
+        "beneficiary": {"name": p.beneficiary.name, "account_ref": p.beneficiary.account_ref},
+        "rail": p.rail.value,
     }

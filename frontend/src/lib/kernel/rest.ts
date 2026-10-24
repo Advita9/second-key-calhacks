@@ -278,7 +278,11 @@ export function parseEval(v: unknown): EvalResults {
   if (Object.keys(hits).length === 0) {
     for (const c of cases) for (const id of c.rule_ids ?? []) hits[id] = (hits[id] ?? 0) + 1;
   }
+  const ps = asRecord(r.property_suite);
+  const profiles: Record<string, number> = {};
+  for (const [k, val] of Object.entries(asRecord(ps.profiles))) profiles[k] = num(val);
   return {
+    property_suite: r.property_suite ? { properties: num(ps.properties), profiles, modules: strs(ps.modules) } : null,
     unauthorized_releases: num(r.unauthorized_releases),
     legit_completed: num(r.legit_completed),
     legit_total: num(r.legit_total),

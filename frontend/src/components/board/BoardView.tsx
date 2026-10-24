@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AttackPanel, ATTACKS } from "./AttackPanel";
 import { BoardFooter } from "./BoardFooter";
+import { Debrief } from "./Debrief";
 import { Leaderboard } from "./Leaderboard";
 import { LivePaymentCard, type LivePayment, type LiveRefusal } from "./LivePaymentCard";
 import { MargaretCard, type MargaretLive } from "./MargaretCard";
@@ -13,6 +14,7 @@ import { refusalText } from "@/components/shared/Refusal";
 import { MARGARET, roomFromSearch } from "@/lib/config";
 import { adoptTokenFromUrl, isMockFlag, kernel, setOpsToken, useOpsToken } from "@/lib/kernel/rest";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { useAsync } from "@/lib/useAsync";
 import type { AttackName, AttackResult, WsMessage } from "@/lib/kernel/types";
 import { useKernelSocket } from "@/lib/kernel/ws";
@@ -28,6 +30,13 @@ export function BoardView() {
   const [needToken, setNeedToken] = useState(false);
   const health = useHealth();
   const room = useRoom(roomCode, "board");
+  // Debrief: manual toggle, `?debrief=1`, or the room entering `debrief` status.
+  const [debrief, setDebrief] = useState<boolean | null>(null);
+  const roomStatus = room.snapshot.room?.status;
+  const showDebrief = debrief ?? (sp?.get("debrief") === "1" || roomStatus === "debrief");
+  useEffect(() => {
+    if (roomStatus === "debrief") setDebrief(null);
+  }, [roomStatus]);
 
   const [margaret, setMargaret] = useState<MargaretLive | null>(null);
   const [payment, setPayment] = useState<LivePayment | null>(null);
@@ -114,15 +123,21 @@ export function BoardView() {
   const legit = Math.max(snap.scoreboard?.legitCompleted ?? 0, submittedOnKernel);
 
   return (
-    <main className="mx-auto flex h-screen w-[1920px] max-w-full flex-col gap-5 p-6" data-testid="board">
-      <header className="flex items-baseline justify-between px-1">
+    <main className="relative mx-auto flex h-screen w-[1920px] max-w-full flex-col gap-5 p-6" data-testid="board">
+      {showDebrief ? <Debrief outcomes={snap.outcomes} onClose={() => setDebrief(false)} /> : null}
+      <header className="flex items-center justify-between px-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           Second Key <span className="text-muted">Red-teamers vs the kernel</span>
         </h1>
-        <p className="text-sm text-muted">
-          Kernel WS: {ws.status}
-          {ws.status === "reconnecting" ? ` (attempt ${ws.attempt})` : ""}
-        </p>
+        <div className="flex items-center gap-4">
+          <p className="text-sm text-muted">
+            Kernel WS: {ws.status}
+            {ws.status === "reconnecting" ? ` (attempt ${ws.attempt})` : ""}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setDebrief(!showDebrief)} data-testid="debrief-toggle">
+            {showDebrief ? "Hide debrief" : "Debrief"}
+          </Button>
+        </div>
       </header>
       <section className="grid min-h-0 flex-1 grid-cols-[1fr_1.35fr_1fr] gap-5 overflow-hidden">
         <MargaretCard live={margaretLive} balanceCents={MARGARET.balanceCents - submittedCents} voiceMock={isMockFlag(health.data, "tts")} />

@@ -118,7 +118,14 @@ export interface EvalCase {
   friction_steps?: number;
 }
 
+export interface PropertySuite {
+  properties: number;
+  profiles: Record<string, number>;
+  modules: string[];
+}
+
 export interface EvalResults {
+  property_suite: PropertySuite | null;
   unauthorized_releases: number;
   legit_completed: number;
   legit_total: number;
