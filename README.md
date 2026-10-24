@@ -137,7 +137,8 @@ cd backend && uv run pytest -q tests/unit tests/api tests/voice
 cd backend && HYPOTHESIS_PROFILE=ci uv run pytest -q tests/property     # about 3 minutes
 cd backend && MOCK_EXTRACTOR=1 uv run python ../scripts/eval.py --suite ../fixtures/cases --out ../eval/latest.json
 cd backend && uv run python ../scripts/eval.py --real --ids L-01,L-11,S-03,S-04,S-05,S-07,S-09,S-10,S-11,S-12,S-13,S-16 --agreement 10 --out ../eval/latest_real.json
-cd backend && DEMO_MODE=1 uv run python ../scripts/demo.py                # scenarios A, B, C and the attack panel offline
+cd backend && DEMO_MODE=1 uv run python ../scripts/demo.py                # scenarios A, B, C, attack panel, audit chain; in-process, offline
+uv run --project backend python scripts/demo.py --warm                    # once, with the real key: fill the Claude cache for demo replay
 scripts/acceptance.sh                                                     # gates G1 to G8
 cd frontend && npx playwright test e2e/smoke.spec.ts                      # screenshots in frontend/e2e/screenshots/
 ```

@@ -32,7 +32,7 @@ Stop with `scripts/dev.sh stop`. Status with `scripts/dev.sh status`. Logs are i
 
 1. Acceptance.
    `scripts/acceptance.sh`
-   Expect the last line `ACCEPTANCE: GREEN`. If RED, the `FAIL` lines name the gate. G7 is red until `scripts/demo.py` lands (see gaps).
+   Expect the last line `ACCEPTANCE: GREEN`. If RED, the `FAIL` lines name the gate. G7 runs `scripts/demo.py` and must finish under 60 seconds.
 
 2. Kernel health and modes.
    `curl -s localhost:8000/health`
@@ -76,9 +76,9 @@ Cartesia free tier allows 2 concurrent TTS calls. Margaret's scripted lines are 
 ## 4. Known gaps, worst first
 
 1. `/ops` buttons return 401 under dev.sh. The frontend REST client (`frontend/src/lib/kernel/rest.ts`) never sends `X-Ops-Token`, and dev.sh always sets an `OPS_TOKEN`. Approve as BANK_REVIEW, Deny, audit tamper and room reset all fail from the UI. Fix (Sohee, small): a token field on `/ops` stored in localStorage, sent as `X-Ops-Token` on attest, certificate, release, deny, mutate, `/audit/tamper`, `/rooms/{room}/reset`. Stopgap: restart the kernel with the token empty: `kill $(cat .claude/kernel.pid); cd backend && OPS_TOKEN= DEMO_MODE=1 uv run uvicorn api.main:app --port 8000`. Then the operator routes are open on the LAN; acceptable at a judge table, not beyond.
-2. `scripts/demo.py` does not exist yet. Item 12 was in progress when this was written. Until it lands, G7 is red and the command `cd backend && DEMO_MODE=1 uv run python ../scripts/demo.py` is the thing to verify in the morning.
+2. `scripts/demo.py` landed while these docs were written and was not yet committed by its author. Verify in the morning: `cd backend && DEMO_MODE=1 uv run python ../scripts/demo.py` must print a `SCOREBOARD` with `result : PASS` in under 60 seconds. It runs the kernel in-process (TestClient, memory room, mock rail, mock voice), so it proves the kernel path, not the live stack. Before judging, warm the Claude cache once with the real key: `uv run --project backend python scripts/demo.py --warm` (a handful of calls), then confirm `cd backend && DEMO_MODE=1 uv run python ../scripts/demo.py --real` shows `misses=0` on the `llm cache` line. Details in `docs/DEMO_MODE.md`.
 3. "Legitimate completed" on the board stays 0. Nothing calls `record_legit_completed` (SpacetimeDB) or `RoomStore.record_legit_completed` (memory). The eval number (40 of 40) shows on `/ops` in the policy panel from `eval/latest.json`. Fix (Advita): bridge or kernel increments it when a room payment reaches SUBMITTED. Until then, the 1:30 beat of the table script points at `/ops`.
-4. No UI drives the legitimate path (Scenario B: Bay Roofing, $8,000). It needs certificate then release with the ops token. `demo.py` is meant to drive it; so does `backend/tests/api/test_flow.py::test_scenario_b_known_biller_allow_release_submitted`. For the table, run it with curl or from demo.py.
+4. No UI drives the legitimate path on the live stack (Scenario B: Bay Roofing, $8,000). It needs certificate then release with the ops token. `scripts/demo.py` drives it in-process and `backend/tests/api/test_flow.py::test_scenario_b_known_biller_allow_release_submitted` covers it over HTTP, but neither touches the running kernel the board is watching. For the table, drive it with curl against `:8000` (attest BANK_REVIEW is not needed for an ALLOW; call `/payments/{id}/certificate` then `/payments/{id}/release` with the `X-Ops-Token` header) or show the demo.py scoreboard.
 5. The DEMO room must be created by hand (section 1). Memory mode auto-creates.
 6. Mock extractor is keyword-based. In mock mode S-10, S-11 and S-16 are held by DEFAULT, not a named signal rule. With the real extractor all 9 signal-dependent scams hit H-02, H-04 or H-05 (`eval/latest_real.json`). If a judge reads rule ids on the board, be in real mode.
 7. `eval/latest_real.json` is from commit `6cca848` (dirty tree), before the kernel review fixes and the fixture widening. Its `rule_mismatches` (S-03, S-07, S-10) were addressed by widening `allowed_rule_ids`. Re-run: `cd backend && uv run python ../scripts/eval.py --real --ids L-01,L-11,S-03,S-04,S-05,S-07,S-09,S-10,S-11,S-12,S-13,S-16 --agreement 10 --out ../eval/latest_real.json`. Costs a few Claude calls.
@@ -128,6 +128,6 @@ Twelve likely questions, one line each. Sources in parentheses.
 - `eval/latest.json`: unauthorized_releases, legit_completed, avg_friction_steps, per_rule_hits, rule_mismatches, git_sha. Acceptance regenerates this file every run.
 - `eval/latest_real.json`: re-run (gap 7) and update the README and Devpost tables, including `extractor_agreement.outcome_agreement` and `per_kind`.
 - Property count (26) and ci timing (3m10s at commit 900fe83).
-- Whether `scripts/demo.py` exists and its runtime.
+- `scripts/demo.py` runtime from the acceptance output (`G7 demo.py (Ns)`), and that it is committed.
 - Whether gaps 1, 3, 4 and 5 are still open.
 - `git log -1` and whether `overnight-1` is tagged.
