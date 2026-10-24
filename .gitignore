@@ -21,3 +21,4 @@ spacetime/dist/
 eval/*.json
 !eval/latest.json
 .DS_Store
+.tools/

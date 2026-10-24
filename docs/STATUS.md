@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: (agent fills)
-Current task: (agent fills)
-Iteration: 0
+Last updated: 2026-10-23 22:06 PDT
+Current task: 0. Repo scaffold (architect planning kernel foundation 0-3; researchers on SpacetimeDB, Cartesia, Nessie)
+Iteration: 1
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
@@ -33,6 +33,11 @@ Iteration: 0
 
 ## Blocked for Armaan
 (agent lists anything only a human can do: keys, logins, decisions)
+- none yet
+
+## Key status at 22:05
+- ANTHROPIC_API_KEY present. CARTESIA_API_KEY present (TTS_PROVIDER=cartesia). NESSIE_API_KEY present. PUSH_OK=1.
+- spacetime CLI not installed at start; install attempted overnight.
 
 ## Decisions made tonight
 (one line each, details in docs/DECISIONS.md)
