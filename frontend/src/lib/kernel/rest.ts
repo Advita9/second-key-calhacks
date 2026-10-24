@@ -1,0 +1,251 @@
+import type {
+  AttackName,
+  AttackResult,
+  AuditEvent,
+  AuditVerify,
+  EvalResults,
+  Health,
+  Payment,
+  Refusal,
+} from "./types";
+
+/** Direct kernel origin: used for the WebSocket and audio files. */
+export const KERNEL_URL = (process.env.NEXT_PUBLIC_KERNEL_URL ?? "http://localhost:8000").replace(/\/$/, "");
+
+/** REST base. In the browser this is the same-origin `/kernel` rewrite (see next.config.ts), so no CORS is needed.
+ *  Set NEXT_PUBLIC_KERNEL_API to the kernel origin to call it directly once it sends CORS headers. */
+export const KERNEL_API = (process.env.NEXT_PUBLIC_KERNEL_API ?? (typeof window === "undefined" ? KERNEL_URL : "/kernel")).replace(/\/$/, "");
+
+export function kernelWsUrl(params: Record<string, string>): string {
+  const base = KERNEL_URL.replace(/^http/, "ws");
+  const q = new URLSearchParams(params).toString();
+  return `${base}/ws${q ? `?${q}` : ""}`;
+}
+
+export class KernelError extends Error {
+  status: number;
+  body: unknown;
+  refusal: Refusal | null;
+  constructor(status: number, body: unknown, message?: string) {
+    super(message ?? `Kernel returned ${status}`);
+    this.status = status;
+    this.body = body;
+    this.refusal = isRefusal(body) ? body : null;
+  }
+  get notFound() {
+    return this.status === 404;
+  }
+}
+
+export function isRefusal(b: unknown): b is Refusal {
+  return !!b && typeof b === "object" && (b as { refused?: unknown }).refused === true;
+}
+
+function asRecord(v: unknown): Record<string, unknown> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+function str(v: unknown, d = ""): string {
+  return typeof v === "string" ? v : typeof v === "number" ? String(v) : d;
+}
+function num(v: unknown, d = 0): number {
+  return typeof v === "number" && Number.isFinite(v) ? v : d;
+}
+function bool(v: unknown, d = false): boolean {
+  return typeof v === "boolean" ? v : d;
+}
+function strs(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+}
+function arr(v: unknown): unknown[] {
+  return Array.isArray(v) ? v : [];
+}
+
+export async function kernelFetch<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), init?.timeoutMs ?? 12000);
+  try {
+    const res = await fetch(`${KERNEL_API}${path}`, { ...init, signal: ctrl.signal, cache: "no-store" });
+    const text = await res.text();
+    let body: unknown = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = text;
+    }
+    if (!res.ok) {
+      const detail = asRecord(body);
+      // FastAPI wraps 409 bodies as {detail: {...}}; unwrap so refusals surface.
+      const inner = isRefusal(detail.detail) ? detail.detail : body;
+      throw new KernelError(res.status, inner, str(asRecord(inner).text) || str(detail.detail) || undefined);
+    }
+    return body as T;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function json(body: unknown): RequestInit {
+  return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
+export function parseHealth(v: unknown): Health {
+  const r = asRecord(v);
+  const mode = asRecord(r.mode);
+  const out: Record<string, string> = {};
+  for (const [k, val] of Object.entries(mode)) out[k] = str(val);
+  const demoRaw = r.demo_mode ?? r.demo ?? mode.demo ?? mode.demo_mode;
+  const demo = demoRaw === true || demoRaw === 1 || demoRaw === "1" || demoRaw === "true" || demoRaw === "on" || process.env.NEXT_PUBLIC_DEMO_MODE === "1";
+  return { ok: bool(r.ok), mode: out, policy_version: str(r.policy_version, "v1"), demo };
+}
+
+export function anyMock(h: Health | null): boolean {
+  return !!h && Object.values(h.mode).some((m) => m === "mock" || m === "memory");
+}
+export function isMockFlag(h: Health | null, key: string): boolean {
+  const v = h?.mode[key];
+  return v === "mock" || v === "memory";
+}
+export function isDemoMode(h: Health | null): boolean {
+  return !!h?.demo;
+}
+
+export function parsePayment(v: unknown): Payment {
+  const r = asRecord(v);
+  const ben = asRecord(r.beneficiary);
+  const dec = asRecord(r.decision);
+  return {
+    id: str(r.id ?? r.payment_id),
+    state: str(r.state, "PENDING_REVIEW"),
+    fingerprint: str(r.fingerprint),
+    account_id: str(r.account_id),
+    amount_cents: num(r.amount_cents),
+    currency: str(r.currency, "USD"),
+    beneficiary: { name: str(ben.name), account_ref: str(ben.account_ref), is_new: bool(ben.is_new) },
+    rail: str(r.rail),
+    conversation_id: str(r.conversation_id),
+    decision: r.decision
+      ? { outcome: str(dec.outcome, "HOLD"), rule_ids: strs(dec.rule_ids), signals: arr(dec.signals) }
+      : undefined,
+    attestations: arr(r.attestations).map((a) => {
+      const x = asRecord(a);
+      return {
+        actor_id: str(x.actor_id),
+        capability: str(x.capability),
+        note: str(x.note),
+        ts: str(x.ts ?? x.created_at),
+        fingerprint: str(x.fingerprint),
+        valid: bool(x.valid, !bool(x.voided)),
+      };
+    }),
+    certificates: arr(r.certificates).map((c) => {
+      const x = asRecord(c);
+      return {
+        id: str(x.id ?? x.certificate_id),
+        fingerprint: str(x.fingerprint),
+        policy_version: str(x.policy_version),
+        nonce: str(x.nonce),
+        expires_at: str(x.expires_at),
+        consumed: bool(x.consumed),
+        voided: bool(x.voided),
+        payment_id: str(x.payment_id ?? r.id),
+        ts: str(x.ts ?? x.issued_at ?? x.created_at),
+      };
+    }),
+    history: arr(r.history).map((h) => {
+      const x = asRecord(h);
+      return {
+        ts: str(x.ts),
+        kind: str(x.kind ?? x.event ?? x.type, "event"),
+        actor: str(x.actor),
+        from: str(x.from ?? x.from_state),
+        to: str(x.to ?? x.to_state ?? x.state),
+        state: str(x.state),
+        text: str(x.text ?? x.note ?? x.refusal),
+        payload: x.payload,
+      };
+    }),
+    created_at: str(r.created_at),
+    updated_at: str(r.updated_at),
+    last_refusal: typeof r.last_refusal === "string" ? r.last_refusal : null,
+  };
+}
+
+export function parseAudit(v: unknown): AuditEvent[] {
+  const list = Array.isArray(v) ? v : arr(asRecord(v).events ?? asRecord(v).items);
+  return list.map((e) => {
+    const x = asRecord(e);
+    return {
+      seq: num(x.seq),
+      ts: str(x.ts),
+      actor: str(x.actor),
+      kind: str(x.kind),
+      payload: x.payload,
+      prev_hash: str(x.prev_hash),
+      hash: str(x.hash),
+    };
+  });
+}
+
+export function parseVerify(v: unknown): AuditVerify {
+  const r = asRecord(v);
+  return { ok: bool(r.ok), length: num(r.length), first_bad_seq: typeof r.first_bad_seq === "number" ? r.first_bad_seq : null };
+}
+
+export function parseAttack(v: unknown): AttackResult {
+  const r = asRecord(v);
+  return { steps: strs(r.steps), refused: bool(r.refused), invariant: str(r.invariant), text: str(r.text) };
+}
+
+export function parseEval(v: unknown): EvalResults {
+  const r = asRecord(v);
+  const hits: Record<string, number> = {};
+  for (const [k, val] of Object.entries(asRecord(r.rule_hits ?? r.rule_hit_counts))) hits[k] = num(val);
+  const cases = arr(r.cases).map((c) => {
+    const x = asRecord(c);
+    const ids = strs(x.rule_ids ?? x.actual_rule_ids);
+    return {
+      id: str(x.id ?? x.case_id),
+      kind: str(x.kind ?? x.type),
+      expected: str(x.expected ?? x.expected_outcome),
+      actual: str(x.actual ?? x.actual_outcome ?? x.outcome),
+      rule_ids: ids,
+      pass: bool(x.pass ?? x.ok, true),
+      friction_steps: num(x.friction_steps),
+    };
+  });
+  if (Object.keys(hits).length === 0) {
+    for (const c of cases) for (const id of c.rule_ids ?? []) hits[id] = (hits[id] ?? 0) + 1;
+  }
+  return {
+    unauthorized_releases: num(r.unauthorized_releases),
+    legit_completed: num(r.legit_completed),
+    legit_total: num(r.legit_total),
+    scam_total: num(r.scam_total),
+    avg_friction_steps: num(r.avg_friction_steps),
+    extractor_mode: str(r.extractor_mode),
+    policy_version: str(r.policy_version),
+    rule_hits: hits,
+    cases,
+  };
+}
+
+export const kernel = {
+  health: async () => parseHealth(await kernelFetch<unknown>("/health", { timeoutMs: 5000 })),
+  payment: async (id: string) => parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}`)),
+  payments: async (): Promise<Payment[]> => {
+    const v = await kernelFetch<unknown>("/payments");
+    const list = Array.isArray(v) ? v : arr(asRecord(v).payments ?? asRecord(v).items);
+    return list.map(parsePayment);
+  },
+  attest: async (id: string, body: { actor_id: string; capability: string; note?: string }) =>
+    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/attest`, json(body))),
+  deny: async (id: string, body: { actor_id: string; note?: string }) =>
+    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/deny`, json(body))),
+  attack: async (name: AttackName) => parseAttack(await kernelFetch<unknown>(`/attack/${name}`, { method: "POST", timeoutMs: 20000 })),
+  audit: async (limit = 200) => parseAudit(await kernelFetch<unknown>(`/audit?limit=${limit}`)),
+  verify: async () => parseVerify(await kernelFetch<unknown>("/audit/verify")),
+  tamper: async () => kernelFetch<unknown>("/audit/tamper", { method: "POST" }),
+  evalResults: async () => parseEval(await kernelFetch<unknown>("/eval/results")),
+  certificates: async (): Promise<unknown> => kernelFetch<unknown>("/certificates"),
+  resetRoom: async (room: string) => kernelFetch<unknown>(`/rooms/${encodeURIComponent(room)}/reset`, { method: "POST" }),
+};
