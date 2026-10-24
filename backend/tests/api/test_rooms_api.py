@@ -48,6 +48,7 @@ def test_warm_fear_script_reaches_held_payment_and_resets(client: TestClient) ->
     assert last["outcome"]["decision"] == "HOLD" and "H-01" in last["outcome"]["rule_ids"]
     rec = client.get(f"/payments/{last['payment_id']}").json()
     assert rec["state"] == "HELD" and rec["conversation_id"] == "room_DEMO"
+    assert rec["origin"] == "room"
     assert rec["decision"]["signals"], "signals should cite the room transcript"
     # Ops lifts the hold; the next turn reports stage 90.
     r = client.post(
@@ -193,3 +194,58 @@ def test_form_path_rate_limited_per_player(client: TestClient) -> None:
         lim.check("DEMO", "x", now=102.9)
     lim.check("DEMO", "x", now=103.0)
     assert form_limiter.interval_s == 3.0
+
+
+def test_scripted_attack_reaches_held_payment(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from api.routes import rooms as rooms_routes
+
+    monkeypatch.setattr(rooms_routes, "SCRIPTED_PAUSE_S", 0.0)
+    with client.websocket_connect("/ws?room=DEMO&role=board") as ws:
+        ws.receive_json()
+        r = client.post("/rooms/DEMO/scripted-attack")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["payment_id"] and body["decision"] == "HOLD" and body["stage"] == 70
+        assert body["origin"] == "room" and body["player_id"] == "scripted-demo"
+        assert len(body["turns"]) == 3
+        assert [t["turn_id"] for t in body["turns"]] == ["scripted-1", "scripted-2", "scripted-3"]
+        assert body["turns"][-1]["payment_id"] == body["payment_id"]
+        assert all(t["margaret_text"] for t in body["turns"])
+        rec = client.get(f"/payments/{body['payment_id']}").json()
+        assert rec["state"] == "HELD" and rec["origin"] == "room"
+        assert rec["beneficiary"]["name"] == "Agent Daniels" and rec["rail"] == "WIRE"
+        assert rec["amount_cents"] == 185_000
+        # One margaret event per turn on the kernel WS, plus the payment card.
+        seen: list[dict[str, object]] = []
+        for _ in range(12):
+            m = ws.receive_json()
+            seen.append(m)
+            if len([x for x in seen if x["type"] == "margaret"]) == 3:
+                break
+        margaret = [x for x in seen if x["type"] == "margaret"]
+        assert len(margaret) == 3 and all(x.get("scripted") is True for x in margaret)
+        assert any(x["type"] == "payment" for x in seen)
+    # One run per 30 s per room; another room is independent.
+    r = client.post("/rooms/DEMO/scripted-attack")
+    assert r.status_code == 429 and r.json()["detail"]["code"] == "RATE_LIMIT"
+    assert client.post("/rooms/OTHER/scripted-attack").status_code == 200
+    # The room's leaderboard is untouched: no memory-room turn rows were written.
+    snap = client.get("/rooms/DEMO/snapshot", params={"role": "board"}).json()
+    assert snap["turns"] == [] and snap["leaderboard"] == []
+
+
+def test_scripted_attack_needs_ops_token_when_set(
+    env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from api.routes import rooms as rooms_routes
+
+    monkeypatch.setattr(rooms_routes, "SCRIPTED_PAUSE_S", 0.0)
+    tok = "ops-secret-script"
+    with make_client(monkeypatch, OPS_TOKEN=tok) as c:
+        assert c.post("/rooms/DEMO/scripted-attack").status_code == 401
+        assert c.get("/payments", headers={"X-Ops-Token": tok}).json()["payments"] == []
+        r = c.post("/rooms/DEMO/scripted-attack", headers={"X-Ops-Token": tok})
+        assert r.status_code == 200 and r.json()["decision"] == "HOLD"
+    deps.reset()

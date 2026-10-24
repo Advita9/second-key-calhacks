@@ -300,8 +300,12 @@ def test_unknown_payment_404_and_bad_body_422(client: TestClient) -> None:
 def test_list_payments_newest_first(client: TestClient) -> None:
     a = create(client, scenario_a_body())["id"]
     b = create(client, scenario_b_body())["id"]
-    ids = [p["id"] for p in client.get("/payments").json()["payments"]]
+    listed = client.get("/payments").json()["payments"]
+    ids = [p["id"] for p in listed]
     assert ids[:2] == [b, a]
+    assert [p["origin"] for p in listed[:2]] == ["ops", "ops"]
+    assert client.get("/payments?limit=1").json()["payments"][0]["id"] == b
+    assert set(listed[0]) >= {"id", "state", "fingerprint", "decision", "origin", "amount_cents"}
 
 
 def test_post_payments_account_context_requires_ops_token_when_set(

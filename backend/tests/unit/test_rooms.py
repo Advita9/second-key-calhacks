@@ -311,3 +311,17 @@ def test_room_directory_is_known_billers_only(store: SessionStore) -> None:
         DraftPayment(amount_cents=800_000, payee_name="Priya", rail=Rail.ACH), room
     )
     assert p.beneficiary.account_ref.startswith("ext_new_") and p.beneficiary.is_new
+
+
+def test_origin_of_and_demo_script() -> None:
+    from kernel.rooms import load_demo_script, origin_of
+
+    assert origin_of("room_DEMO") == "room"
+    assert origin_of("attack:replay") == "attack"
+    assert origin_of("conv_b") == "ops" and origin_of("") == "ops"
+    assert origin_of("case_L-01") == "ops"
+    script = load_demo_script()
+    assert script.player_id == "scripted-demo"
+    assert len(script.turns) == 3 and script.followup
+    assert all(len(t) <= 400 for t in script.turns) and len(script.followup) <= 400
+    assert "$1,850" in script.turns[-1] and "Agent Daniels" in script.turns[-1]

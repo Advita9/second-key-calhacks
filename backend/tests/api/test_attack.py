@@ -157,3 +157,20 @@ def test_exception_mid_mutate_attack_still_cleans_up(
         assert all(a["voided"] for a in p["attestations"]) and p["attestations"]
         assert all(cert["voided"] for cert in p["certificates"]) and p["certificates"]
     deps.reset()
+
+
+def test_attack_payments_are_marked_attack_origin(client: TestClient) -> None:
+    for name in ("mutate", "replay", "self-approve"):
+        _run(client, name)
+    payments = client.get("/payments").json()["payments"]
+    assert len(payments) == 3
+    for p in payments:
+        assert p["origin"] == "attack", p["conversation_id"]
+        assert p["conversation_id"].startswith("attack:")
+    assert {p["conversation_id"] for p in payments} == {
+        "attack:mutate",
+        "attack:replay",
+        "attack:self-approve",
+    }
+    for p in payments:
+        assert client.get(f"/payments/{p['id']}").json()["origin"] == "attack"

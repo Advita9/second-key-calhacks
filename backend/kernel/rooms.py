@@ -21,7 +21,7 @@ import threading
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -97,6 +97,39 @@ def mint_ref(name: str) -> str:
 
 def resolve_ref(name: str, directory: dict[str, str]) -> str:
     return directory.get(name.strip().lower()) or mint_ref(name)
+
+
+ROOM_PREFIX = "room_"
+ATTACK_PREFIX = "attack:"
+Origin = Literal["room", "attack", "ops"]
+
+
+def origin_of(conversation_id: str) -> Origin:
+    """Where a payment came from, for counts and the balance display: `room` (Margaret in a
+    room), `attack` (the attack panel; never a legitimate completion), else `ops`."""
+    if conversation_id.startswith(ROOM_PREFIX):
+        return "room"
+    if conversation_id.startswith(ATTACK_PREFIX):
+        return "attack"
+    return "ops"
+
+
+class DemoScript(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    player_id: str = "scripted-demo"
+    turns: tuple[str, ...]
+    followup: str | None = None
+
+
+def load_demo_script(path: Path | None = None) -> DemoScript:
+    """`fixtures/demo_script.json`: the proven IRS/warmth script shared with scripts/demo.py."""
+    p = path or repo_root() / "fixtures" / "demo_script.json"
+    raw = json.loads(p.read_text("utf-8"))
+    return DemoScript(
+        player_id=str(raw.get("player_id") or "scripted-demo"),
+        turns=tuple(str(t) for t in raw["turns"]),
+        followup=str(raw["followup"]) if raw.get("followup") else None,
+    )
 
 
 def load_shared_evidence(path: Path | None = None) -> tuple[EvidenceItem, ...]:
@@ -181,7 +214,7 @@ def draft_to_payment_in(d: DraftPayment, room: Room) -> PaymentIn:
             is_new=ref not in room.ctx.prior_payees,
         ),
         rail=d.rail,
-        conversation_id=f"room_{room.id}",
+        conversation_id=f"{ROOM_PREFIX}{room.id}",
     )
 
 

@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from api import deps
 from api.main import create_app
+from api.routes.rooms import reset_limiters
 
 TEST_ENV = {
     "MOCK_EXTRACTOR": "1",
@@ -33,6 +34,7 @@ def env(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> dict[str, str]:
     monkeypatch.setenv("AUDIO_CACHE_DIR", str(tmp_path) + "/audio")
     monkeypatch.setenv("LLM_CACHE_DIR", str(tmp_path) + "/llm")
     deps.reset()
+    reset_limiters()
     return dict(TEST_ENV)
 
 

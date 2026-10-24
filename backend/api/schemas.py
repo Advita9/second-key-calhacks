@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from kernel.audit import AuditEvent
 from kernel.llm.types import EvidenceItem
 from kernel.models import AccountContext, Attestation, Capability, Certificate, PaymentIn
+from kernel.rooms import origin_of
 from kernel.service import PaymentRecord
 
 MAX_TURN_CHARS = 400  # same cap as the SpacetimeDB submit_turn reducer
@@ -177,6 +178,7 @@ def payment_dict(record: PaymentRecord) -> dict[str, Any]:
         "certificates": [certificate_dict(c) for c in record.certificates],
         "history": [audit_event_dict(e) for e in record.history],
         "last_refusal": last_refusal(record),
+        "origin": origin_of(p.conversation_id),
     }
 
 

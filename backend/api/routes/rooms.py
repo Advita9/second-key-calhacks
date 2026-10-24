@@ -27,7 +27,7 @@ from api.schemas import MAX_TURN_CHARS, TurnIn
 from api.voice_routes import MAX_AUDIO_BYTES, get_stt
 from kernel.models import Capability
 from kernel.room_memory import RoomError, RoomStore
-from kernel.rooms import SessionStore, TurnResult
+from kernel.rooms import SessionStore, TurnResult, load_demo_script, origin_of
 
 log = logging.getLogger("second_key.api.rooms")
 
@@ -63,6 +63,15 @@ class TurnRateLimiter:
 
 
 form_limiter = TurnRateLimiter()
+SCRIPTED_INTERVAL_S = 30.0
+scripted_limiter = TurnRateLimiter(SCRIPTED_INTERVAL_S)
+SCRIPTED_PAUSE_S = 1.0  # between turns, so the board animates; tests shrink it
+
+
+def reset_limiters() -> None:
+    """Tests: forget rate-limit history (the limiters are process-wide)."""
+    form_limiter._last.clear()  # noqa: SLF001
+    scripted_limiter._last.clear()  # noqa: SLF001
 
 
 def _room_code(room: str) -> str:
@@ -179,3 +188,76 @@ async def reset(room: str, bus: Bus) -> dict[str, Any]:
         "balance_cents": fresh.balance_cents,
         "cancelled_payment_id": cancelled,
     }
+
+
+def run_script(
+    sessions: SessionStore, bus: EventBus, room_id: str, pause_s: float
+) -> dict[str, Any]:
+    """The proven four-turn IRS/warmth script through the normal turn path, one Margaret event
+    per turn as it goes. The follow-up line is sent only when no payment exists after the
+    scripted turns."""
+    script = load_demo_script()
+    lines = list(script.turns)
+    turns: list[dict[str, Any]] = []
+    result: TurnResult | None = None
+    i = 0
+    while i < len(lines):
+        text = lines[i]
+        i += 1
+        if turns:
+            time.sleep(pause_s)
+        turn = TurnIn(turn_id=f"scripted-{i}", player_id=script.player_id, text=text)
+        result = run_turn(sessions, bus, room_id, turn)
+        bus.margaret(
+            result.room_id,
+            result.margaret_text,
+            result.margaret_audio_url,
+            result.persuaded,
+            turn_id=turn.turn_id,
+            stage=result.stage,
+            scripted=True,
+        )
+        turns.append(
+            {
+                "turn_id": turn.turn_id,
+                "text": text,
+                "margaret_text": result.margaret_text,
+                "margaret_audio_url": result.margaret_audio_url,
+                "persuaded": result.persuaded,
+                "stage": result.stage,
+                "payment_id": result.payment_id,
+            }
+        )
+        if (
+            i == len(lines)
+            and result.payment_id is None
+            and script.followup
+            and script.followup not in lines
+        ):
+            lines.append(script.followup)  # one more try for a persona that resisted
+    assert result is not None
+    decision = result.outcome.get("decision") if result.outcome else None
+    return {
+        "turns": turns,
+        "payment_id": result.payment_id,
+        "decision": decision,
+        "stage": result.stage,
+        "origin": origin_of(f"room_{room_id}"),
+        "player_id": script.player_id,
+    }
+
+
+@router.post("/rooms/{room}/scripted-attack", dependencies=[Depends(deps.ops_guard)])
+async def scripted_attack(room: str, bus: Bus) -> dict[str, Any]:
+    """Operator demo beat: runs `fixtures/demo_script.json` as player `scripted-demo`. One run
+    per 30 s per room. Shows on the board through the kernel WS (Margaret card, payment card),
+    not on the leaderboard: in spacetime mode it bypasses the SpacetimeDB turn queue."""
+    room_id = _room_code(room)
+    scripted_limiter.check(room_id, "scripted-attack")
+    sessions = deps.get_sessions()
+    out = await asyncio.to_thread(run_script, sessions, bus, room_id, SCRIPTED_PAUSE_S)
+    log.info(
+        "room.scripted_attack",
+        extra={"room_id": room_id, "stage": out["stage"], "payment_id": out["payment_id"]},
+    )
+    return out

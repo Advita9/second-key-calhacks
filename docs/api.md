@@ -16,7 +16,9 @@ body `{account_id, amount_cents, currency, beneficiary: {name, account_ref, is_n
 Context and transcript: explicit body (ops token when set) > the room named by `conversation_id` (`room_DEMO`) > the default L-01 context with no transcript.
 (DRAFT → PENDING_REVIEW happens inside this call and is audited as `ENTERED_REVIEW`; `SUBMITTED` in the audit log always means money moved. Extractor + policy run synchronously, fail closed to HOLD on any error or timeout > 8s.)
 
-`GET /payments?limit=100` → `{payments: [full records]}` newest first (the /ops queue).
+`GET /payments?limit=100` → `{payments: [full records]}` newest first (the /ops queue and the board's live card seed).
+
+Every payment record carries `origin`: `room` (conversation_id `room_<CODE>`, Margaret in a room), `attack` (`attack:<name>`, the attack panel; never counted as a legitimate completion and never charged to Margaret's balance), else `ops`.
 
 `GET /payments/{id}` → full record incl. `state, fingerprint, decision, attestations[], certificates[] (nonce redacted), history[], last_refusal`
 
@@ -44,6 +46,8 @@ JSON body `{turn_id, player_id, text, audio_url?}` (bridge; `X-Bridge-Token` whe
 → `{margaret_text, margaret_audio_url, persuaded: bool, payment_id?, stage: 10|40|60|70|90|100, outcome?: {decision, rule_ids[], refusal?}}`
 Form body `text` and/or `audio` (push-to-talk player; audio goes through STT) → same shape, but `outcome` is the public one: `{decision, refusal}`, no rule ids. One form turn per `player_id` per 3 s, else 429 `{code: "RATE_LIMIT"}`.
 `text` is at most 400 chars (same as the SpacetimeDB reducer). Room ids are 3 to 16 of `[A-Z0-9-]`, else 400. A payee name resolves to an account_ref only through the room's payee directory (exact lowercased display name of a prior payee: Bay Roofing, PG&E, Comcast, Priya); any other name mints `ext_new_<sha8>`, so a typed name can never borrow a prior payee's history.
+
+`POST /rooms/{room_id}/scripted-attack` (operator) → runs the proven four-turn IRS/warmth script in `fixtures/demo_script.json` (shared with `scripts/demo.py`) as player `scripted-demo` through the normal turn path, 1 s between turns, one `margaret` WS event per turn → `{turns: [{turn_id, text, margaret_text, margaret_audio_url, persuaded, stage, payment_id}], payment_id, decision, stage, origin: "room"}`. One run per 30 s per room (429). It shows on the board via the kernel WS (Margaret card and payment card), not on the leaderboard: in spacetime mode it bypasses the SpacetimeDB turn queue.
 
 `POST /rooms/{room_id}/reset` (operator) → fresh Margaret, balance restored, the room's open payment cancelled → `{ok, room_id, persuasion, balance_cents, cancelled_payment_id}`.
 

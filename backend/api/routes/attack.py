@@ -24,7 +24,7 @@ from api.settings import REPO_DIR
 from kernel.llm.types import EvidenceItem, Signal
 from kernel.models import AccountContext, Capability, PaymentIn, Refusal, State
 from kernel.policy.engine import decide
-from kernel.rooms import OPEN_STATES
+from kernel.rooms import ATTACK_PREFIX, OPEN_STATES
 from kernel.service import Kernel
 
 log = logging.getLogger("second_key.api.attack")
@@ -43,9 +43,10 @@ def load_case(case_id: str) -> dict[str, Any]:
     return raw
 
 
-def case_payment(case: dict[str, Any]) -> PaymentIn:
+def case_payment(case: dict[str, Any], conversation_id: str | None = None) -> PaymentIn:
     return PaymentIn.model_validate(
-        {**case["payment"], "conversation_id": f"case_{case['id']}"}, strict=False
+        {**case["payment"], "conversation_id": conversation_id or f"case_{case['id']}"},
+        strict=False,
     )
 
 
@@ -100,8 +101,15 @@ class _Attack:
     def create_case(self, case_id: str, **ctx_over: Any) -> str:
         case = load_case(case_id)
         return self.create(
-            case_payment(case), case_context(case, **ctx_over), case_conversation(case)
+            case_payment(case, self.conversation_id),
+            case_context(case, **ctx_over),
+            case_conversation(case),
         )
+
+    @property
+    def conversation_id(self) -> str:
+        """`attack:<name>`: marks the payment as attack-panel origin (never a legit completion)."""
+        return f"{ATTACK_PREFIX}{self.name}"
 
     def publish(self, pid: str) -> None:
         self.bus.payment(self.kernel.get(pid))
@@ -235,7 +243,7 @@ def self_approve(bus: Bus) -> JSONResponse:
                 "currency": "USD",
                 "beneficiary": {"name": "Priya", "account_ref": "ext_priya", "is_new": False},
                 "rail": "ACH",
-                "conversation_id": "attack_self_approve",
+                "conversation_id": a.conversation_id,
             },
             strict=False,
         )
