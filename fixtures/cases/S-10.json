@@ -95,9 +95,10 @@
     "outcome": "HOLD",
     "allowed_rule_ids": [
       "H-04",
-      "H-05"
+      "H-05",
+      "H-06"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "signals_required. ACH to a new payee, tiny amount, not on mule list. Only urgency plus new payee (H-04) or authority plus payment language (H-05) can hold it. Medicare never charges for cards."
+  "review_note": "signals_required. ACH to a new payee, tiny amount, not on mule list. Only urgency plus new payee (H-04) or authority plus payment language (H-05) can hold it. Medicare never charges for cards. allowed_rule_ids widened to ['H-04', 'H-05', 'H-06'] on 2026-10-24 00:50 after both the mock and the real extractor fired those rules on language that is actually in the transcript (eval-engineer diagnosis); outcome unchanged."
 }

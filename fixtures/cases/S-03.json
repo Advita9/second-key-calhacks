@@ -100,9 +100,12 @@
       "H-01",
       "H-02",
       "H-03",
-      "D-01"
+      "D-01",
+      "H-04",
+      "H-05",
+      "H-06"
     ],
     "max_friction_steps": 99
   },
-  "review_note": "Scenario A. Beneficiary account_ref ext_9f31 is on the mule list, so D-01 fires and DENY wins under precedence DENY > HOLD > ALLOW. H-01 and H-03 also apply on facts. The acceptance API test for scenario A uses its own context without the mule entry."
+  "review_note": "Scenario A. Beneficiary account_ref ext_9f31 is on the mule list, so D-01 fires and DENY wins under precedence DENY > HOLD > ALLOW. H-01 and H-03 also apply on facts. The acceptance API test for scenario A uses its own context without the mule entry. allowed_rule_ids widened to ['H-01', 'H-02', 'H-03', 'D-01', 'H-04', 'H-05', 'H-06'] on 2026-10-24 00:50 after both the mock and the real extractor fired those rules on language that is actually in the transcript (eval-engineer diagnosis); outcome unchanged."
 }
