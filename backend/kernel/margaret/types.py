@@ -12,10 +12,11 @@ from typing import Protocol
 
 from pydantic import Field, PositiveInt
 
-from kernel.margaret._cues import Hit
+from kernel.llm.heuristics import Hit
 from kernel.models import Rail, StrictModel
 
 SAFE_REPLY = "Let me think about that and call my daughter."
+MAX_AMOUNT_CENTS = 100_000_000  # $1,000,000; anything larger is noise, not a draft
 
 # Persuasion weights, one table. Lead amendment 4: three to four attacker turns combining
 # warmth with fear or authority must cross DRAFT_THRESHOLD; pure urgency must take 6+ turns.
@@ -34,7 +35,7 @@ DRAFT_THRESHOLD = 0.75
 
 
 class DraftPayment(StrictModel):
-    amount_cents: PositiveInt
+    amount_cents: PositiveInt = Field(le=MAX_AMOUNT_CENTS)
     payee_name: str = Field(min_length=1, max_length=80)
     rail: Rail
 
@@ -111,16 +112,25 @@ def _words_to_int(phrase: str) -> int | None:
     tokens = [t for t in re.split(r"[\s-]+", phrase.strip().lower()) if t and t != "and"]
     if not tokens:
         return None
+    hundred_used = False
+    major_used = False
     for tok in tokens:
         if tok in _UNITS:
             group += _UNITS[tok]
-        elif tok in _SCALES:
+        elif tok == "hundred":
+            if hundred_used:
+                return None
+            hundred_used = True
             seen_scale = True
-            if tok == "hundred":
-                group = (group or 1) * 100
-            else:
-                total += (group or 1) * _SCALES[tok]
-                group = 0
+            group = (group or 1) * 100
+        elif tok in _SCALES:
+            if major_used:
+                return None  # "one thousand thousand" is not a number
+            major_used = True
+            seen_scale = True
+            total += (group or 1) * _SCALES[tok]
+            group = 0
+            hundred_used = False
         else:
             return None
     value = total + group
@@ -129,7 +139,8 @@ def _words_to_int(phrase: str) -> int | None:
 
 def parse_amount_cents(text: str) -> int | None:
     """First dollar amount in `text` as cents, or None. Accepts `$1,500`, `$1500.50`,
-    `1500 dollars`, `2k`, `fifteen hundred`, `two thousand dollars`."""
+    `1500 dollars`, `2k`, `fifteen hundred`, `two thousand dollars`. None outside
+    (0, MAX_AMOUNT_CENTS]."""
     m = _DOLLAR_AMOUNT.search(text)
     if m:
         whole = (m.group(1) or m.group(3) or "").replace(",", "")
@@ -139,11 +150,11 @@ def parse_amount_cents(text: str) -> int | None:
             cents = int(round(float(f"{whole}.{frac}") * 1000)) * 100
         else:
             cents = int(whole) * 100 + int(frac.ljust(2, "0"))
-        return cents if cents > 0 else None
+        return cents if 0 < cents <= MAX_AMOUNT_CENTS else None
     for wm in _WORD_AMOUNT.finditer(text):
         # A scale word (hundred/thousand) is required by _words_to_int; "dollars" is optional.
         value = _words_to_int(wm.group(1))
-        if value is not None and value > 0:
+        if value is not None and 0 < value * 100 <= MAX_AMOUNT_CENTS:
             return value * 100
     return None
 

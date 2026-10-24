@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 
-from kernel.margaret._cues import scan
+from kernel.llm.heuristics import scan
 from kernel.margaret.persona import band_index, load_fallback_lines
 from kernel.margaret.types import (
     DRAFT_THRESHOLD,

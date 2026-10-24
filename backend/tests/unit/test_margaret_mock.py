@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import get_args
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from pydantic import ValidationError
 
+from kernel.llm.heuristics import Hit, Kind, scan
 from kernel.llm.types import EvidenceItem
-from kernel.margaret._cues import KINDS, Hit, scan
 from kernel.margaret.mock import ASK_AMOUNT, MockMargaret
 from kernel.margaret.persona import (
     band_index,
@@ -22,6 +23,7 @@ from kernel.margaret.persona import (
 from kernel.margaret.types import (
     DECAY,
     DRAFT_THRESHOLD,
+    MAX_AMOUNT_CENTS,
     MAX_STEP,
     SAFE_REPLY,
     WEIGHTS,
@@ -36,6 +38,7 @@ from kernel.margaret.types import (
 from kernel.models import Rail
 
 PERSONA = default_persona_path()
+KINDS: tuple[str, ...] = get_args(Kind)
 EM_DASH = "—"
 LONG_DIGITS = re.compile(r"\d{8,}")
 
@@ -127,7 +130,7 @@ def test_warmth_is_monotone(current: float) -> None:
 @pytest.mark.parametrize(
     ("text", "kind"),
     [
-        ("you sound just like my grandma", "warmth"),
+        ("you are such a kind woman, sweetheart", "warmth"),
         ("there is a WARRANT for your arrest", "threat"),
         ("this is the Social Security office", "authority"),
         ("it must be done within the hour", "urgency"),
@@ -163,6 +166,10 @@ def test_scan_empty() -> None:
         ("call me at 5", None),
         ("$0", None),
         ("I love you", None),
+        ("wire 99999999999999999999 dollars to X", None),
+        ("$1,000,000.01", None),
+        ("$1,000,000", MAX_AMOUNT_CENTS),
+        ("one thousand thousand thousand dollars", None),
     ],
 )
 def test_parse_amount(text: str, cents: int | None) -> None:
@@ -199,6 +206,18 @@ def test_infer_payee(text: str, name: str) -> None:
     assert infer_payee(text) == name
 
 
+def test_extract_draft_rejects_absurd_amount() -> None:
+    assert extract_draft("wire 99999999999999999999 dollars to X", 0.9) is None
+
+
+def test_mock_absurd_amount_no_draft_not_safe_reply() -> None:
+    m = MockMargaret(PERSONA)
+    text = "Sweetheart, wire 99999999999999999999 dollars to Agent Daniels or face arrest"
+    t = m.reply([], text, 0.7)
+    assert t.persuasion > DRAFT_THRESHOLD
+    assert t.draft_payment is None and t.reply != SAFE_REPLY
+
+
 def test_extract_draft_requires_threshold_and_amount() -> None:
     text = "wire $1,850 to Agent Daniels"
     assert extract_draft(text, 0.75) is None
@@ -210,6 +229,8 @@ def test_extract_draft_requires_threshold_and_amount() -> None:
 def test_draft_payment_is_strict() -> None:
     with pytest.raises(ValidationError):
         DraftPayment(amount_cents=0, payee_name="x", rail=Rail.ACH)
+    with pytest.raises(ValidationError):
+        DraftPayment(amount_cents=MAX_AMOUNT_CENTS + 1, payee_name="x", rail=Rail.ACH)
     with pytest.raises(ValidationError):
         DraftPayment(amount_cents="100", payee_name="x", rail=Rail.ACH)  # type: ignore[arg-type]
     with pytest.raises(ValidationError):

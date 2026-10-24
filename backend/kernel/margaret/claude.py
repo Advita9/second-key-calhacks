@@ -16,7 +16,7 @@ from typing import Any, Literal
 import anthropic
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from kernel.margaret._cache import ResponseCache
+from kernel.llm.cache import ResponseCache
 from kernel.margaret.types import (
     DRAFT_THRESHOLD,
     MAX_STEP,
@@ -58,8 +58,10 @@ class MargaretOut(BaseModel):
     draft: DraftOut | None
 
 
-def make_client(api_key: str) -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=api_key, timeout=7.0, max_retries=0)
+def make_client(api_key: str, timeout: float = 7.0) -> anthropic.Anthropic:
+    """No retries; the room turn has a hard budget. `build_margaret` passes 12 s because the
+    persona call is not inside the kernel's 8 s extractor budget."""
+    return anthropic.Anthropic(api_key=api_key, timeout=timeout, max_retries=0)
 
 
 def _speaker_line(item: EvidenceLike) -> str:

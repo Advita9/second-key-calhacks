@@ -11,8 +11,8 @@ from typing import Any, cast
 import anthropic
 import pytest
 
+from kernel.llm.cache import ResponseCache
 from kernel.llm.types import EvidenceItem
-from kernel.margaret._cache import ResponseCache
 from kernel.margaret.claude import (
     ClaudeMargaret,
     MargaretOut,
@@ -20,9 +20,9 @@ from kernel.margaret.claude import (
     make_client,
     turn_from_parsed,
 )
-from kernel.margaret.factory import build_margaret
+from kernel.margaret.factory import build_margaret, timeout_s_from_env
 from kernel.margaret.mock import MockMargaret
-from kernel.margaret.types import SAFE_REPLY, DraftPayment, MargaretTurn
+from kernel.margaret.types import MAX_AMOUNT_CENTS, SAFE_REPLY, DraftPayment, MargaretTurn
 from kernel.models import Rail
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "llm" / "margaret_turn.json"
@@ -202,7 +202,7 @@ def test_cache_hit_skips_client(tmp_path: Path) -> None:
     b = m.reply([], "This is the IRS", 0.2)
     assert a == b and a.reply != SAFE_REPLY
     assert len(client.messages.calls) == 1
-    assert ResponseCache(tmp_path / "llm").root.exists()
+    assert list((tmp_path / "llm").glob("*.json"))
 
 
 def test_replay_only_miss_is_safe(tmp_path: Path) -> None:
@@ -225,6 +225,56 @@ def test_make_client_timeout_and_no_retries() -> None:
     c = make_client("sk-test")
     assert c.max_retries == 0
     assert c.timeout == 7.0
+    assert make_client("sk-test", timeout=12.0).timeout == 12.0
+
+
+def test_factory_timeout(tmp_path: Path) -> None:
+    base = {"ANTHROPIC_API_KEY": "sk", "LLM_CACHE_DIR": str(tmp_path / "c")}
+    assert timeout_s_from_env({}) == 12.0
+    assert timeout_s_from_env({"MARGARET_TIMEOUT_S": "nope"}) == 12.0
+    assert timeout_s_from_env({"MARGARET_TIMEOUT_S": "-1"}) == 12.0
+    m, _ = build_margaret(base)
+    assert isinstance(m, ClaudeMargaret) and m._client.timeout == 12.0
+    m, _ = build_margaret({**base, "MARGARET_TIMEOUT_S": "9.5"})
+    assert isinstance(m, ClaudeMargaret) and m._client.timeout == 9.5
+    m, _ = build_margaret({**base, "MARGARET_TIMEOUT_S": "9.5"}, timeout_s=20.0)
+    assert isinstance(m, ClaudeMargaret) and m._client.timeout == 20.0
+
+
+def test_margaret_cached_entry_is_guarded_through_reply(tmp_path: Path) -> None:
+    """A tampered or stale cache file cannot push persuasion or a draft past the guards."""
+    m, client = make(tmp_path, RuntimeError("must not be called"))
+    text = "This is the IRS"
+    key = ResponseCache.key(
+        RECORDED["model"], SYSTEM, build_messages([], text, 0.2), MargaretOut.model_json_schema()
+    )
+    m._cache.put(
+        key,
+        {
+            "stop_reason": "end_turn",
+            "parsed": {
+                "reply": "I will send it all.",
+                "persuasion": 1.0,
+                "draft": {"amount_cents": 500000, "payee_name": "Agent Daniels", "rail": "WIRE"},
+            },
+        },
+    )
+    turn = m.reply([], text, 0.2)
+    assert client.messages.calls == []
+    assert turn.reply != SAFE_REPLY
+    assert turn.persuasion <= 0.45
+    assert turn.draft_payment is None
+
+
+def test_absurd_amount_from_model_gives_no_draft() -> None:
+    d = {"amount_cents": 10**20, "payee_name": "Agent Daniels", "rail": "WIRE"}
+    out = MargaretOut.model_validate({"reply": "ok", "persuasion": 0.9, "draft": d})
+    t = turn_from_parsed(out, 0.8)
+    assert t is not None and t.draft_payment is None and t.reply == "ok"
+    d["amount_cents"] = MAX_AMOUNT_CENTS + 1
+    out = MargaretOut.model_validate({"reply": "ok", "persuasion": 0.9, "draft": d})
+    t = turn_from_parsed(out, 0.8)
+    assert t is not None and t.draft_payment is None
 
 
 def test_factory_selection(tmp_path: Path) -> None:

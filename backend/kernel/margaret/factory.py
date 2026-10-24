@@ -7,7 +7,7 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
-from kernel.margaret._cache import ResponseCache, default_llm_cache_root
+from kernel.llm.cache import ResponseCache, default_cache_root
 from kernel.margaret.claude import ClaudeMargaret, make_client
 from kernel.margaret.mock import MockMargaret
 from kernel.margaret.persona import default_persona_path, load_persona_system
@@ -16,6 +16,7 @@ from kernel.margaret.types import Margaret
 log = logging.getLogger("second_key.margaret")
 
 DEFAULT_MODEL = "claude-sonnet-5-5"
+DEFAULT_TIMEOUT_S = 12.0  # Margaret gets more than the extractor's 7 s; still fail-closed
 
 
 def _truthy(value: str | None) -> bool:
@@ -27,8 +28,22 @@ def persona_path(env: Mapping[str, str]) -> Path:
     return Path(override) if override else default_persona_path()
 
 
-def build_margaret(env: Mapping[str, str] | None = None) -> tuple[Margaret, str]:
-    """Returns (persona, "mock"|"real"). Never raises on a missing key; degrades to mock."""
+def timeout_s_from_env(env: Mapping[str, str]) -> float:
+    """`MARGARET_TIMEOUT_S`, default DEFAULT_TIMEOUT_S; garbage or non-positive -> default."""
+    raw = env.get("MARGARET_TIMEOUT_S", "").strip()
+    try:
+        value = float(raw) if raw else DEFAULT_TIMEOUT_S
+    except ValueError:
+        return DEFAULT_TIMEOUT_S
+    return value if value > 0 else DEFAULT_TIMEOUT_S
+
+
+def build_margaret(
+    env: Mapping[str, str] | None = None, *, timeout_s: float | None = None
+) -> tuple[Margaret, str]:
+    """Returns (persona, "mock"|"real"). Never raises on a missing key; degrades to mock.
+    `timeout_s` overrides `MARGARET_TIMEOUT_S` (default 12 s, outside the kernel's 8 s
+    extractor budget)."""
     env = os.environ if env is None else env
     path = persona_path(env)
     key = env.get("ANTHROPIC_API_KEY", "").strip()
@@ -36,11 +51,20 @@ def build_margaret(env: Mapping[str, str] | None = None) -> tuple[Margaret, str]
         log.info("margaret.build mode=mock reason=%s", "flag" if key else "no_key")
         return MockMargaret(path), "mock"
     model = env.get("ANTHROPIC_MODEL", "").strip() or DEFAULT_MODEL
-    cache = ResponseCache(default_llm_cache_root(env), replay_only=_truthy(env.get("DEMO_MODE")))
-    log.info("margaret.build mode=real model=%s replay_only=%s", model, cache.replay_only)
+    cache = ResponseCache(default_cache_root(env), replay_only=_truthy(env.get("DEMO_MODE")))
+    t = timeout_s if timeout_s is not None else timeout_s_from_env(env)
+    log.info(
+        "margaret.build mode=real model=%s replay_only=%s timeout_s=%.1f",
+        model,
+        cache.replay_only,
+        t,
+    )
     return (
         ClaudeMargaret(
-            make_client(key), model=model, cache=cache, persona_system=load_persona_system(path)
+            make_client(key, timeout=t),
+            model=model,
+            cache=cache,
+            persona_system=load_persona_system(path),
         ),
         "real",
     )
