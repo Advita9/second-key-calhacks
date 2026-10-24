@@ -13,7 +13,7 @@ CASES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cases")
 OUTCOMES = {"ALLOW", "HOLD", "DENY"}
 RAILS = {"WIRE", "ACH", "ZELLE", "CARD"}
 SPEAKERS = {"caller", "margaret", "priya", "bank"}
-RULE_IDS = {"D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06", "A-01"}
+RULE_IDS = {"D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06", "H-07", "A-01"}
 TOP_KEYS = {"id", "title", "tags", "signals_required", "conversation", "payment",
             "account_context", "expected", "review_note"}
 CTX_KEYS = {"baseline_90d_cents", "known_billers", "prior_payees", "mule_list",
