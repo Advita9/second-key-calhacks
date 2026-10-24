@@ -1,4 +1,4 @@
-# SpacetimeDB module (TypeScript) — room, turns, leaderboard
+# SpacetimeDB module (TypeScript) : room, turns, leaderboard
 
 SpacetimeDB owns the multiplayer room. The kernel owns money. The bridge connects them.
 Reducers cannot make network calls, so the bridge (a Node client with a registered identity) does the HTTP hop.

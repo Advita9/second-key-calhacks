@@ -49,11 +49,19 @@ wait_http() {  # wait_http <url> <seconds>
 start_kernel() {
   (cd "$ROOT/backend" && uv sync --quiet)
   stop_one "$PID_DIR/kernel.pid" kernel
-  (cd "$ROOT/backend" && nohup uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 \
+  # Run uvicorn from the venv directly so .claude/kernel.pid is uvicorn's own pid (kill-able for the fail-closed test).
+  (cd "$ROOT/backend" && nohup "$ROOT/backend/.venv/bin/python" -m uvicorn api.main:app --host 0.0.0.0 --port 8000 \
       >"$PID_DIR/kernel.log" 2>&1 & echo $! >"$PID_DIR/kernel.pid")
   wait_http http://127.0.0.1:8000/health 60 || { echo "kernel did not come up; see $PID_DIR/kernel.log" >&2; exit 1; }
   echo "kernel      http://127.0.0.1:8000/health      log: .claude/kernel.log"
-  curl -s http://127.0.0.1:8000/health; echo
+  local health; health="$(curl -s http://127.0.0.1:8000/health)"; echo "$health"
+  if printf '%s' "$health" | grep -q '"anchor": *"mismatch"'; then
+    echo
+    echo "WARNING     the audit anchor does not match the database (an old database, or rows changed while the kernel was down)."
+    echo "            Payments are refused until you either start fresh:   scripts/dev.sh start --fresh"
+    echo "            or acknowledge it as the operator:   curl -s -X POST -H \"X-Ops-Token: $OPS_TOKEN\" http://127.0.0.1:8000/audit/acknowledge"
+    echo
+  fi
 }
 
 start_spacetime() {
@@ -89,6 +97,9 @@ start_bridge() {
 }
 
 start_frontend() {
+  if curl -fsS -o /dev/null http://127.0.0.1:3001/board 2>/dev/null && [ -f "$PID_DIR/frontend.pid" ] && kill -0 "$(cat "$PID_DIR/frontend.pid")" 2>/dev/null; then
+    echo "frontend    already running on :3001 (left as is)"; return 0
+  fi
   stop_one "$PID_DIR/frontend.pid" frontend
   [ -d "$ROOT/frontend/node_modules" ] || (cd "$ROOT/frontend" && npm install --silent)
   (cd "$ROOT/frontend" && NEXT_PUBLIC_ROOM_BACKEND="${ROOM_BACKEND:-memory}" \
@@ -130,6 +141,7 @@ case "$cmd" in
       OPS_TOKEN="$(python3 -c 'import secrets; print(secrets.token_hex(8))')"; export OPS_TOKEN
       echo "OPS_TOKEN not in .env; generated one for this run (add OPS_TOKEN=$OPS_TOKEN to .env to keep it)."
     fi
+    [ "${DEMO_MODE:-0}" = "1" ] || echo "note        DEMO_MODE is not 1 in .env: the mutate attack and the tamper button will be off (set DEMO_MODE=1 for the table demo)"
     start_kernel
     if [ "${ROOM_BACKEND:-spacetime}" = "spacetime" ]; then
       start_spacetime
