@@ -134,8 +134,10 @@ case "$cmd" in
     start_frontend
     LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || echo "<laptop-ip>")"
     echo
-    echo "ops token:  $OPS_TOKEN   (paste into /ops)"
-    echo "phones:     http://$LAN_IP:3001/play?room=DEMO"
+    echo "ops token:  $OPS_TOKEN"
+    echo "board:      http://localhost:3001/board?room=DEMO&token=$OPS_TOKEN   (projector; token unlocks the attack panel)"
+    echo "ops:        http://localhost:3001/ops?token=$OPS_TOKEN"
+    echo "phones:     http://$LAN_IP:3001/play?room=DEMO   (never share the token URL with players)"
     echo "stop with:  scripts/dev.sh stop"
     ;;
   *)
