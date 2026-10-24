@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.spacetimedb-token
+.identity
+.identity.hex
+.attacker-token
