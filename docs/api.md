@@ -2,14 +2,23 @@
 
 All responses JSON. All state changes append an audit event. Errors never leak rule internals to attacker-facing routes.
 
+## Credentials
+
+- `OPS_TOKEN` (env). When set, operator routes need header `X-Ops-Token`: attest with BANK_REVIEW or CO_APPROVER, `/certificate`, `/release`, `/mutate`, `/deny`, every `/attack/*`, `/audit/tamper`, `/rooms/{room}/reset`, `POST /payments` bodies that carry `account_context` or `conversation`, and the room `board`/`ops` views (`/rooms/{room}/snapshot?role=` and `/ws?role=`; browsers pass `?token=`). Missing or wrong → 401 `{refused: true, reason: "ops token required"}`. CUSTOMER_CHECKIN attest and the `attacker` role never need it. When unset, routes are open (local dev); `/health.ops_token` says `set|unset`.
+- `BRIDGE_TOKEN` (env, falls back to `OPS_TOKEN`). When set, the bridge's JSON `POST /rooms/{room}/turns` needs `X-Bridge-Token` (or `X-Ops-Token`).
+- Error shapes: `Refusal` → 409 `{refused: true, invariant, text}`; unknown id → 404 `{error: "payment not found", key}`; bad patch → 400; rail failure → 502 `{refused: true, invariant: "RAIL_FAILED"}` (release rolled back, certificate still valid).
+
 ## Payments
 
 `POST /payments`
-body `{account_id, amount_cents, currency, beneficiary: {name, account_ref, is_new}, rail: WIRE|ACH|ZELLE|CARD|CRYPTO, conversation_id}`
-→ `{id, state: "PENDING_REVIEW", fingerprint, decision: {outcome: ALLOW|HOLD|DENY, rule_ids[], signals[]}}`
+body `{account_id, amount_cents, currency, beneficiary: {name, account_ref, is_new}, rail: WIRE|ACH|ZELLE|CARD|CRYPTO, conversation_id, conversation?: [{id, speaker, text}], account_context?: {baseline_90d_cents, known_billers[], prior_payees[], mule_list[], known_biller_cap_cents}}`
+→ `{id, state, fingerprint, decision: {outcome: ALLOW|HOLD|DENY, rule_ids[], signals[]}, ...full record}`
+Context and transcript: explicit body (ops token when set) > the room named by `conversation_id` (`room_DEMO`) > the default L-01 context with no transcript.
 (DRAFT → PENDING_REVIEW happens inside this call and is audited as `ENTERED_REVIEW`; `SUBMITTED` in the audit log always means money moved. Extractor + policy run synchronously, fail closed to HOLD on any error or timeout > 8s.)
 
-`GET /payments/{id}` → full record incl. `state, fingerprint, attestations[], certificates[], history[]`
+`GET /payments?limit=100` → `{payments: [full records]}` newest first (the /ops queue).
+
+`GET /payments/{id}` → full record incl. `state, fingerprint, decision, attestations[], certificates[] (nonce redacted), history[], last_refusal`
 
 `POST /payments/{id}/attest`
 body `{actor_id, capability: CUSTOMER_CHECKIN|CO_APPROVER|BANK_REVIEW, note?}`
@@ -31,18 +40,20 @@ body partial payment → new fingerprint; all attestations and certificates void
 ## Rooms and turns (called by bridge)
 
 `POST /rooms/{room_id}/turns`
-body `{turn_id, player_id, text, audio_url?}`
+JSON body `{turn_id, player_id, text, audio_url?}` (bridge; `X-Bridge-Token` when set)
 → `{margaret_text, margaret_audio_url, persuaded: bool, payment_id?, stage: 10|40|60|70|90|100, outcome?: {decision, rule_ids[], refusal?}}`
+Form body `text` and/or `audio` (push-to-talk player; audio goes through STT) → same shape, but `outcome` is the public one: `{decision, refusal}`, no rule ids.
+`text` is at most 400 chars (same as the SpacetimeDB reducer). Room ids are 3 to 16 of `[A-Z0-9-]`, else 400. A payee name resolves to an account_ref only through the room's payee directory (exact lowercased display name of a prior payee: Bay Roofing, PG&E, Comcast, Priya); any other name mints `ext_new_<sha8>`, so a typed name can never borrow a prior payee's history.
 
-`POST /rooms/{room_id}/reset` → fresh Margaret, balance restored.
+`POST /rooms/{room_id}/reset` (operator) → fresh Margaret, balance restored, the room's open payment cancelled → `{ok, room_id, persuasion, balance_cents, cancelled_payment_id}`.
 
 ## Attack panel
 
 `POST /attack/inject` runs the labeled compromised-extractor fixture (`fixtures/compromised_extractor.json`) through policy → shows HOLD and why.
-`POST /attack/mutate` → creates, attests, certifies, mutates, tries release → I2 refusal.
+`POST /attack/mutate` → creates, attests, certifies, mutates, tries release → I2 refusal. Gated by `DEMO_MODE` like `/payments/{id}/mutate`.
 `POST /attack/replay` → release twice with same certificate → I3 refusal.
 `POST /attack/self-approve` → Priya attests to payment where she is beneficiary → I5 refusal.
-Each returns `{steps[], refused: true, invariant, text}`.
+Each returns `{steps[], refused: true, invariant, text}`, broadcasts an `attack` WS event, and cancels any payment it created that is still pre-settlement (nothing certifiable is left in the ops queue). All four are operator routes (ops token when set).
 
 ## Audit
 
@@ -53,11 +64,11 @@ Each returns `{steps[], refused: true, invariant, text}`.
 ## Eval
 
 `GET /eval/results` → latest `scripts/eval.py` output: `{unauthorized_releases, legit_completed, legit_total, scam_total, avg_friction_steps, cases[]}`
-`GET /health` → `{ok, mode: {extractor: real|mock, tts: real|mock, nessie: real|mock, room: spacetime|memory}, policy_version}`
+`GET /health` → `{ok, mode: {extractor, margaret, nessie, tts, stt: real|mock, room: spacetime|memory}, policy_version, demo_mode, ops_token: set|unset}`
 
 ## WebSocket `/ws`
 
-Server pushes `{type: "payment", payment_id, state, fingerprint, reasons[], last_refusal}` and `{type: "margaret", room_id, text, audio_url, persuaded}` and `{type: "attack", name, invariant}`.
+Query `room=&role=attacker|board|ops&player_id=&token=`. Server pushes `{type: "payment", payment_id, state, fingerprint, reasons[], last_refusal, amount_cents, beneficiary: {name, account_ref}, rail}` and `{type: "attack", name, invariant}` to board and ops sockets only; `{type: "margaret", room_id, text, audio_url, persuaded}` to sockets of that room (attackers included); `{type: "room", snapshot}` on every room change. Attacker sockets never receive payment or attack events.
 
 ## Policy YAML shape (`backend/kernel/policy/v1.yaml`)
 

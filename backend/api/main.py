@@ -75,6 +75,11 @@ def cache_counts(env: Mapping[str, str]) -> dict[str, int]:
     }
 
 
+def _authorize_room_role(role: str, token: str | None) -> bool:
+    """Board and ops room views need the ops token when one is configured."""
+    return role == "attacker" or deps.ops_ok(token)
+
+
 def create_app() -> FastAPI:
     bus_ref: list[EventBus] = []
     hub = RoomHub(taker=SessionTurnTaker(bus_ref), audit=KernelAuditTail())
@@ -145,11 +150,9 @@ def create_app() -> FastAPI:
             status_code=502,
         )
 
-    @app.exception_handler(KeyError)
-    async def _missing(_: Request, exc: KeyError) -> JSONResponse:
-        return JSONResponse(
-            {"error": "not found", "key": str(exc.args[0]) if exc.args else ""}, 404
-        )
+    @app.exception_handler(deps.NotFound)
+    async def _missing(_: Request, exc: deps.NotFound) -> JSONResponse:
+        return JSONResponse({"error": f"{exc.what} not found", "key": exc.key}, status_code=404)
 
     @app.exception_handler(ValueError)
     async def _bad(_: Request, exc: ValueError) -> JSONResponse:
@@ -163,7 +166,7 @@ def create_app() -> FastAPI:
     app.include_router(audit.router)
     app.include_router(evalres.router)
     app.include_router(voice_router)
-    app.include_router(make_router(hub))
+    app.include_router(make_router(hub, authorize=_authorize_room_role))
 
     @app.get("/health")
     def health() -> dict[str, Any]:

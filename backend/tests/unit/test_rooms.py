@@ -20,8 +20,10 @@ from kernel.rooms import (
     draft_to_payment_in,
     load_default_context,
     load_shared_evidence,
+    mint_ref,
+    payee_directory,
     public_outcome,
-    slug,
+    resolve_ref,
     stage_for,
 )
 from kernel.service import Kernel
@@ -80,10 +82,39 @@ def test_stage_table(persuaded: bool, state: State | None, stage: int) -> None:
     assert stage_for(persuaded, p) == stage
 
 
-def test_slug() -> None:
-    assert slug("Bail Bonds") == "bail_bonds"
-    assert slug("  US Treasury-Recovery Unit! ") == "us_treasury_recovery_unit"
-    assert slug("???") == "unknown"
+def test_payee_directory_and_minting() -> None:
+    ctx = load_default_context()
+    d = payee_directory(ctx)
+    assert d == {
+        "bay roofing": "ext_bay_roofing",
+        "pg&e": "ext_pge",
+        "comcast": "ext_comcast",
+        "priya": "ext_priya",
+    }
+    assert resolve_ref("  Bay Roofing ", d) == "ext_bay_roofing"
+    assert resolve_ref("BAY ROOFING", d) == "ext_bay_roofing"
+    minted = resolve_ref("Bail Bonds", d)
+    assert minted.startswith("ext_new_") and len(minted) == len("ext_new_") + 8
+    assert minted == mint_ref("bail bonds") == resolve_ref("bail bonds", d)
+    assert mint_ref("Rosa") != mint_ref("Bay Roofing")
+    # A pair whose ref is not a prior payee is dropped from the directory.
+    assert payee_directory(ctx, [("Ghost", "ext_ghost")]) == {}
+
+
+def test_room_payee_name_cannot_mint_known_ref(store: SessionStore) -> None:
+    """Typing a prior payee's nickname does not borrow its history (review finding)."""
+    room = store.room("demo")
+    for name in ("Rosa", "rosa", "ext_rosa", "Bridge Club", "bay_roofing", "Bay Roofing Inc"):
+        p = draft_to_payment_in(
+            DraftPayment(amount_cents=800_000, payee_name=name, rail=Rail.ACH), room
+        )
+        assert p.beneficiary.account_ref.startswith("ext_new_"), name
+        assert p.beneficiary.account_ref not in room.ctx.prior_payees
+        assert p.beneficiary.is_new is True
+    known = draft_to_payment_in(
+        DraftPayment(amount_cents=800_000, payee_name="Bay Roofing", rail=Rail.ACH), room
+    )
+    assert known.beneficiary.account_ref == "ext_bay_roofing" and not known.beneficiary.is_new
 
 
 def test_draft_to_payment_in_known_and_new(store: SessionStore) -> None:
@@ -136,7 +167,7 @@ def test_warm_fear_script_reaches_held_payment(store: SessionStore, kernel: Kern
     assert last.public_outcome == {"decision": "HOLD", "refusal": None}
     rec = kernel.get(last.payment_id)
     assert rec.payment.state is State.HELD
-    assert rec.payment.beneficiary.account_ref == "ext_bail_bonds"
+    assert rec.payment.beneficiary.account_ref == mint_ref("Bail Bonds")
     assert rec.payment.beneficiary.is_new and rec.payment.rail is Rail.WIRE
     assert rec.payment.amount_cents == 500_000
     # The decision came from decide(): extractor signals cite real room evidence ids.
@@ -190,6 +221,14 @@ class _DraftingMargaret:
         )
 
 
+class _SilentMargaret:
+    name = "silent"
+    is_mock = True
+
+    def reply(self, history: object, player_text: str, persuasion: float) -> MargaretTurn:
+        return MargaretTurn(reply="Mm-hm.", persuasion=0.1, draft_payment=None)
+
+
 def test_known_biller_draft_is_allowed(kernel: Kernel) -> None:
     store = SessionStore(kernel, _DraftingMargaret(), default_ctx=load_default_context())
     r = store.take_turn("demo", "t1", "p", "Hi Margaret, it's Tom from Bay Roofing, $8,000.")
@@ -223,13 +262,40 @@ def test_tts_budget(kernel: Kernel) -> None:
         tts=_SlowTTS(),
         tts_budget_s=0.05,
     )
-    assert slow.take_turn("a", "t", "p", "hello").margaret_audio_url is None
+    assert slow.take_turn("aaa", "t", "p", "hello").margaret_audio_url is None
     fast = SessionStore(kernel, MockMargaret(), default_ctx=load_default_context(), tts=_FastTTS())
     assert (
-        fast.take_turn("b", "t", "p", "hello").margaret_audio_url == "/audio/" + "b" * 64 + ".wav"
+        fast.take_turn("bbb", "t", "p", "hello").margaret_audio_url == "/audio/" + "b" * 64 + ".wav"
     )
 
 
 def test_room_model_defaults() -> None:
     r = Room(id="X", ctx=load_default_context())
     assert r.persuasion == START_PERSUASION and r.turn_count == 0 and r.payment_id is None
+
+
+def test_normalize_uses_room_code_rule(store: SessionStore) -> None:
+    from kernel.room_memory import RoomError
+
+    assert store.room("demo").id == "DEMO"
+    for bad in ("", "ab", "x" * 17, "bad code", "room_1"):
+        with pytest.raises(RoomError):
+            store.room(bad)
+
+
+def test_open_payment_and_balance_decrement(kernel: Kernel) -> None:
+    store = SessionStore(kernel, _DraftingMargaret(), default_ctx=load_default_context())
+    r = store.take_turn("demo", "t1", "p", "Hi, it's Tom from Bay Roofing, $8,000.")
+    assert r.payment_id is not None and store.open_payment("demo") is not None
+    cert = kernel.issue_certificate(r.payment_id, "ops_1", Capability.BANK_REVIEW)
+    kernel.release(r.payment_id, cert.id, cert.nonce)
+    assert store.open_payment("demo") is None
+    store.margaret = _SilentMargaret()  # no new draft: the settled payment stays current
+    after = store.take_turn("demo", "t2", "p", "Thanks.")
+    assert after.stage == 100
+    room = store.room("demo")
+    assert room.balance_cents == START_BALANCE_CENTS - 800_000
+    store.take_turn("demo", "t3", "p", "Bye.")
+    assert store.room("demo").balance_cents == START_BALANCE_CENTS - 800_000  # once only
+    store.close()
+    store.close()  # idempotent

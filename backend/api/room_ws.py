@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Protocol
 
 from fastapi import APIRouter, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
@@ -30,7 +30,12 @@ from kernel.room_memory import RoomError, RoomSnapshot, RoomStore, SnapshotRole,
 
 log = logging.getLogger("second_key.room")
 
-TURN_TIMEOUT_S = 8.0
+# Real-mode budget: Margaret 12 s + extractor 8 s + TTS 4 s + 1 s slack.
+MARGARET_BUDGET_S = 12.0
+EXTRACTOR_BUDGET_S = 8.0
+TTS_BUDGET_S = 4.0
+TURN_TIMEOUT_S = MARGARET_BUDGET_S + EXTRACTOR_BUDGET_S + TTS_BUDGET_S + 1.0
+ATTACKER_EVENT_TYPES = frozenset({"room", "margaret"})
 FAIL_CLOSED_REFUSAL = "kernel unavailable, fail closed"
 STAGES = {0, 10, 40, 60, 70, 90, 100}
 DECISIONS = {"ALLOW", "HOLD", "DENY", "REFUSED", "NONE"}
@@ -283,11 +288,19 @@ class RoomHub:
             sub.queue.put_nowait(self._room_message(sub))
 
     def broadcast_event(self, event: Mapping[str, Any]) -> None:
-        """Relay a kernel event ({type: payment|margaret|attack, ...}) to all sockets."""
+        """Relay a kernel event ({type: payment|margaret|attack, ...}) to the sockets allowed
+        to see it. Attacker sockets get only `room` and `margaret` events, and `margaret` only
+        for their own room; payment and attack events (rule ids, fingerprints, refusals) go to
+        board and ops sockets only."""
         room_id = event.get("room_id")
+        kind = str(event.get("type", ""))
         for sub in list(self._subs):
-            if room_id is None or sub.room_id == room_id:
-                sub.queue.put_nowait(dict(event))
+            if sub.role == "attacker":
+                if kind not in ATTACKER_EVENT_TYPES or room_id != sub.room_id:
+                    continue
+            elif room_id is not None and sub.room_id != room_id:
+                continue
+            sub.queue.put_nowait(dict(event))
 
     def _add(self, sub: _Subscriber) -> None:
         self._subs.add(sub)
@@ -326,8 +339,21 @@ def _http(e: RoomError) -> HTTPException:
     return HTTPException(status_code=status, detail={"code": e.code, "message": e.message})
 
 
-def make_router(hub: RoomHub) -> APIRouter:
+Authorizer = Callable[[str, str | None], bool]
+
+
+def allow_all(role: str, token: str | None) -> bool:
+    return True
+
+
+def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
+    """`authorize(role, token)` gates the board and ops views: the token comes from the
+    `X-Ops-Token` header or the `?token=` query (WebSockets cannot set headers in browsers).
+    The attacker role must never need a token."""
     router = APIRouter(tags=["room"])
+
+    def _check(role: str, header: str | None, query: str | None) -> bool:
+        return role == "attacker" or authorize(role, header or query)
 
     @router.post("/rooms/{room}/join")
     def join(room: str, body: JoinBody) -> dict[str, str]:
@@ -361,7 +387,13 @@ def make_router(hub: RoomHub) -> APIRouter:
         room: str,
         role: Annotated[SnapshotRole, Query()] = "board",
         player_id: Annotated[str | None, Query()] = None,
+        token: Annotated[str | None, Query()] = None,
+        x_ops_token: Annotated[str | None, Header()] = None,
     ) -> dict[str, Any]:
+        if not _check(role, x_ops_token, token):
+            raise HTTPException(
+                status_code=401, detail={"code": "NOT_OPERATOR", "message": "ops token required"}
+            )
         try:
             room_id = RoomStore.normalize_code(room)
         except RoomError as e:
@@ -375,8 +407,15 @@ def make_router(hub: RoomHub) -> APIRouter:
         room: Annotated[str, Query()] = "DEMO",
         role: Annotated[SnapshotRole, Query()] = "board",
         player_id: Annotated[str | None, Query()] = None,
+        token: Annotated[str | None, Query()] = None,
     ) -> None:
         await websocket.accept()
+        if not _check(role, websocket.headers.get("x-ops-token"), token):
+            await websocket.send_json(
+                {"type": "error", "code": "NOT_OPERATOR", "message": "ops token required"}
+            )
+            await websocket.close(code=4401)
+            return
         try:
             room_id = RoomStore.normalize_code(room)
         except RoomError as e:

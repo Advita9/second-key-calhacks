@@ -103,7 +103,8 @@ class NessieClient:
             raise RailError("nessie: unauthorized (401)")
         if r.status_code == 404:
             raise RailError(f"nessie: not found (404) {method} {path}")
-        if r.status_code >= 400:
+        if not 200 <= r.status_code < 300:
+            # Anything that is not a 2xx (redirects included) is a failure; never follow or guess.
             raise RailError(f"nessie: {method} {path} -> {r.status_code} {_short(r.text)}")
         if not r.content:
             return None
@@ -453,5 +454,8 @@ def build_rail(env: Mapping[str, str]) -> tuple[NessieRail, str]:
         base_url = "https://" + base_url[len("http://") :]
     cache_override = env.get("NESSIE_CACHE_PATH", "").strip()
     cache_path = Path(cache_override) if cache_override else default_cache_path()
+    # httpx logs every request URL at INFO and the URL carries ?key=; keep it quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
     log.info("nessie.mode", extra={"mode": "real", "base_url": base_url})
     return NessieRail(NessieClient(base_url=base_url, key=key), cache_path=cache_path), "real"

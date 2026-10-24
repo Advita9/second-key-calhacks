@@ -244,7 +244,7 @@ def test_mutate_and_tamper_404_when_demo_off(
 def test_ops_token_required_when_set(env: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
     tok = "ops-secret-123"
     with make_client(monkeypatch, OPS_TOKEN=tok) as c:
-        p = create(c, scenario_a_body())
+        p = create(c, scenario_a_body(), **{"X-Ops-Token": tok})
         attest = f"/payments/{p['id']}/attest"
         # BANK_REVIEW without the header: 401 and nothing changes.
         r = c.post(attest, json={"actor_id": "ops_1", "capability": "BANK_REVIEW"})
@@ -302,3 +302,43 @@ def test_list_payments_newest_first(client: TestClient) -> None:
     b = create(client, scenario_b_body())["id"]
     ids = [p["id"] for p in client.get("/payments").json()["payments"]]
     assert ids[:2] == [b, a]
+
+
+def test_post_payments_account_context_requires_ops_token_when_set(
+    env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tok = "ops-secret-456"
+    with make_client(monkeypatch, OPS_TOKEN=tok) as c:
+        # A caller-supplied context (empty mule list) or transcript steers the decision.
+        r = c.post("/payments", json=scenario_a_body())
+        assert r.status_code == 401 and r.json()["refused"] is True
+        body = scenario_b_body()
+        body.pop("account_context")
+        r = c.post("/payments", json=body)  # conversation alone also needs the token
+        assert r.status_code == 401
+        body.pop("conversation")
+        r = c.post("/payments", json=body)  # plain api.md body: open, default context
+        assert r.status_code == 200 and r.json()["decision"]["outcome"] == "ALLOW"
+        r = c.post("/payments", json=scenario_a_body(), headers={"X-Ops-Token": tok})
+        assert r.status_code == 200 and r.json()["state"] == "HELD"
+        assert c.get("/payments").json()["payments"][0]["id"] == r.json()["id"]
+    deps.reset()
+
+
+def test_unknown_payment_is_404_on_every_route(client: TestClient) -> None:
+    body = {"actor_id": "x", "capability": "CUSTOMER_CHECKIN", "certificate_id": "c", "nonce": "n"}
+    for path in ("attest", "certificate", "release", "mutate", "deny"):
+        r = client.post(f"/payments/pay_nope/{path}", json={**body, "amount_cents": 5})
+        assert r.status_code == 404, (path, r.text)
+        assert r.json() == {"error": "payment not found", "key": "pay_nope"}
+
+
+def test_huge_or_bad_amounts_are_422_and_never_submit(client: TestClient) -> None:
+    for amt in (2**63, 2**64, 10**13, 0, -1, 1.5, "1e9"):
+        r = client.post("/payments", json={**scenario_b_body(), "amount_cents": amt})
+        assert r.status_code == 422, (amt, r.status_code)
+    assert client.get("/payments").json()["payments"] == []
+    pid, _ = allow_and_certify(client)
+    r = client.post(f"/payments/{pid}/mutate", json={"amount_cents": 2**63})
+    assert r.status_code == 422
+    assert client.get(f"/payments/{pid}").json()["amount_cents"] == 800_000

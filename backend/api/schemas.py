@@ -17,6 +17,9 @@ from kernel.llm.types import EvidenceItem
 from kernel.models import AccountContext, Attestation, Capability, Certificate, PaymentIn
 from kernel.service import PaymentRecord
 
+MAX_TURN_CHARS = 400  # same cap as the SpacetimeDB submit_turn reducer
+MAX_AMOUNT_CENTS = 1_000_000_000_000  # $10B: far above any demo amount, well inside SQLite INTEGER
+
 
 class Lax(BaseModel):
     model_config = ConfigDict(strict=False, extra="ignore")
@@ -50,7 +53,7 @@ class AccountContextIn(Lax):
 
 class PaymentCreate(Lax):
     account_id: str = Field(default="acc_margaret", min_length=1, max_length=64)
-    amount_cents: int = Field(gt=0)
+    amount_cents: int = Field(gt=0, le=MAX_AMOUNT_CENTS)
     currency: str = Field(default="USD", min_length=3, max_length=3)
     beneficiary: BeneficiaryIn
     rail: str
@@ -93,7 +96,7 @@ class MutateIn(Lax):
     """Partial PaymentIn. Only the fields present become the patch."""
 
     account_id: str | None = None
-    amount_cents: int | None = None
+    amount_cents: int | None = Field(default=None, gt=0, le=MAX_AMOUNT_CENTS)
     currency: str | None = None
     beneficiary: dict[str, Any] | None = None
     rail: str | None = None
@@ -116,7 +119,7 @@ class DenyIn(Lax):
 class TurnIn(Lax):
     turn_id: str | int
     player_id: str = Field(min_length=1, max_length=128)
-    text: str = Field(max_length=4000)
+    text: str = Field(max_length=MAX_TURN_CHARS)
     audio_url: str | None = None
 
 

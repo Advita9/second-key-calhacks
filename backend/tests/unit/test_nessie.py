@@ -216,3 +216,39 @@ def test_recorded_withdrawal_body_is_integer_dollars() -> None:
     assert req["amount"] == 1 and isinstance(req["amount"], int)
     assert req["medium"] == "balance" and req["status"] == "completed"
     assert req["description"].startswith("second-key ") and req["description"].endswith("c")
+
+
+@pytest.mark.parametrize("status", [301, 302, 204, 500, 503])
+def test_nessie_non_2xx_is_rail_error(status: int) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if status == 204:
+            return httpx.Response(204)
+        return httpx.Response(status, headers={"location": "https://elsewhere"}, text="moved")
+
+    c = NessieClient(key="k", transport=httpx.MockTransport(handler))
+    if status == 204:
+        # Empty 2xx is not an error by itself, but a create without an id is.
+        with pytest.raises(RailError):
+            c.withdraw("acc", 1, "d")
+        return
+    with pytest.raises(RailError, match=str(status)):
+        c.get_account("acc")
+
+
+def test_httpx_log_never_contains_key(caplog: pytest.LogCaptureFixture) -> None:
+    import logging
+
+    key = "super-secret-nessie-key"
+    logging.getLogger("httpx").setLevel(logging.INFO)
+    rail, mode = build_rail({"NESSIE_API_KEY": key, "NESSIE_BASE_URL": "https://example.test"})
+    assert mode == "real"
+    assert logging.getLogger("httpx").level >= logging.WARNING
+    assert logging.getLogger("httpcore").level >= logging.WARNING
+    # Drive a request through a client with the same key and the quietened loggers.
+    t = MockNessieTransport(key=key)
+    c = NessieClient(key=key, transport=t)
+    with caplog.at_level(logging.DEBUG):
+        c.get_account(MARGARET_ACCOUNT_REF)
+        with pytest.raises(RailError):
+            c.get_account("acc_missing")
+    assert key not in caplog.text

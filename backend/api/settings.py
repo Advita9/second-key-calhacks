@@ -46,6 +46,7 @@ class Settings:
     env: Mapping[str, str]
     demo_mode: bool
     ops_token: str
+    bridge_token: str  # BRIDGE_TOKEN, falling back to OPS_TOKEN
     kernel_db: str
     policy_path: Path
     eval_results_path: Path
@@ -75,6 +76,7 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
         env=env,
         demo_mode=truthy(env.get("DEMO_MODE")),
         ops_token=env.get("OPS_TOKEN", "").strip(),
+        bridge_token=env.get("BRIDGE_TOKEN", "").strip() or env.get("OPS_TOKEN", "").strip(),
         kernel_db=db,
         policy_path=Path(policy) if policy else DEFAULT_POLICY,
         eval_results_path=Path(eval_path) if eval_path else DEFAULT_EVAL_RESULTS,

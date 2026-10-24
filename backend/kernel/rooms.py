@@ -14,9 +14,9 @@ still returns with `audio_url` None.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
-import re
 import threading
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -36,6 +36,7 @@ from kernel.models import (
     Refusal,
     State,
 )
+from kernel.room_memory import RoomStore
 from kernel.service import Kernel
 from kernel.voice.cache import audio_url
 from kernel.voice.types import TTS
@@ -49,8 +50,17 @@ TTS_BUDGET_S = 4.0
 DEFAULT_VOICE_ID = "margaret"
 REFERENCE_SPEAKER = "reference"
 FAIL_CLOSED_TEXT = "payment could not be created, fail closed"
-_OPEN_STATES = frozenset({State.DRAFT, State.PENDING_REVIEW, State.HELD, State.ELIGIBLE_TO_SUBMIT})
-_SLUG = re.compile(r"[^a-z0-9]+")
+OPEN_STATES = frozenset({State.DRAFT, State.PENDING_REVIEW, State.HELD, State.ELIGIBLE_TO_SUBMIT})
+NEW_REF_PREFIX = "ext_new_"
+# The only display names that resolve to a prior payee ref in the room. Exact match on the
+# lowercased name; everything else mints a fresh ref so a typed name can never borrow a known
+# payee's history ("send $8,000 to Rosa" does not become ext_rosa).
+DEFAULT_PAYEE_PAIRS: tuple[tuple[str, str], ...] = (
+    ("Bay Roofing", "ext_bay_roofing"),
+    ("PG&E", "ext_pge"),
+    ("Comcast", "ext_comcast"),
+    ("Priya", "ext_priya"),
+)
 
 
 def repo_root() -> Path:
@@ -64,6 +74,23 @@ def load_default_context(path: Path | None = None) -> AccountContext:
     p = path or repo_root() / "fixtures" / "cases" / "L-01.json"
     raw = json.loads(p.read_text("utf-8"))
     return AccountContext.model_validate(raw["account_context"])
+
+
+def payee_directory(
+    ctx: AccountContext, pairs: Sequence[tuple[str, str]] = DEFAULT_PAYEE_PAIRS
+) -> dict[str, str]:
+    """Lowercased display name -> account_ref, only for refs that are prior payees in `ctx`."""
+    return {name.strip().lower(): ref for name, ref in pairs if ref in ctx.prior_payees}
+
+
+def mint_ref(name: str) -> str:
+    """Fresh ref for an unknown payee name: ext_new_ + sha256(name.lower())[:8]."""
+    digest = hashlib.sha256(name.strip().lower().encode("utf-8")).hexdigest()
+    return NEW_REF_PREFIX + digest[:8]
+
+
+def resolve_ref(name: str, directory: dict[str, str]) -> str:
+    return directory.get(name.strip().lower()) or mint_ref(name)
 
 
 def load_shared_evidence(path: Path | None = None) -> tuple[EvidenceItem, ...]:
@@ -85,9 +112,11 @@ class Room(BaseModel):
     history: list[EvidenceItem] = Field(default_factory=list)
     persuasion: float = Field(default=START_PERSUASION, ge=0.0, le=1.0)
     payment_id: str | None = None
-    balance_cents: int = START_BALANCE_CENTS
+    balance_cents: int = START_BALANCE_CENTS  # display only; decremented once per SUBMITTED
+    settled_payment_ids: list[str] = Field(default_factory=list)
     turn_count: int = 0
     ctx: AccountContext
+    payee_directory: dict[str, str] = Field(default_factory=dict)
 
 
 class TurnResult(BaseModel):
@@ -132,14 +161,10 @@ def stage_for(persuaded: bool, payment: Payment | None) -> int:
     return 60
 
 
-def slug(name: str) -> str:
-    s = _SLUG.sub("_", name.strip().lower()).strip("_")
-    return s[:40] or "unknown"
-
-
 def draft_to_payment_in(d: DraftPayment, room: Room) -> PaymentIn:
-    """A draft is a proposal. `is_new` comes from the room context, never from the model."""
-    ref = "ext_" + slug(d.payee_name)
+    """A draft is a proposal. The ref comes from the room's payee directory (exact name match)
+    or is freshly minted; `is_new` comes from the room context, never from the model."""
+    ref = resolve_ref(d.payee_name, room.payee_directory)
     return PaymentIn(
         account_id=MARGARET_ACCOUNT_ID,
         amount_cents=d.amount_cents,
@@ -207,16 +232,24 @@ class SessionStore:
 
     @staticmethod
     def normalize(room_id: str) -> str:
-        return room_id.strip().upper() or "DEFAULT"
+        """Same rule as the room store (3 to 16 of [A-Z0-9-]); raises RoomError otherwise."""
+        return RoomStore.normalize_code(room_id)
+
+    def _new_room(self, rid: str) -> Room:
+        return Room(id=rid, ctx=self.default_ctx, payee_directory=payee_directory(self.default_ctx))
 
     def room(self, room_id: str) -> Room:
         rid = self.normalize(room_id)
         with self._lock:
             r = self._rooms.get(rid)
             if r is None:
-                r = Room(id=rid, ctx=self.default_ctx)
+                r = self._new_room(rid)
                 self._rooms[rid] = r
             return r
+
+    def close(self) -> None:
+        """Stop the TTS worker threads. Idempotent."""
+        self._tts_pool.shutdown(wait=False, cancel_futures=True)
 
     def rooms(self) -> list[Room]:
         with self._lock:
@@ -225,10 +258,15 @@ class SessionStore:
     def reset(self, room_id: str) -> Room:
         rid = self.normalize(room_id)
         with self._lock:
-            r = Room(id=rid, ctx=self.default_ctx)
+            r = self._new_room(rid)
             self._rooms[rid] = r
         log.info("room.reset", extra={"room_id": rid})
         return r
+
+    def open_payment(self, room_id: str) -> Payment | None:
+        """The room's payment if it is still pre-settlement, else None."""
+        p = self.current_payment(self.room(room_id))
+        return p if p is not None and p.state in OPEN_STATES else None
 
     def current_payment(self, room: Room) -> Payment | None:
         if room.payment_id is None:
@@ -257,7 +295,7 @@ class SessionStore:
             room.turn_count += 1
             transcript = tuple(room.history)
             payment = self.current_payment(room)
-            open_payment = payment is not None and payment.state in _OPEN_STATES
+            open_payment = payment is not None and payment.state in OPEN_STATES
 
         decision: Decision | None = None
         refusal: Refusal | None = None
@@ -284,6 +322,11 @@ class SessionStore:
             decision = self.kernel.get(payment.id).decision
 
         stage = stage_for(persuaded, payment)
+        if payment is not None and payment.state is State.SUBMITTED:
+            with self._lock:
+                if payment.id not in room.settled_payment_ids:
+                    room.settled_payment_ids.append(payment.id)
+                    room.balance_cents = max(0, room.balance_cents - payment.amount_cents)
         audio = self._synthesize(reply)
         result = TurnResult(
             room_id=room.id,

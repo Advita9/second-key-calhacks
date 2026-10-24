@@ -2,7 +2,7 @@
 
 All sync `def` routes: FastAPI runs them in the threadpool, so a 7 s extractor call in
 `create_payment` blocks one worker, not the loop. Refusals propagate as `Refusal` and the app
-handler turns them into 409 bodies.
+handler turns them into 409 bodies; unknown ids are `deps.NotFound` -> 404.
 """
 
 from __future__ import annotations
@@ -36,9 +36,7 @@ Bus = Annotated[EventBus, Depends(deps.get_bus)]
 OpsToken = deps.OpsHeader
 
 
-def _resolve(
-    body: PaymentCreate,
-) -> tuple[AccountContext, tuple[EvidenceItem, ...]]:
+def _resolve(body: PaymentCreate) -> tuple[AccountContext, tuple[EvidenceItem, ...]]:
     """Context and transcript for a new payment: explicit body > room named by
     conversation_id > defaults (L-01 context, empty transcript)."""
     sessions = deps.get_sessions()
@@ -46,9 +44,9 @@ def _resolve(
     conv: tuple[EvidenceItem, ...] | None = (
         tuple(e.to_item() for e in body.conversation) if body.conversation is not None else None
     )
-    room_key = body.conversation_id.removeprefix("room_").strip()
+    room_key = body.conversation_id.removeprefix("room_").strip().upper()
     if room_key and (ctx is None or conv is None):
-        room = next((r for r in sessions.rooms() if r.id == room_key.upper()), None)
+        room = next((r for r in sessions.rooms() if r.id == room_key), None)
         if room is not None:
             ctx = ctx or room.ctx
             conv = conv if conv is not None else tuple(room.history)
@@ -56,11 +54,15 @@ def _resolve(
 
 
 @router.post("/payments")
-def create_payment(body: PaymentCreate, bus: Bus) -> dict[str, Any]:
+def create_payment(body: PaymentCreate, bus: Bus, x_ops_token: OpsToken = None) -> dict[str, Any]:
+    # A caller-supplied context or transcript steers the decision; that is an operator or
+    # test privilege when an ops token is configured.
+    if body.account_context is not None or body.conversation is not None:
+        deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
     p_in = body.to_payment_in()
     ctx, conv = _resolve(body)
-    payment, decision = kernel.create_payment(p_in, ctx, conv)
+    payment, _ = kernel.create_payment(p_in, ctx, conv)
     deps.remember_context(payment.id, ctx)
     record = kernel.get(payment.id)
     bus.payment(record)
@@ -70,13 +72,12 @@ def create_payment(body: PaymentCreate, bus: Bus) -> dict[str, Any]:
 @router.get("/payments")
 def list_payments(limit: Annotated[int, Query(ge=1, le=500)] = 100) -> dict[str, Any]:
     """Not in docs/api.md; the /ops queue reads it. Newest first."""
-    records = deps.get_kernel().list_payments(limit)
-    return {"payments": [payment_dict(r) for r in records]}
+    return {"payments": [payment_dict(r) for r in deps.get_kernel().list_payments(limit)]}
 
 
 @router.get("/payments/{payment_id}")
 def get_payment(payment_id: str) -> dict[str, Any]:
-    return payment_dict(deps.get_kernel().get(payment_id))
+    return payment_dict(deps.load_record(payment_id))
 
 
 @router.post("/payments/{payment_id}/attest")
@@ -87,15 +88,15 @@ def attest(
     if deps.attest_needs_ops(cap):
         deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
+    deps.load_record(payment_id)
     try:
         kernel.attest(payment_id, body.actor_id, cap, body.note)
     finally:
-        _publish_if_exists(kernel, bus, payment_id)
+        _publish(kernel, bus, payment_id)
     record = kernel.get(payment_id)
     return {
         "state": record.payment.state.value,
         "fingerprint": record.payment.fingerprint,
-        "attestations": payment_dict(record)["attestations"],
         **payment_dict(record),
     }
 
@@ -106,10 +107,11 @@ def certificate(
 ) -> dict[str, Any]:
     deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
+    deps.load_record(payment_id)
     try:
         cert = kernel.issue_certificate(payment_id, body.actor_id, body.cap())
     finally:
-        _publish_if_exists(kernel, bus, payment_id)
+        _publish(kernel, bus, payment_id)
     return {
         "certificate": {
             "id": cert.id,
@@ -128,10 +130,11 @@ def release(
 ) -> dict[str, Any]:
     deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
+    deps.load_record(payment_id)
     try:
         payment = kernel.release(payment_id, body.certificate_id, body.nonce)
     finally:
-        _publish_if_exists(kernel, bus, payment_id)
+        _publish(kernel, bus, payment_id)
     return {
         "state": payment.state.value,
         "nessie_transfer_id": payment.nessie_transfer_id,
@@ -148,6 +151,7 @@ def mutate(
         raise HTTPException(status_code=404, detail="not found")
     deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
+    deps.load_record(payment_id)
     ctx = body.account_context.to_ctx() if body.account_context else deps.context_for(payment_id)
     patch = body.patch()
     if not patch:
@@ -155,7 +159,7 @@ def mutate(
     try:
         kernel.mutate(payment_id, patch, ctx)
     finally:
-        _publish_if_exists(kernel, bus, payment_id)
+        _publish(kernel, bus, payment_id)
     deps.remember_context(payment_id, ctx)
     return payment_summary(kernel.get(payment_id))
 
@@ -166,16 +170,18 @@ def deny(payment_id: str, body: DenyIn, bus: Bus, x_ops_token: OpsToken = None) 
     is voided. DENIED and SUBMITTED are terminal and refuse."""
     deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
+    deps.load_record(payment_id)
     try:
         kernel.cancel(payment_id, body.actor_id, Capability.BANK_REVIEW, body.note)
     finally:
-        _publish_if_exists(kernel, bus, payment_id)
+        _publish(kernel, bus, payment_id)
     record = kernel.get(payment_id)
     return {"state": record.payment.state.value, **payment_dict(record)}
 
 
-def _publish_if_exists(kernel: Kernel, bus: EventBus, payment_id: str) -> None:
+def _publish(kernel: Kernel, bus: EventBus, payment_id: str) -> None:
+    """Best effort from `finally` blocks: never masks the kernel's own exception."""
     try:
         bus.payment(kernel.get(payment_id))
-    except KeyError:
-        return
+    except Exception as e:  # noqa: BLE001
+        log.warning("ws.payment.publish_failed", extra={"error": type(e).__name__})

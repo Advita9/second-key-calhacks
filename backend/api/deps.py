@@ -24,7 +24,7 @@ from kernel.models import AccountContext, Capability
 from kernel.nessie import build_rail
 from kernel.policy.engine import load_policy
 from kernel.rooms import SessionStore, load_default_context, load_shared_evidence
-from kernel.service import Kernel
+from kernel.service import Kernel, PaymentRecord
 from kernel.voice.factory import make_tts, voice_id, voice_mode
 
 log = logging.getLogger("second_key.api")
@@ -32,6 +32,15 @@ log = logging.getLogger("second_key.api")
 
 class OpsRefused(Exception):
     """The route needs the operator credential and the header is missing or wrong."""
+
+
+class NotFound(Exception):
+    """A payment (or other record) id that does not exist. Mapped to 404 by the app."""
+
+    def __init__(self, what: str, key: str) -> None:
+        self.what = what
+        self.key = key
+        super().__init__(f"{what} not found: {key}")
 
 
 @dataclass
@@ -54,6 +63,8 @@ def reset() -> None:
     with _lock:
         old = _state
         _state = _State()
+    if old.sessions is not None:
+        old.sessions.close()
     if old.kernel is not None:
         try:
             old.kernel.conn.close()
@@ -148,13 +159,39 @@ def context_for(payment_id: str) -> AccountContext:
 OpsHeader = Annotated[str | None, Header(alias="X-Ops-Token")]
 
 
+def _matches(token: str | None, expected: str) -> bool:
+    if not expected:
+        return True
+    return token is not None and secrets.compare_digest(token.encode(), expected.encode())
+
+
+def ops_ok(token: str | None) -> bool:
+    """True when OPS_TOKEN is unset or `token` equals it."""
+    return _matches(token, get_settings().ops_token)
+
+
+def bridge_ok(token: str | None) -> bool:
+    """True when neither BRIDGE_TOKEN nor OPS_TOKEN is set, or `token` matches BRIDGE_TOKEN."""
+    return _matches(token, get_settings().bridge_token)
+
+
 def check_ops(token: str | None) -> None:
     """Amendment 6: when OPS_TOKEN is set, operator routes need the matching header."""
-    expected = get_settings().ops_token
-    if not expected:
-        return
-    if token is None or not secrets.compare_digest(token.encode(), expected.encode()):
+    if not ops_ok(token):
         raise OpsRefused("ops token required")
+
+
+def check_bridge(token: str | None) -> None:
+    if not bridge_ok(token):
+        raise OpsRefused("bridge token required")
+
+
+def load_record(payment_id: str) -> PaymentRecord:
+    """The one place a missing payment id becomes `NotFound` (never a bare KeyError)."""
+    try:
+        return get_kernel().get(payment_id)
+    except KeyError as e:
+        raise NotFound("payment", payment_id) from e
 
 
 def ops_guard(x_ops_token: OpsHeader = None) -> None:

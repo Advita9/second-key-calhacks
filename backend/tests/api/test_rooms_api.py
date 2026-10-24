@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
+from api import deps
+from api.room_ws import TURN_TIMEOUT_S
+from tests.api.conftest import make_client
 from tests.unit.test_rooms import WARM_FEAR
 
 SHAPE = {"margaret_text", "margaret_audio_url", "persuaded", "payment_id", "stage", "outcome"}
@@ -73,6 +77,19 @@ def test_multipart_turn_uses_text_or_stt(client: TestClient) -> None:
     assert r.status_code == 200 and set(r.json()) == SHAPE
 
 
+def test_player_form_path_gets_public_outcome_only(client: TestClient) -> None:
+    for i, t in enumerate(WARM_FEAR[:-1]):
+        turn(client, t, i)
+    r = client.post(
+        "/rooms/DEMO/turns", data={"turn_id": "f", "player_id": "p", "text": WARM_FEAR[-1]}
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["stage"] == 70 and body["payment_id"]
+    assert body["outcome"] == {"decision": "HOLD", "refusal": None}
+    assert "rule_ids" not in body["outcome"] and "H-01" not in r.text
+
+
 def test_empty_turn_400(client: TestClient) -> None:
     r = client.post("/rooms/DEMO/turns", json={"turn_id": "1", "player_id": "p", "text": "  "})
     assert r.status_code == 400
@@ -99,3 +116,59 @@ def test_memory_room_path_uses_real_margaret(client: TestClient) -> None:
         time.sleep(0.05)
     assert snap["replies"] and snap["replies"][0]["text"]
     assert snap["myOutcomes"][0]["stage"] == 10
+
+
+def test_turns_route_limits(env: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
+    tok = "bridge-secret"
+    with make_client(monkeypatch, BRIDGE_TOKEN=tok) as c:
+        ok = {"turn_id": "1", "player_id": "p", "text": "hello"}
+        # Bridge JSON path needs the bridge token when set; form path never does.
+        assert c.post("/rooms/DEMO/turns", json=ok).status_code == 401
+        assert (
+            c.post("/rooms/DEMO/turns", json=ok, headers={"X-Ops-Token": "nope"}).status_code == 401
+        )
+        assert (
+            c.post("/rooms/DEMO/turns", json=ok, headers={"X-Bridge-Token": tok}).status_code == 200
+        )
+        assert c.post("/rooms/DEMO/turns", data=ok).status_code == 200
+        # 400 chars max on both paths.
+        long = {**ok, "text": "x" * 401}
+        assert (
+            c.post("/rooms/DEMO/turns", json=long, headers={"X-Bridge-Token": tok}).status_code
+            == 422
+        )
+        assert c.post("/rooms/DEMO/turns", data=long).status_code == 400
+        assert (
+            c.post(
+                "/rooms/DEMO/turns", json={**ok, "text": "y" * 400}, headers={"X-Bridge-Token": tok}
+            ).status_code
+            == 200
+        )
+        # Room code rule: 3 to 16 of [A-Z0-9-].
+        for bad in ("ab", "x" * 17, "bad%20code", "room_1"):
+            r = c.post(f"/rooms/{bad}/turns", json=ok, headers={"X-Bridge-Token": tok})
+            assert r.status_code == 400, bad
+        assert c.post("/rooms/ab/reset").status_code == 400
+    deps.reset()
+
+
+def test_hub_turn_timeout_covers_real_budgets() -> None:
+    # Margaret 12 s + extractor 8 s + TTS 4 s + slack.
+    assert TURN_TIMEOUT_S >= 12.0 + 8.0 + 4.0 + 1.0
+
+
+def test_reset_cancels_open_room_payment(client: TestClient) -> None:
+    last = [turn(client, t, i) for i, t in enumerate(WARM_FEAR)][-1]
+    pid = last["payment_id"]
+    assert pid and client.get(f"/payments/{pid}").json()["state"] == "HELD"
+    r = client.post("/rooms/DEMO/reset")
+    assert r.status_code == 200 and r.json()["cancelled_payment_id"] == pid
+    rec = client.get(f"/payments/{pid}").json()
+    assert rec["state"] == "CANCELLED"
+    assert any(h["kind"] == "CANCELLED" for h in rec["history"])
+    r = client.post(
+        f"/payments/{pid}/attest", json={"actor_id": "ops_1", "capability": "BANK_REVIEW"}
+    )
+    assert r.status_code == 409 and r.json()["invariant"] == "I1_NOT_ELIGIBLE"
+    # A second reset has nothing to cancel.
+    assert client.post("/rooms/DEMO/reset").json()["cancelled_payment_id"] is None
