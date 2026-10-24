@@ -1,7 +1,7 @@
-"""FOUND (open, final pass, tested at 48d821a): the sidecar anchor is a lower bound only. Rows
-APPENDED to the audit table while the kernel is down, with correct chain hashes, are not
-detected: `verify()` answers ok=True, anchor="ok", and the sidecar is silently advanced over
-the forged rows at the next commit.
+"""FOUND at 48d821a, then FIXED in b6b28cf (a longer table is now a mismatch; green as
+regressions): the sidecar anchor was a lower bound only. Rows APPENDED to the audit table while the
+kernel was down, with correct chain hashes, were not detected: `verify()` answered ok=True,
+anchor="ok", and the sidecar was silently advanced over the forged rows at the next commit.
 
 `AuditLog._check_anchor` compares the table to `<db>.head.json` like this:
 
@@ -25,7 +25,11 @@ anchor "ahead" (not "ok"), refuse `append` until `POST /audit/acknowledge`, and 
 acknowledgement record the adopted rows. Alternatively write the sidecar inside the
 transaction before COMMIT so the table can never be ahead of it.
 
-These tests assert the SECURE behaviour, so they are RED today.
+Fix landed (b6b28cf): `_check_anchor` treats extra rows as a mismatch, except exactly one
+row that chains correctly AND is timestamped after the sidecar's `updated_at` (the crash
+window). Residual, documented there and covered in test_attacks_final_pass.py: a forger
+who post-dates a single chained row fits that window; two rows never do. These tests
+assert the SECURE behaviour: RED at 48d821a, green since b6b28cf.
 """
 
 from __future__ import annotations

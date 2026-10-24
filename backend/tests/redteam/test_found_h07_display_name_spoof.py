@@ -1,6 +1,7 @@
-"""FOUND (open, final pass, tested at 48d821a): rule H-07 reads the attacker-controlled display
-name, so the S-05 shape (prior payee, person-to-person rail, over $1,000) is ALLOWed by A-01
-again as soon as the payee's display name is one of the known biller names.
+"""FOUND at 48d821a, then FIXED in b6b28cf (H-07 no longer reads any display name; green as
+regressions): rule H-07 read the attacker-controlled display name, so the S-05 shape (prior payee,
+person-to-person rail, over $1,000) was ALLOWed by A-01 again as soon as the payee's display name
+was one of the known biller names.
 
 H-07 was added in 02405d8 to close exactly this gap "on facts alone":
 
@@ -33,7 +34,9 @@ the biller refs in AccountContext (`known_biller_refs`) and define
 `name_on_biller_list` only when the ref is the one mapped to that name. Then re-run the 60
 fixtures; L-09 and L-39 are the ALLOW cases H-07 must keep ALLOWing.
 
-These tests assert the SECURE behaviour, so they are RED today.
+Fix landed (b6b28cf): `when: rail in [WIRE, ZELLE, CRYPTO] and amount_cents > 100000`, with
+`name_on_biller_list` demoted to display only; fixtures re-allowed where H-07 now fires
+(0136e9f). These tests assert the SECURE behaviour: RED at 48d821a, green since b6b28cf.
 """
 
 from __future__ import annotations
