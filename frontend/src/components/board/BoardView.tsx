@@ -161,7 +161,7 @@ export function BoardView() {
           <Scoreboard unauthorized={unauthorized} legit={legit} />
         </div>
       </section>
-      {needToken || room.status === "closed" ? (
+      {needToken || list.status === 401 || room.status === "closed" ? (
         <div className="flex items-center gap-3 rounded-lg border border-accent/60 bg-panel px-4 py-2 text-sm" role="alert" data-testid="token-notice">
           <span>Operator token missing or wrong. This kernel runs with OPS_TOKEN set. Paste it here or open the board with ?token=.</span>
           <Input

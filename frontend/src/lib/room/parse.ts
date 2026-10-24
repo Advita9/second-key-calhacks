@@ -45,8 +45,9 @@ export function parseSnapshot(v: unknown): RoomSnapshot {
           createdAt: s(pick(room, "createdAt", "created_at")),
         }
       : null,
+    // Attacker snapshots carry no identities (handles and stages only); id falls back to the handle.
     players: arr(r.players).map((p) => ({
-      id: s(pick(p, "id", "identity", "player_id")),
+      id: s(pick(p, "id", "identity", "player_id")) || s(p.handle),
       roomId: s(pick(p, "roomId", "room_id")),
       handle: s(p.handle),
       role: s(p.role, "attacker"),

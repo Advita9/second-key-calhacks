@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 
 const KERNEL = "http://localhost:8001";
+// The isolated kernel runs with OPS_TOKEN set (playwright.config.ts) so the gated reads are exercised.
+const OPS = "e2e-ops-token";
+const OPS_HEADERS = { "X-Ops-Token": OPS };
 const SHOTS = path.join(__dirname, "screenshots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
@@ -14,7 +17,7 @@ test.describe("board", () => {
   test.use({ viewport: { width: 1920, height: 1080 } });
 
   test("renders Margaret, live payment, leaderboard, scoreboard, attack panel, footer", async ({ page }) => {
-    await page.goto("/board");
+    await page.goto(`/board?token=${OPS}`);
     await expect(page.getByTestId("margaret-card")).toBeVisible();
     await expect(page.getByTestId("margaret-card")).toContainText("Margaret");
     await expect(page.getByTestId("margaret-card")).toContainText("Age 72");
@@ -32,7 +35,7 @@ test.describe("board", () => {
   });
 
   test("debrief shows the three rules and the tactic list", async ({ page }) => {
-    await page.goto("/board?debrief=1");
+    await page.goto(`/board?debrief=1&token=${OPS}`);
     const d = page.getByTestId("debrief");
     await expect(d).toBeVisible();
     await expect(d).toContainText("Slow it down.");
@@ -59,7 +62,7 @@ test.describe("board", () => {
   });
 
   test("attack panel: all four buttons show the refusal and invariant", async ({ page }) => {
-    await page.goto("/board");
+    await page.goto(`/board?token=${OPS}`);
     const cases: [string, RegExp][] = [
       ["mutate", /SETTLEMENT REFUSED · I2_FINGERPRINT/],
       ["replay", /SETTLEMENT REFUSED · I3_REPLAY/],
@@ -82,8 +85,20 @@ test.describe("board", () => {
   });
 
   test("fresh load seeds the live payment card from GET /payments", async ({ page }) => {
-    await page.goto("/board");
+    await page.goto(`/board?token=${OPS}`);
     await expect(page.getByTestId("live-payment").getByTestId("state-pill")).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("without the operator token the board shows the token notice when reads are gated", async ({ page, request }) => {
+    // Kernels that gate GET /payments with OPS_TOKEN answer 401 without the header.
+    const gated = (await request.get(`${KERNEL}/payments?limit=1`)).status() === 401;
+    await page.goto("/board");
+    if (gated) {
+      await expect(page.getByTestId("token-notice")).toBeVisible({ timeout: 15_000 });
+    } else {
+      await expect(page.getByTestId("live-payment").getByTestId("state-pill")).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId("token-notice")).toHaveCount(0);
+    }
   });
 });
 
@@ -156,13 +171,14 @@ test.describe("ops", () => {
       conversation: unknown[];
     };
     const created = await request.post(`${KERNEL}/payments`, {
+      headers: OPS_HEADERS,
       data: { ...s03.payment, conversation_id: "e2e_s03", conversation: s03.conversation, account_context: { ...s03.account_context, mule_list: [] } },
     });
     expect(created.ok()).toBeTruthy();
     const payment = (await created.json()) as { id: string; state: string };
     expect(payment.state).toBe("HELD");
 
-    await page.goto("/ops");
+    await page.goto(`/ops?token=${OPS}`);
     await expect(page.getByTestId("holds-queue")).toBeVisible();
     await expect(page.getByTestId("holds-queue")).toContainText("Holds queue");
     await expect(page.getByTestId("audit-list")).toBeVisible();
@@ -183,7 +199,7 @@ test.describe("ops", () => {
     await shot(page, "ops");
     await row.getByTestId("approve-button").click();
     await expect(row).toBeHidden({ timeout: 10_000 });
-    const after = (await (await request.get(`${KERNEL}/payments/${payment.id}`)).json()) as { state: string };
+    const after = (await (await request.get(`${KERNEL}/payments/${payment.id}`, { headers: OPS_HEADERS })).json()) as { state: string };
     expect(after.state).toBe("ELIGIBLE_TO_SUBMIT");
 
     // Payment history replay for the approved payment.

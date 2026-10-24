@@ -60,7 +60,8 @@ export class WsRoomClient implements RoomClient {
   private openSocket() {
     this.sock?.close();
     const params: Record<string, string> = { room: this.roomCode, role: this.role };
-    if (this.playerId) params.player_id = this.playerId;
+    if (this.playerId) params.player_id = this.playerId; // older kernels
+    if (this.role === "attacker" && this.playerToken) params.player_token = this.playerToken;
     this.sock = openKernelSocket(
       params,
       (m) => {
@@ -85,10 +86,9 @@ export class WsRoomClient implements RoomClient {
     const q = new URLSearchParams({ role: this.role });
     if (this.playerId) q.set("player_id", this.playerId);
     try {
-      const v = await kernelFetch<unknown>(`/rooms/${encodeURIComponent(this.roomCode)}/snapshot?${q}`, {
-        timeoutMs: 6000,
-        headers: isOpsRole(this.role) ? opsHeaders() : {},
-      });
+      const headers: Record<string, string> = isOpsRole(this.role) ? opsHeaders() : {};
+      if (this.role === "attacker" && this.playerToken) headers["X-Player-Token"] = this.playerToken;
+      const v = await kernelFetch<unknown>(`/rooms/${encodeURIComponent(this.roomCode)}/snapshot?${q}`, { timeoutMs: 6000, headers });
       this.push(parseSnapshot(v));
     } catch (e) {
       if (e instanceof KernelError && e.status === 401) {

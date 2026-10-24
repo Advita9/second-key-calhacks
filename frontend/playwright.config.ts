@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 // Both servers are started here because scripts/acceptance.sh starts nothing itself.
 // The smoke uses its own ports (kernel 8001, Next 3002) and its own build dir (.next-e2e) so it
 // never reuses a token-protected dev stack on 8000/3001 (SpacetimeDB owns 3000).
-const KERNEL_ENV = "KERNEL_DB=:memory: MOCK_EXTRACTOR=1 MOCK_MARGARET=1 ROOM_BACKEND=memory DEMO_MODE=1 TTS_PROVIDER=mock STT_PROVIDER=mock KERNEL_LOAD_DOTENV=0";
+const KERNEL_ENV = "KERNEL_DB=:memory: MOCK_EXTRACTOR=1 MOCK_MARGARET=1 ROOM_BACKEND=memory DEMO_MODE=1 TTS_PROVIDER=mock STT_PROVIDER=mock KERNEL_LOAD_DOTENV=0 OPS_TOKEN=e2e-ops-token";
 
 export default defineConfig({
   testDir: "./e2e",

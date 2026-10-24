@@ -323,9 +323,10 @@ export const kernel = {
   scriptedAttack: async (room: string) =>
     parseScripted(await kernelFetch<unknown>(`/rooms/${encodeURIComponent(room)}/scripted-attack`, { method: "POST", headers: opsHeaders(), timeoutMs: 120000 })),
   health: async () => parseHealth(await kernelFetch<unknown>("/health", { timeoutMs: 5000 })),
-  payment: async (id: string) => parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}`)),
+  // Reads gated by OPS_TOKEN when the kernel has one set: payments, a payment, the audit tail.
+  payment: async (id: string) => parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}`, { headers: opsHeaders() })),
   payments: async (limit = 20): Promise<Payment[]> => {
-    const v = await kernelFetch<unknown>(`/payments?limit=${limit}`);
+    const v = await kernelFetch<unknown>(`/payments?limit=${limit}`, { headers: opsHeaders() });
     const list = Array.isArray(v) ? v : arr(asRecord(v).payments ?? asRecord(v).items);
     return list.map(parsePayment);
   },
@@ -335,7 +336,7 @@ export const kernel = {
   cancel: async (id: string, body: { actor_id: string; note?: string }) =>
     parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/deny`, json(body, true))),
   attack: async (name: AttackName) => parseAttack(await kernelFetch<unknown>(`/attack/${name}`, { method: "POST", headers: opsHeaders(), timeoutMs: 20000 })),
-  audit: async (limit = 200) => parseAudit(await kernelFetch<unknown>(`/audit?limit=${limit}`)),
+  audit: async (limit = 200) => parseAudit(await kernelFetch<unknown>(`/audit?limit=${limit}`, { headers: opsHeaders() })),
   verify: async () => parseVerify(await kernelFetch<unknown>("/audit/verify")),
   tamper: async () => kernelFetch<unknown>("/audit/tamper", { method: "POST", headers: opsHeaders() }),
   evalResults: async () => parseEval(await kernelFetch<unknown>("/eval/results")),

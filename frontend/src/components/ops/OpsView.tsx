@@ -102,6 +102,11 @@ export function OpsView() {
           </label>
         </div>
       </header>
+      {list.status === 401 || audit.status === 401 ? (
+        <p className="rounded-lg border border-accent/60 bg-panel px-4 py-2 text-sm" role="alert" data-testid="token-notice">
+          Operator token missing or wrong. This kernel runs with OPS_TOKEN set. Paste it in the Ops token field or open this page with ?token=.
+        </p>
+      ) : null}
       <ScriptedAttack room={roomCode} />
       <HoldsQueue payments={payments} loading={list.loading} error={list.error} notFound={list.notFound} onChanged={onChanged} onSelect={setSelected} />
       <div className="grid gap-5 lg:grid-cols-2">

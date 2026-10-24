@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KernelError } from "./kernel/rest";
+import { KernelError, useOpsToken } from "./kernel/rest";
 
 export interface AsyncState<T> {
   data: T | null;
   loading: boolean;
   error: string | null;
   notFound: boolean;
+  /** HTTP status of the last failure, 0 otherwise. 401 means the operator token is missing or wrong. */
+  status: number;
   reload: () => void;
   setData: (d: T | null) => void;
 }
@@ -32,7 +34,9 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], intervalMs = 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [status, setStatus] = useState(0);
   const [tick, setTick] = useState(0);
+  const token = useOpsToken();
   const fnRef = useRef(fn);
   fnRef.current = fn;
 
@@ -45,9 +49,11 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], intervalMs = 
         setData(d);
         setError(null);
         setNotFound(false);
+        setStatus(0);
       } catch (e) {
         if (!alive) return;
         setNotFound(e instanceof KernelError && e.notFound);
+        setStatus(e instanceof KernelError ? e.status : 0);
         setError(errorText(e));
       } finally {
         if (alive) setLoading(false);
@@ -60,8 +66,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[], intervalMs = 
       if (t) clearInterval(t);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, intervalMs, ...deps]);
+  }, [tick, intervalMs, token, ...deps]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
-  return { data, loading, error, notFound, reload, setData };
+  return { data, loading, error, notFound, status, reload, setData };
 }

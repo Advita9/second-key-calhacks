@@ -22,9 +22,9 @@ export function Leaderboard({ rows, roomMissing }: { rows: LeaderboardRow[]; roo
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
-                <tr key={r.player} className="border-t">
-                  <td className="py-2 font-semibold">{r.handle || r.player.slice(0, 8)}</td>
+              {sorted.map((r, i) => (
+                <tr key={r.player || `${r.handle}-${i}`} className="border-t">
+                  <td className="py-2 font-semibold">{r.handle || (r.player ? r.player.slice(0, 8) : "player")}</td>
                   <td className="py-2 text-right font-mono">{r.bestStage}</td>
                   <td className="py-2 text-right font-mono text-muted">{r.attempts}</td>
                 </tr>
