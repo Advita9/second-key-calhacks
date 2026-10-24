@@ -11,6 +11,8 @@ import { roomFromSearch } from "@/lib/config";
 import { RoomError, type Stage } from "@/lib/room";
 import { useRoom } from "@/lib/useRoom";
 
+const TURN_TIMEOUT_MS = 35_000;
+
 export function PlayView() {
   const sp = useSearchParams();
   const initialRoom = roomFromSearch(sp);
@@ -50,6 +52,7 @@ export function PlayView() {
     const ownTurns = new Set([...myTurnIds, ...snap.turns.filter((t) => !myId || t.player === myId).map((t) => t.id)]);
     const mine = snap.replies.filter((r) => ownTurns.has(r.turnId));
     const outs = snap.myOutcomes.filter((o) => ownTurns.has(o.turnId) && (o.decision === "HOLD" || o.decision === "DENY"));
+    const repliedTurns = new Set(mine.map((r) => r.turnId));
     if (mine.length === 0 && outs.length === 0) return;
     setMessages((prev) => {
       const seen = new Set(prev.map((m) => m.id));
@@ -60,7 +63,13 @@ export function PlayView() {
       }
       for (const o of outs) {
         if (seen.has(`b-${o.turnId}`)) continue;
-        add.push({ id: `b-${o.turnId}`, from: "bank", text: o.decision === "HOLD" ? "The bank put this payment on hold. A reviewer will look at it." : "The bank denied this payment." });
+        // A HOLD with no Margaret reply is the bridge's fail-closed row: the kernel never answered.
+        const failClosed = o.decision === "HOLD" && !repliedTurns.has(o.turnId);
+        add.push({
+          id: `b-${o.turnId}`,
+          from: "bank",
+          text: failClosed ? "The bank did not answer. Nothing was sent." : o.decision === "HOLD" ? "The bank put this payment on hold. A reviewer will look at it." : "The bank denied this payment.",
+        });
       }
       return add.length ? [...prev, ...add] : prev;
     });
@@ -71,6 +80,22 @@ export function PlayView() {
     const last = messages[messages.length - 1];
     return !!last && last.from === "you" && !sending;
   }, [messages, sending]);
+
+  // Client-side fail closed: if nothing answers a turn in 35 s (kernel down, bridge down, both),
+  // say so and score it as stage 10. The bridge normally beats this with its own fail-closed row.
+  const lastId = messages[messages.length - 1]?.id;
+  useEffect(() => {
+    if (!waiting || !lastId) return;
+    const t = setTimeout(() => {
+      setMessages((m) => {
+        const last = m[m.length - 1];
+        if (!last || last.from !== "you") return m;
+        return [...m, { id: `b-timeout-${last.id}`, from: "bank", text: "The bank did not answer. Nothing was sent." }];
+      });
+      setStage((prev) => (prev > 10 ? prev : 10));
+    }, TURN_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [waiting, lastId]);
 
   const bestStage = useMemo<Stage>(() => {
     const fromFeed = Math.max(0, ...snap.myOutcomes.map((o) => o.stage));
@@ -128,14 +153,17 @@ export function PlayView() {
 
   return (
     <main className="mx-auto flex h-[100dvh] w-full max-w-[480px] flex-col gap-3 overflow-x-hidden p-4" data-testid="play">
-      <header className="flex items-center justify-between gap-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-muted">Second Key</p>
-        <div className="flex items-center gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <p className="whitespace-nowrap text-xs uppercase tracking-[0.2em] text-muted">Second Key</p>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           <Badge variant="outline" className="font-mono">
             {roomCode}
           </Badge>
           {handle ? <Badge variant="accent">{handle}</Badge> : null}
           <Badge variant="outline">{room.status === "open" ? "live" : room.status}</Badge>
+          <Badge variant={room.client.backend === "spacetime" ? "outline" : "mock"} className="whitespace-nowrap" data-testid="room-backend">
+            room: {room.client.backend}
+          </Badge>
         </div>
       </header>
       {handle ? (

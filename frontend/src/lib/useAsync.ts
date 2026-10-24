@@ -15,11 +15,12 @@ export interface AsyncState<T> {
 export function errorText(e: unknown): string {
   if (e instanceof KernelError) {
     if (e.notFound) return "Route not available on this kernel yet";
+    if (e.status >= 500) return "unreachable (fail closed)";
     return e.message;
   }
   if (e instanceof Error) {
     if (e.name === "AbortError") return "Request timed out";
-    if (/fetch/i.test(e.message)) return "Kernel unreachable";
+    if (/fetch/i.test(e.message)) return "unreachable (fail closed)";
     return e.message;
   }
   return "Request failed";

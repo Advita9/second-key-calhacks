@@ -58,8 +58,8 @@ export function PolicyPanel({ policyVersion, liveHits }: { policyVersion: string
             <dd className="font-mono">{ev.data.avg_friction_steps.toFixed(2)}</dd>
             {ev.data.extractor_mode ? (
               <>
-                <dt className="text-muted">Extractor</dt>
-                <dd className="font-mono">{ev.data.extractor_mode}</dd>
+                <dt className="text-muted">Eval run</dt>
+                <dd className="font-mono">extractor {ev.data.extractor_mode}</dd>
               </>
             ) : null}
           </dl>

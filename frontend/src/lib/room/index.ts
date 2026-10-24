@@ -23,15 +23,19 @@ function makeLazySpacetime(): RoomClient {
   const pending: Array<(c: RoomClient) => void> = [];
   const get = () => inner ?? fallback;
   return {
-    backend: "spacetime",
+    /** "spacetime" once connected; "memory" if the SpacetimeDB connection failed and the kernel room is in use. */
+    get backend() {
+      return inner ? inner.backend : "spacetime";
+    },
     async connect(o) {
       const mod = await import("./spacetime");
       const c = new mod.SpacetimeRoomClient();
       try {
         await c.connect(o);
         inner = c;
-      } catch {
-        // Bindings or server missing: fall back to the kernel memory room.
+      } catch (e) {
+        // Only when SpacetimeDB itself is unreachable: fall back to the kernel memory room and say so.
+        console.warn("[room] SpacetimeDB connect failed, falling back to the kernel memory room:", e);
         await fallback.connect(o);
         inner = fallback;
       }

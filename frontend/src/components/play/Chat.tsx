@@ -62,7 +62,7 @@ export function Chat({ room, messages, onSend, sending, waiting, notice, cooldow
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div ref={list} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-md border bg-panel p-3" data-testid="chat-log">
         {messages.length === 0 ? (
-          <p className="m-auto max-w-[260px] text-center text-sm text-muted">Say hello, pick a tactic, or hold the mic. Margaret answers out loud on the board.</p>
+          <p className="m-auto max-w-[260px] text-center text-sm text-muted">Say hello, pick a tactic, or hold the mic. Everyone in this room talks to the same Margaret. She remembers the whole conversation and answers out loud on the board.</p>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`max-w-[85%] rounded-lg px-3 py-2 text-base leading-snug ${m.from === "you" ? "self-end bg-accent text-accent-fg" : m.from === "bank" ? "self-center border font-mono text-xs text-muted" : "self-start bg-panel-2"}`} data-testid={`msg-${m.from}`}>

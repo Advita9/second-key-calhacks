@@ -8,6 +8,7 @@ import type {
   Health,
   Payment,
   Refusal,
+  ScriptedAttack,
 } from "./types";
 
 /** Direct kernel origin: used for the WebSocket and audio files. */
@@ -133,6 +134,7 @@ export function parsePayment(v: unknown): Payment {
     beneficiary: { name: str(ben.name), account_ref: str(ben.account_ref), is_new: bool(ben.is_new) },
     rail: str(r.rail),
     conversation_id: str(r.conversation_id),
+    origin: str(r.origin) || (/^(attack[:_]|case_)/.test(str(r.conversation_id)) ? "attack" : ""),
     decision: r.decision
       ? { outcome: str(dec.outcome, "HOLD"), rule_ids: strs(dec.rule_ids), signals: arr(dec.signals) }
       : undefined,
@@ -295,11 +297,35 @@ export function parseEval(v: unknown): EvalResults {
   };
 }
 
+export function parseScripted(v: unknown): ScriptedAttack {
+  const r = asRecord(v);
+  return {
+    turns: arr(r.turns).map((t) => {
+      const x = asRecord(t);
+      return {
+        turn_id: str(x.turn_id),
+        text: str(x.text),
+        margaret_text: str(x.margaret_text),
+        margaret_audio_url: str(x.margaret_audio_url) || null,
+        persuaded: bool(x.persuaded),
+        stage: num(x.stage),
+        payment_id: str(x.payment_id) || null,
+      };
+    }),
+    payment_id: str(r.payment_id) || null,
+    decision: str(r.decision) || null,
+    stage: num(r.stage),
+  };
+}
+
 export const kernel = {
+  /** Operator demo beat: four scripted turns through the normal turn path. Needs the ops token. */
+  scriptedAttack: async (room: string) =>
+    parseScripted(await kernelFetch<unknown>(`/rooms/${encodeURIComponent(room)}/scripted-attack`, { method: "POST", headers: opsHeaders(), timeoutMs: 120000 })),
   health: async () => parseHealth(await kernelFetch<unknown>("/health", { timeoutMs: 5000 })),
   payment: async (id: string) => parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}`)),
-  payments: async (): Promise<Payment[]> => {
-    const v = await kernelFetch<unknown>("/payments");
+  payments: async (limit = 20): Promise<Payment[]> => {
+    const v = await kernelFetch<unknown>(`/payments?limit=${limit}`);
     const list = Array.isArray(v) ? v : arr(asRecord(v).payments ?? asRecord(v).items);
     return list.map(parsePayment);
   },

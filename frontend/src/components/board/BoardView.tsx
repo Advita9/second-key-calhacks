@@ -30,6 +30,10 @@ export function BoardView() {
   const [needToken, setNeedToken] = useState(false);
   const health = useHealth();
   const room = useRoom(roomCode, "board");
+  // Newest kernel payments: seed the live card on a fresh load and count legitimate completions.
+  // Attack-panel payments (origin "attack") never count as legitimate completions and never move
+  // Margaret's balance; they are scripted demonstrations, not her money leaving.
+  const list = useAsync(() => kernel.payments(20), [], 10000);
   // Debrief: manual toggle, `?debrief=1`, or the room entering `debrief` status.
   const [debrief, setDebrief] = useState<boolean | null>(null);
   const roomStatus = room.snapshot.room?.status;
@@ -41,7 +45,6 @@ export function BoardView() {
   const [margaret, setMargaret] = useState<MargaretLive | null>(null);
   const [payment, setPayment] = useState<LivePayment | null>(null);
   const [refusal, setRefusal] = useState<LiveRefusal | null>(null);
-  const [submittedCents, setSubmittedCents] = useState(0);
   const seq = useRef(0);
   const next = useCallback(() => {
     seq.current += 1;
@@ -73,7 +76,6 @@ export function BoardView() {
           rail: p.rail,
           seq: s,
         });
-        if (p.state === "SUBMITTED" && typeof p.amount_cents === "number") setSubmittedCents((c) => c + (p.amount_cents ?? 0));
       } else if (m.type === "attack") {
         const a = m as { name?: string; invariant?: string; text?: string };
         const def = ATTACKS.find((x) => x.name === a.name);
@@ -96,12 +98,24 @@ export function BoardView() {
     return { text: lastReply.text, audioUrl: lastReply.audioUrl || null, persuaded: lastReply.persuaded, meter: lastReply.persuaded ? 100 : STAGE_METER[best] ?? 0, seq: 0 };
   }, [margaret, lastReply, snap.outcomes]);
 
-  const lastOutcome = snap.outcomes[snap.outcomes.length - 1];
+  // Live card: the latest WS push wins; on a fresh load seed from the newest kernel payment
+  // (GET /payments, newest first, decisions persisted) so a HELD payment shows before any event.
+  const newest = list.data?.[0];
   const paymentLive: LivePayment | null = useMemo(() => {
     if (payment) return payment;
-    if (!lastOutcome || !lastOutcome.paymentId) return null;
-    return { paymentId: lastOutcome.paymentId, state: lastOutcome.decision, fingerprint: "", ruleIds: lastOutcome.ruleIds, refusal: lastOutcome.refusal || null, seq: 0 };
-  }, [payment, lastOutcome]);
+    if (!newest) return null;
+    return {
+      paymentId: newest.id,
+      state: newest.state,
+      fingerprint: newest.fingerprint,
+      ruleIds: newest.decision?.rule_ids ?? [],
+      refusal: newest.last_refusal ?? null,
+      amountCents: newest.amount_cents,
+      payee: newest.beneficiary?.name,
+      rail: newest.rail,
+      seq: 0,
+    };
+  }, [payment, newest]);
 
   const onAttack = (name: AttackName, r: AttackResult) => {
     const def = ATTACKS.find((x) => x.name === name);
@@ -110,17 +124,17 @@ export function BoardView() {
   const onAttackError = (name: AttackName, msg: string, status: number) => {
     const def = ATTACKS.find((x) => x.name === name);
     if (status === 401) setNeedToken(true);
-    const text = status === 401 ? "OPERATOR TOKEN REQUIRED" : status === 404 ? "ATTACK ROUTE NOT LIVE YET" : `KERNEL ERROR · ${msg}`;
+    const text = status === 401 ? "OPERATOR TOKEN REQUIRED" : status === 404 ? "Needs DEMO_MODE=1 on the kernel" : `KERNEL ERROR · ${msg}`;
     setRefusal({ title: def?.label ?? name, invariant: "", text, steps: [], ruleIds: [], seq: next() });
   };
 
   // Legitimate completed: the room scoreboard (bridge `record_legit_completed`) or, when that is
   // behind, the count of SUBMITTED payments on the kernel. Every SUBMITTED payment carried a valid
   // certificate; "unauthorized" is an attacker reaching stage 100 and stays room-scoped.
-  const list = useAsync(() => kernel.payments(), [], 10000);
-  const submittedOnKernel = useMemo(() => (list.data ?? []).filter((p) => p.state === "SUBMITTED").length, [list.data]);
+  const legitSubmitted = useMemo(() => (list.data ?? []).filter((p) => p.state === "SUBMITTED" && p.origin !== "attack"), [list.data]);
   const unauthorized = snap.scoreboard?.unauthorizedReleases ?? 0;
-  const legit = Math.max(snap.scoreboard?.legitCompleted ?? 0, submittedOnKernel);
+  const legit = Math.max(snap.scoreboard?.legitCompleted ?? 0, legitSubmitted.length);
+  const spent = useMemo(() => legitSubmitted.reduce((a, p) => a + (p.amount_cents ?? 0), 0), [legitSubmitted]);
 
   return (
     <main className="relative mx-auto flex h-screen w-[1920px] max-w-full flex-col gap-5 p-6" data-testid="board">
@@ -140,7 +154,7 @@ export function BoardView() {
         </div>
       </header>
       <section className="grid min-h-0 flex-1 grid-cols-[1fr_1.35fr_1fr] gap-5 overflow-hidden">
-        <MargaretCard live={margaretLive} balanceCents={MARGARET.balanceCents - submittedCents} voiceMock={isMockFlag(health.data, "tts")} />
+        <MargaretCard live={margaretLive} balanceCents={MARGARET.balanceCents - spent} voiceMock={isMockFlag(health.data, "tts")} />
         <LivePaymentCard payment={paymentLive} refusal={refusal} />
         <div className="flex min-h-0 flex-col gap-5">
           <Leaderboard rows={snap.leaderboard} roomMissing={room.status !== "open" && snap.room === null} />

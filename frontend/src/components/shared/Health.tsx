@@ -36,6 +36,6 @@ export function MockBadges({ mode, size = "sm" }: { mode: Record<string, string>
 
 export function KernelStatus({ error, loading }: { error: string | null; loading: boolean }) {
   if (loading) return <Badge variant="outline">Kernel: connecting</Badge>;
-  if (error) return <Badge variant="bad">Kernel: {error}</Badge>;
+  if (error) return <Badge variant="bad">Kernel: {/unreachable|timed out/i.test(error) ? "unreachable (fail closed)" : error}</Badge>;
   return <Badge variant="outline">Kernel: online</Badge>;
 }

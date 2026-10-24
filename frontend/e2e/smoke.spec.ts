@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
-const KERNEL = "http://localhost:8000";
+const KERNEL = "http://localhost:8001";
 const SHOTS = path.join(__dirname, "screenshots");
 fs.mkdirSync(SHOTS, { recursive: true });
 
@@ -78,6 +78,12 @@ test.describe("board", () => {
     await expect(page.getByTestId("refusal-rules")).toContainText(/H-\d{2}/);
     // the live payment card got the pushed payment state from the WS
     await expect(page.getByTestId("live-payment").getByTestId("state-pill")).toBeVisible();
+    await expect(page.getByTestId("room-backend")).toContainText("room: memory");
+  });
+
+  test("fresh load seeds the live payment card from GET /payments", async ({ page }) => {
+    await page.goto("/board");
+    await expect(page.getByTestId("live-payment").getByTestId("state-pill")).toBeVisible({ timeout: 15_000 });
   });
 });
 
@@ -168,6 +174,7 @@ test.describe("ops", () => {
     await expect(page.getByTestId("certificates-log")).toBeVisible();
     await expect(page.getByTestId("payment-history")).toBeVisible();
     await expect(page.getByTestId("ops-token")).toBeVisible();
+    await expect(page.getByTestId("scripted-attack-button")).toBeVisible();
 
     // Holds queue shows the seeded payment; approve as BANK_REVIEW lifts it.
     const row = page.getByTestId("hold-row").filter({ hasText: payment.id.slice(0, 12) });

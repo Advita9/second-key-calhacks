@@ -30,7 +30,9 @@ export function BoardFooter({ roomCode, health, healthError, roomStatus, roomBac
       <div className="flex flex-col items-end gap-2">
         <div className="flex items-center gap-3">
           <Badge variant="outline">Policy {health?.policy_version ?? "v1"}</Badge>
-          <Badge variant="outline">Room {roomBackend}: {roomStatus}</Badge>
+          <Badge variant={roomBackend === "spacetime" ? "outline" : "mock"} data-testid="room-backend">
+            room: {roomBackend} ({roomStatus})
+          </Badge>
           {healthError ? <Badge variant="bad">Kernel: {healthError}</Badge> : null}
         </div>
         <MockBadges mode={health?.mode} size="lg" />

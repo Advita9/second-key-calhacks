@@ -1,6 +1,8 @@
-// SpacetimeDB backend. Loads generated bindings through the "@bindings" alias at runtime.
-// Shapes follow the SpacetimeDB 2.x TypeScript SDK; access is structural and tolerant so
-// this compiles against the stub and against any generated binding set.
+// SpacetimeDB backend: the room lives in the module (spacetime/src/index.ts), the bridge
+// writes Margaret's reply and the outcome. Nothing here talks to the kernel, so a dead
+// kernel never hangs a phone: the bridge records a stage 10 fail-closed outcome instead.
+// Bindings load through the "@bindings" alias (see next.config.ts); types are structural
+// so this file compiles against the stub too.
 
 import { parseSnapshot } from "./parse";
 import {
@@ -23,21 +25,44 @@ type Conn = {
   db: Record<string, TableHandle | undefined>;
   reducers: Record<string, ((params: Record<string, unknown>) => Promise<void>) | undefined>;
   identity?: { toHexString(): string } | null;
-  subscriptionBuilder(): { onApplied(cb: () => void): { subscribe(q: string[]): unknown }; subscribe(q: string[]): unknown };
+  subscriptionBuilder(): {
+    onApplied(cb: () => void): { onError(cb: (ctx: unknown, e?: unknown) => void): { subscribe(q: string[]): unknown }; subscribe(q: string[]): unknown };
+    subscribe(q: string[]): unknown;
+  };
   disconnect(): void;
 };
 type Builder = {
   withUri(u: string): Builder;
   withDatabaseName(n: string): Builder;
   withToken(t: string | undefined): Builder;
+  withAutomaticReconnect?(o?: unknown): Builder;
   onConnect(cb: (c: Conn, identity: { toHexString(): string }, token: string) => void): Builder;
-  onDisconnect(cb: () => void): Builder;
-  onConnectError(cb: (c: unknown, e: unknown) => void): Builder;
+  onAutomaticReconnect?(cb: (c: Conn, identity: { toHexString(): string }, token: string) => void): Builder;
+  onDisconnect(cb: (ctx: unknown, e?: unknown) => void): Builder;
+  onConnectError(cb: (ctx: unknown, e: unknown) => void): Builder;
   build(): Conn;
 };
 type Bindings = { DbConnection: { builder(): Builder } | null };
 
-const TABLES = ["room", "player", "turn", "margaretReply", "outcome", "myOutcomes", "leaderboard", "scoreboard", "auditMirror"];
+const TOKEN_KEY = "sk:stdb:token";
+const CONNECT_TIMEOUT_MS = 8000;
+// Table accessors on `conn.db` (camelCase) and the SQL names to subscribe to.
+const TABLES: Record<string, string> = {
+  room: "room",
+  player: "player",
+  turn: "turn",
+  margaretReply: "margaret_reply",
+  outcome: "outcome",
+  myOutcomes: "my_outcomes",
+  leaderboard: "leaderboard",
+  scoreboard: "scoreboard",
+  auditMirror: "audit_mirror",
+};
+
+function rowRoom(r: unknown): string {
+  const x = r as { roomId?: unknown; code?: unknown; id?: unknown };
+  return String(x.roomId ?? x.code ?? "");
+}
 
 export class SpacetimeRoomClient implements RoomClient {
   readonly backend = "spacetime" as const;
@@ -49,6 +74,7 @@ export class SpacetimeRoomClient implements RoomClient {
   private statusSubs = new Set<(s: ConnStatus) => void>();
   private status: ConnStatus = "idle";
   private snapshot: RoomSnapshot = EMPTY_SNAPSHOT;
+  private recomputeTimer: ReturnType<typeof setTimeout> | null = null;
 
   async connect(o: { roomCode: string; role: RoomRole }): Promise<void> {
     this.roomCode = o.roomCode.trim().toUpperCase();
@@ -57,39 +83,68 @@ export class SpacetimeRoomClient implements RoomClient {
     if (!mod.DbConnection) throw new RoomError("UNAVAILABLE", "SpacetimeDB bindings not generated. Run spacetime/scripts/gen-bindings.sh.");
     const uri = process.env.NEXT_PUBLIC_SPACETIME_URI ?? "ws://localhost:3000";
     const db = process.env.NEXT_PUBLIC_SPACETIME_DB ?? "second-key";
-    const token = typeof window !== "undefined" ? window.localStorage.getItem("sk:stdb:token") ?? undefined : undefined;
+    let token: string | undefined;
+    try {
+      token = window.localStorage.getItem(TOKEN_KEY) ?? undefined;
+    } catch {
+      token = undefined;
+    }
     this.setStatus("connecting");
     await new Promise<void>((resolve, reject) => {
-      const b = mod.DbConnection!.builder().withUri(uri).withDatabaseName(db).withToken(token);
-      b.onConnect((c, identity, tok) => {
+      let settled = false;
+      const done = (err?: RoomError) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        if (err) reject(err);
+        else resolve();
+      };
+      const timer = setTimeout(() => done(new RoomError("UNAVAILABLE", `SpacetimeDB at ${uri} did not answer in ${CONNECT_TIMEOUT_MS / 1000}s`)), CONNECT_TIMEOUT_MS);
+      let b = mod.DbConnection!.builder().withUri(uri).withDatabaseName(db).withToken(token);
+      if (b.withAutomaticReconnect) b = b.withAutomaticReconnect();
+      const onUp = (c: Conn, identity: { toHexString(): string }, tok: string) => {
         this.conn = c;
         this.identityHex = identity.toHexString();
         try {
-          window.localStorage.setItem("sk:stdb:token", tok);
+          window.localStorage.setItem(TOKEN_KEY, tok);
         } catch {
           // ignore
         }
-        this.setStatus("open");
-        const queries = ["room", "player", "turn", "margaret_reply", "outcome", "leaderboard", "scoreboard", "audit_mirror"].map(
-          (t) => `SELECT * FROM ${t}`,
-        );
-        if (this.role === "attacker") queries.push("SELECT * FROM my_outcomes");
-        c.subscriptionBuilder().onApplied(() => this.recompute()).subscribe(queries);
-        for (const t of TABLES) {
-          const h = c.db[t];
-          h?.onInsert?.(() => this.recompute());
-          h?.onUpdate?.(() => this.recompute());
-          h?.onDelete?.(() => this.recompute());
-        }
-        resolve();
-      })
-        .onDisconnect(() => this.setStatus("reconnecting"))
+        this.subscribeAll(c, done);
+      };
+      b.onConnect(onUp);
+      if (b.onAutomaticReconnect) b.onAutomaticReconnect(onUp);
+      b.onDisconnect(() => this.setStatus("reconnecting"))
         .onConnectError((_c, e) => {
           this.setStatus("closed");
-          reject(new RoomError("UNAVAILABLE", e instanceof Error ? e.message : "SpacetimeDB connect failed"));
+          done(new RoomError("UNAVAILABLE", e instanceof Error ? e.message : "SpacetimeDB connect failed"));
         })
         .build();
     });
+  }
+
+  private subscribeAll(c: Conn, done: (err?: RoomError) => void) {
+    const names = ["room", "player", "turn", "margaret_reply", "outcome", "leaderboard", "scoreboard"];
+    if (this.role === "attacker") names.push("my_outcomes");
+    if (this.role === "ops") names.push("audit_mirror");
+    const queries = names.map((t) => `SELECT * FROM ${t}`);
+    for (const accessor of Object.keys(TABLES)) {
+      const h = c.db[accessor];
+      h?.onInsert?.(() => this.scheduleRecompute());
+      h?.onUpdate?.(() => this.scheduleRecompute());
+      h?.onDelete?.(() => this.scheduleRecompute());
+    }
+    c.subscriptionBuilder()
+      .onApplied(() => {
+        this.setStatus("open");
+        this.recompute();
+        done();
+      })
+      .onError((_ctx, e) => {
+        this.setStatus("closed");
+        done(new RoomError("UNAVAILABLE", e instanceof Error ? e.message : "SpacetimeDB subscription failed"));
+      })
+      .subscribe(queries);
   }
 
   private setStatus(s: ConnStatus) {
@@ -97,26 +152,37 @@ export class SpacetimeRoomClient implements RoomClient {
     for (const cb of this.statusSubs) cb(s);
   }
 
-  private rows(name: string): unknown[] {
-    const h = this.conn?.db[name];
-    return h ? Array.from(h.iter()) : [];
+  private rows(accessor: string): unknown[] {
+    const h = this.conn?.db[accessor];
+    if (!h) return [];
+    try {
+      return Array.from(h.iter());
+    } catch {
+      return [];
+    }
+  }
+
+  private scheduleRecompute() {
+    if (this.recomputeTimer) return;
+    this.recomputeTimer = setTimeout(() => {
+      this.recomputeTimer = null;
+      this.recompute();
+    }, 30);
   }
 
   private recompute() {
-    const inRoom = (r: unknown) => {
-      const x = r as { roomId?: unknown; code?: unknown };
-      return x.roomId === this.roomCode || x.code === this.roomCode;
-    };
-    const rooms = this.rows("room").filter(inRoom);
+    const inRoom = (r: unknown) => rowRoom(r) === this.roomCode;
+    const turns = this.rows("turn").filter(inRoom);
+    const turnIds = new Set(turns.map((t) => String((t as { id?: unknown }).id ?? "")));
     const raw = {
-      room: rooms[0] ?? null,
+      room: this.rows("room").find((r) => String((r as { id?: unknown; code?: unknown }).code ?? (r as { id?: unknown }).id ?? "") === this.roomCode) ?? null,
       players: this.rows("player").filter(inRoom),
-      turns: this.rows("turn").filter(inRoom),
-      replies: this.rows("margaretReply"),
+      turns,
+      replies: this.rows("margaretReply").filter((r) => turnIds.has(String((r as { turnId?: unknown }).turnId ?? ""))),
       outcomes: this.rows("outcome").filter(inRoom),
       myOutcomes: this.rows("myOutcomes"),
       leaderboard: this.rows("leaderboard").filter(inRoom),
-      scoreboard: this.rows("scoreboard").filter(inRoom)[0] ?? null,
+      scoreboard: this.rows("scoreboard").find(inRoom) ?? null,
       audit: this.rows("auditMirror").filter(inRoom),
     };
     this.snapshot = parseSnapshot(raw);
@@ -125,25 +191,34 @@ export class SpacetimeRoomClient implements RoomClient {
 
   async join(handle: string): Promise<{ playerId: string }> {
     const fn = this.conn?.reducers.joinRoom;
-    if (!fn) throw new RoomError("UNAVAILABLE", "Not connected");
-    await fn({ code: this.roomCode, handle: handle.trim() });
+    if (!fn) throw new RoomError("UNAVAILABLE", "Not connected to the room");
+    try {
+      await fn({ code: this.roomCode, handle: handle.trim() });
+    } catch (e) {
+      throw reducerError(e);
+    }
+    this.recompute();
     return { playerId: this.identityHex ?? "" };
   }
 
   async submitTurn(text: string): Promise<TurnResult | null> {
     const fn = this.conn?.reducers.submitTurn;
-    if (!fn) throw new RoomError("UNAVAILABLE", "Not connected");
+    if (!fn) throw new RoomError("UNAVAILABLE", "Not connected to the room");
+    const before = new Set(this.rows("turn").map((t) => String((t as { id?: unknown }).id ?? "")));
     try {
       await fn({ roomId: this.roomCode, text });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (/rate/i.test(msg)) throw new RoomError("RATE_LIMIT", "One message every 3 seconds. Take a breath.", 3000);
-      if (/long|400/.test(msg)) throw new RoomError("TOO_LONG", "Keep it under 400 characters.");
-      if (/closed|lobby/i.test(msg)) throw new RoomError("CLOSED", "This room is closed.");
-      throw new RoomError("UNKNOWN", msg);
+      throw reducerError(e);
     }
-    // Margaret's reply arrives through the margaret_reply subscription.
-    return null;
+    this.recompute();
+    // The reducer committed; find the new turn row so the UI can match its reply and outcome.
+    const mine = this.identityHex;
+    const added = this.rows("turn")
+      .filter((t) => !before.has(String((t as { id?: unknown }).id ?? "")))
+      .filter((t) => !mine || String(hex((t as { player?: unknown }).player)) === mine)
+      .map((t) => String((t as { id?: unknown }).id ?? ""));
+    const turnId = added[added.length - 1] ?? "";
+    return { turnId, margaretText: "", margaretAudioUrl: null, persuaded: false, paymentId: null, stage: 0, decision: null, transcript: null };
   }
 
   subscribe(cb: (s: RoomSnapshot) => void): () => void {
@@ -163,9 +238,33 @@ export class SpacetimeRoomClient implements RoomClient {
   }
 
   close() {
-    this.conn?.disconnect();
+    try {
+      this.conn?.disconnect();
+    } catch {
+      // ignore
+    }
     this.conn = null;
     this.subs.clear();
     this.statusSubs.clear();
   }
+}
+
+function hex(v: unknown): string {
+  if (v && typeof v === "object" && "toHexString" in v && typeof (v as { toHexString: unknown }).toHexString === "function") {
+    return (v as { toHexString: () => string }).toHexString();
+  }
+  return typeof v === "string" ? v : "";
+}
+
+/** Map SenderError messages from spacetime/src/index.ts to RoomError codes and player copy. */
+function reducerError(e: unknown): RoomError {
+  const msg = e instanceof Error ? e.message : String(e);
+  if (/rate limit/i.test(msg)) return new RoomError("RATE_LIMIT", "One message every 3 seconds. Take a breath.", 3000);
+  if (/too long/i.test(msg)) return new RoomError("TOO_LONG", "Keep it under 400 characters.");
+  if (/closed/i.test(msg)) return new RoomError("CLOSED", "This room is closed.");
+  if (/join the room/i.test(msg)) return new RoomError("NOT_JOINED", "Join the room first.");
+  if (/handle/i.test(msg)) return new RoomError("UNKNOWN", "Handles are letters, numbers, spaces, dashes. Keep it clean.");
+  if (/no such room/i.test(msg)) return new RoomError("UNAVAILABLE", "No room with that code.");
+  if (/empty/i.test(msg)) return new RoomError("UNKNOWN", "Say something first.");
+  return new RoomError("UNKNOWN", msg || "Room rejected that.");
 }

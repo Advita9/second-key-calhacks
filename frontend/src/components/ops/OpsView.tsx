@@ -7,6 +7,7 @@ import { CertificatesLog, certRows } from "./CertificatesLog";
 import { HoldsQueue } from "./HoldsQueue";
 import { PaymentHistory } from "./PaymentHistory";
 import { PolicyPanel } from "./PolicyPanel";
+import { ScriptedAttack } from "./ScriptedAttack";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { KernelStatus, MockBadges, useHealth } from "@/components/shared/Health";
@@ -20,10 +21,9 @@ export function OpsView() {
   const sp = useSearchParams();
   const roomCode = roomFromSearch(sp);
   const health = useHealth();
-  const list = useAsync(() => kernel.payments(), [], 5000);
+  const list = useAsync(() => kernel.payments(20), [], 5000);
   const audit = useAsync(() => kernel.audit(200), [], 5000);
   const [livePayments, setLivePayments] = useState<Record<string, Payment>>({});
-  const [liveHits, setLiveHits] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<string | null>(null);
   useEffect(() => adoptTokenFromUrl(sp), [sp]);
   const storedToken = useOpsToken();
@@ -60,11 +60,6 @@ export function OpsView() {
         },
       };
     });
-    if (reasons.length) setLiveHits((h) => {
-      const n = { ...h };
-      for (const r of reasons) n[r] = (n[r] ?? 0) + 1;
-      return n;
-    });
   }, []);
   const ws = useKernelSocket({ room: roomCode, role: "ops" }, onMessage);
 
@@ -81,6 +76,12 @@ export function OpsView() {
   };
 
   const certs = useMemo(() => certRows(payments, audit.data ?? []), [payments, audit.data]);
+  // Live rule hits: one per payment per rule, from the seeded list (GET /payments) merged with WS pushes.
+  const liveHits = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const p of payments) for (const r of p.decision?.rule_ids ?? []) n[r] = (n[r] ?? 0) + 1;
+    return n;
+  }, [payments]);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-[1440px] flex-col gap-5 p-6" data-testid="ops">
@@ -101,6 +102,7 @@ export function OpsView() {
           </label>
         </div>
       </header>
+      <ScriptedAttack room={roomCode} />
       <HoldsQueue payments={payments} loading={list.loading} error={list.error} notFound={list.notFound} onChanged={onChanged} onSelect={setSelected} />
       <div className="grid gap-5 lg:grid-cols-2">
         <PolicyPanel policyVersion={health.data?.policy_version ?? "v1"} liveHits={liveHits} />

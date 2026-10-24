@@ -16,6 +16,9 @@ const kernelUrl = (process.env.KERNEL_URL ?? process.env.NEXT_PUBLIC_KERNEL_URL 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: __dirname,
+  devIndicators: false,
+  // Playwright builds into its own dir on its own ports so it never touches a running dev stack.
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   env: { NEXT_PUBLIC_HAS_BINDINGS: bindings === real ? "1" : "0" },
   async rewrites() {
     return [{ source: "/kernel/:path*", destination: `${kernelUrl}/:path*` }];

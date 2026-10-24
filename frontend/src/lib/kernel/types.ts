@@ -72,6 +72,8 @@ export interface Payment {
   beneficiary?: Beneficiary;
   rail?: string;
   conversation_id?: string;
+  /** "attack" for attack-panel payments (never a legit completion), else "room" or "api". */
+  origin?: string;
   decision?: Decision;
   attestations: Attestation[];
   certificates: Certificate[];
@@ -141,6 +143,22 @@ export interface Refusal {
   refused: true;
   invariant: string;
   text?: string;
+}
+
+export interface ScriptedTurn {
+  turn_id: string;
+  text: string;
+  margaret_text: string;
+  margaret_audio_url: string | null;
+  persuaded: boolean;
+  stage: number;
+  payment_id: string | null;
+}
+export interface ScriptedAttack {
+  turns: ScriptedTurn[];
+  payment_id: string | null;
+  decision: string | null;
+  stage: number;
 }
 
 export type AttackName = "inject" | "mutate" | "replay" | "self-approve";

@@ -53,7 +53,7 @@ export function MargaretCard({ live, balanceCents, voiceMock }: { live: Margaret
         <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-panel-2 p-5">
           <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted">Last reply</p>
           {live?.text ? (
-            <p className="text-3xl leading-snug" data-testid="margaret-reply">
+            <p className="line-clamp-4 text-3xl leading-snug" data-testid="margaret-reply" title={live.text}>
               {live.text}
             </p>
           ) : (
