@@ -142,3 +142,26 @@ def load_payment(conn: sqlite3.Connection, payment_id: str) -> Payment:
         created_at=datetime.fromisoformat(row[12]),
         nessie_transfer_id=row[13],
     )
+
+
+def update_payment_fields(conn: sqlite3.Connection, p: Payment) -> None:
+    """Rewrite the money-moving fields of a payment row. Never touches state; see state.py."""
+    with immediate(conn):
+        cur = conn.execute(
+            """UPDATE payment SET account_id=?, amount_cents=?, currency=?, beneficiary_name=?,
+               beneficiary_account_ref=?, beneficiary_is_new=?, rail=?, conversation_id=?
+               WHERE id=?""",
+            (
+                p.account_id,
+                p.amount_cents,
+                p.currency,
+                p.beneficiary.name,
+                p.beneficiary.account_ref,
+                int(p.beneficiary.is_new),
+                p.rail.value,
+                p.conversation_id,
+                p.id,
+            ),
+        )
+        if cur.rowcount != 1:
+            raise KeyError(p.id)

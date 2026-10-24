@@ -86,7 +86,7 @@ def test_build_env_keys_are_exactly_known_identifiers() -> None:
     assert frozenset(env) == KNOWN_IDENTIFIERS
 
 
-def test_env_known_biller_by_name_or_prior_ref() -> None:
+def test_env_known_biller_by_prior_ref_only_never_name() -> None:
     ctx = account_context()
     by_name = payment_in(
         beneficiary=Beneficiary(name="Comcast", account_ref="ext_new_comcast", is_new=True)
@@ -95,9 +95,30 @@ def test_env_known_biller_by_name_or_prior_ref() -> None:
         beneficiary=Beneficiary(name="Whoever", account_ref="ext_pge", is_new=False)
     )
     neither = payment_in(beneficiary=Beneficiary(name="Agent", account_ref="ext_zz", is_new=True))
-    assert build_env(by_name, [], ctx)["beneficiary.is_known_biller"] is True
+    assert build_env(by_name, [], ctx)["beneficiary.is_known_biller"] is False
+    assert build_env(by_name, [], ctx)["beneficiary.name_on_biller_list"] is True
     assert build_env(by_ref, [], ctx)["beneficiary.is_known_biller"] is True
+    assert build_env(by_ref, [], ctx)["beneficiary.name_on_biller_list"] is False
     assert build_env(neither, [], ctx)["beneficiary.is_known_biller"] is False
+    assert build_env(neither, [], ctx)["beneficiary.name_on_biller_list"] is False
+
+
+def test_spoofed_biller_name_with_new_ref_holds_not_allows(v1: Policy) -> None:
+    """S-07 class: display name "PG&E" on a fresh account_ref, zero signals, must not ALLOW."""
+    p = payment_in(
+        amount_cents=100,
+        beneficiary=Beneficiary(name="PG&E", account_ref="ext_fresh_1", is_new=True),
+        rail=Rail.ACH,
+    )
+    d = decide(p, [], account_context(), v1)
+    assert d.outcome is Outcome.HOLD and d.rule_ids == (DEFAULT_RULE_ID,)
+
+
+def test_no_v1_rule_reads_name_on_biller_list(v1: Policy) -> None:
+    from kernel.policy.expr import free_identifiers
+
+    used = frozenset().union(*(free_identifiers(n) for n in v1.compiled.values()))
+    assert "beneficiary.name_on_biller_list" not in used
 
 
 def test_env_mule_list_matches_account_ref_never_name() -> None:
