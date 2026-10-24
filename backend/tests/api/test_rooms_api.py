@@ -71,7 +71,7 @@ def test_multipart_turn_uses_text_or_stt(client: TestClient) -> None:
     assert r.status_code == 200 and set(r.json()) == SHAPE
     r = client.post(
         "/rooms/DEMO/turns",
-        data={"turn_id": "m2", "player_id": "p", "text": "hint text"},
+        data={"turn_id": "m2", "player_id": "p2", "text": "hint text"},
         files={"audio": ("clip.webm", b"\x1a\x45\xdf\xa3" + b"\x00" * 64, "audio/webm")},
     )
     assert r.status_code == 200 and set(r.json()) == SHAPE
@@ -81,7 +81,7 @@ def test_player_form_path_gets_public_outcome_only(client: TestClient) -> None:
     for i, t in enumerate(WARM_FEAR[:-1]):
         turn(client, t, i)
     r = client.post(
-        "/rooms/DEMO/turns", data={"turn_id": "f", "player_id": "p", "text": WARM_FEAR[-1]}
+        "/rooms/DEMO/turns", data={"turn_id": "f", "player_id": "ptt", "text": WARM_FEAR[-1]}
     )
     assert r.status_code == 200
     body = r.json()
@@ -130,14 +130,14 @@ def test_turns_route_limits(env: dict[str, str], monkeypatch: pytest.MonkeyPatch
         assert (
             c.post("/rooms/DEMO/turns", json=ok, headers={"X-Bridge-Token": tok}).status_code == 200
         )
-        assert c.post("/rooms/DEMO/turns", data=ok).status_code == 200
+        assert c.post("/rooms/DEMO/turns", data={**ok, "player_id": "form1"}).status_code == 200
         # 400 chars max on both paths.
         long = {**ok, "text": "x" * 401}
         assert (
             c.post("/rooms/DEMO/turns", json=long, headers={"X-Bridge-Token": tok}).status_code
             == 422
         )
-        assert c.post("/rooms/DEMO/turns", data=long).status_code == 400
+        assert c.post("/rooms/DEMO/turns", data={**long, "player_id": "form2"}).status_code == 400
         assert (
             c.post(
                 "/rooms/DEMO/turns", json={**ok, "text": "y" * 400}, headers={"X-Bridge-Token": tok}
@@ -172,3 +172,24 @@ def test_reset_cancels_open_room_payment(client: TestClient) -> None:
     assert r.status_code == 409 and r.json()["invariant"] == "I1_NOT_ELIGIBLE"
     # A second reset has nothing to cancel.
     assert client.post("/rooms/DEMO/reset").json()["cancelled_payment_id"] is None
+
+
+def test_form_path_rate_limited_per_player(client: TestClient) -> None:
+    from api.routes.rooms import TurnRateLimiter, form_limiter
+
+    body = {"turn_id": "r1", "player_id": "burst", "text": "hello"}
+    assert client.post("/rooms/DEMO/turns", data=body).status_code == 200
+    r = client.post("/rooms/DEMO/turns", data={**body, "turn_id": "r2"})
+    assert r.status_code == 429 and r.json()["detail"]["code"] == "RATE_LIMIT"
+    # Another player in the same room is not affected; the bridge JSON path is not limited.
+    assert client.post("/rooms/DEMO/turns", data={**body, "player_id": "other"}).status_code == 200
+    for i in range(3):
+        j = {"turn_id": f"b{i}", "player_id": "burst", "text": "hello"}
+        assert client.post("/rooms/DEMO/turns", json=j).status_code == 200
+    # The window is 3 s on a monotonic clock.
+    lim = TurnRateLimiter()
+    lim.check("DEMO", "x", now=100.0)
+    with pytest.raises(Exception, match="429|RATE_LIMIT"):
+        lim.check("DEMO", "x", now=102.9)
+    lim.check("DEMO", "x", now=103.0)
+    assert form_limiter.interval_s == 3.0

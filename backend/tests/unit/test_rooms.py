@@ -85,12 +85,7 @@ def test_stage_table(persuaded: bool, state: State | None, stage: int) -> None:
 def test_payee_directory_and_minting() -> None:
     ctx = load_default_context()
     d = payee_directory(ctx)
-    assert d == {
-        "bay roofing": "ext_bay_roofing",
-        "pg&e": "ext_pge",
-        "comcast": "ext_comcast",
-        "priya": "ext_priya",
-    }
+    assert d == {"bay roofing": "ext_bay_roofing", "pg&e": "ext_pge", "comcast": "ext_comcast"}
     assert resolve_ref("  Bay Roofing ", d) == "ext_bay_roofing"
     assert resolve_ref("BAY ROOFING", d) == "ext_bay_roofing"
     minted = resolve_ref("Bail Bonds", d)
@@ -299,3 +294,20 @@ def test_open_payment_and_balance_decrement(kernel: Kernel) -> None:
     assert store.room("demo").balance_cents == START_BALANCE_CENTS - 800_000  # once only
     store.close()
     store.close()  # idempotent
+
+
+def test_room_directory_is_known_billers_only(store: SessionStore) -> None:
+    """Family and friends on prior_payees (Priya, Rosa, bridge club) never resolve by name:
+    a warmth-only "send $8,000 to Priya" on ACH must not reach A-01."""
+    ctx = load_default_context()
+    d = payee_directory(ctx)
+    assert set(d.values()) <= {"ext_bay_roofing", "ext_pge", "ext_comcast"}
+    assert all(any(b.lower() == name for b in ctx.known_billers) for name in d)
+    assert "priya" not in d and "rosa" not in d
+    # A pair naming a prior payee that is not a known biller is dropped.
+    assert payee_directory(ctx, [("Priya", "ext_priya"), ("Rosa", "ext_rosa")]) == {}
+    room = store.room("demo")
+    p = draft_to_payment_in(
+        DraftPayment(amount_cents=800_000, payee_name="Priya", rail=Rail.ACH), room
+    )
+    assert p.beneficiary.account_ref.startswith("ext_new_") and p.beneficiary.is_new

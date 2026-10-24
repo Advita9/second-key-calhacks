@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+import time
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -32,6 +34,35 @@ log = logging.getLogger("second_key.api.rooms")
 router = APIRouter(tags=["rooms"])
 Bus = Annotated[EventBus, Depends(deps.get_bus)]
 RESET_ACTOR = "ops_reset"
+FORM_TURN_INTERVAL_S = 3.0  # same as RoomStore.submit_turn and the SpacetimeDB reducer
+
+
+class TurnRateLimiter:
+    """One form turn per player per 3 s, so an unauthenticated form post cannot drive
+    STT + Margaret + TTS in a loop. Keyed by (room, player_id); monotonic clock."""
+
+    def __init__(self, interval_s: float = FORM_TURN_INTERVAL_S) -> None:
+        self.interval_s = interval_s
+        self._last: dict[tuple[str, str], float] = {}
+        self._lock = threading.Lock()
+
+    def check(self, room_id: str, player_id: str, now: float | None = None) -> None:
+        now = time.monotonic() if now is None else now
+        key = (room_id, player_id)
+        with self._lock:
+            last = self._last.get(key)
+            if last is not None and now - last < self.interval_s:
+                raise HTTPException(
+                    status_code=429,
+                    detail={"code": "RATE_LIMIT", "message": "one turn every 3 seconds"},
+                )
+            self._last[key] = now
+            if len(self._last) > 10_000:  # bounded memory for a long-running room
+                for k in [k for k, t in self._last.items() if now - t > self.interval_s]:
+                    del self._last[k]
+
+
+form_limiter = TurnRateLimiter()
 
 
 def _room_code(room: str) -> str:
@@ -97,6 +128,8 @@ async def turns(
     turn, is_bridge = await _parse_turn(request)
     if is_bridge:
         deps.check_bridge(x_bridge_token or x_ops_token)
+    else:
+        form_limiter.check(room_id, turn.player_id)
     if not turn.text.strip():
         raise HTTPException(status_code=400, detail="empty turn")
     sessions = deps.get_sessions()

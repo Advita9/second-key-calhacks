@@ -347,8 +347,8 @@ def allow_all(role: str, token: str | None) -> bool:
 
 
 def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
-    """`authorize(role, token)` gates the board and ops views: the token comes from the
-    `X-Ops-Token` header or the `?token=` query (WebSockets cannot set headers in browsers).
+    """`authorize(role, token)` gates the board and ops views: `X-Ops-Token` header for
+    `/snapshot`, `?token=` query for `/ws` (browsers cannot set headers on a WebSocket).
     The attacker role must never need a token."""
     router = APIRouter(tags=["room"])
 
@@ -356,7 +356,8 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
         return role == "attacker" or authorize(role, header or query)
 
     @router.post("/rooms/{room}/join")
-    def join(room: str, body: JoinBody) -> dict[str, str]:
+    async def join(room: str, body: JoinBody) -> dict[str, str]:
+        # async so hub.changed() (asyncio queues) runs on the loop, not in a worker thread.
         try:
             player_id, token = hub.join(room, body.handle)
         except RoomError as e:
@@ -387,10 +388,11 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
         room: str,
         role: Annotated[SnapshotRole, Query()] = "board",
         player_id: Annotated[str | None, Query()] = None,
-        token: Annotated[str | None, Query()] = None,
         x_ops_token: Annotated[str | None, Header()] = None,
     ) -> dict[str, Any]:
-        if not _check(role, x_ops_token, token):
+        # Header only: a token in a URL lands in proxy and browser logs. `/ws` keeps `?token=`
+        # because browsers cannot set headers on a WebSocket.
+        if not _check(role, x_ops_token, None):
             raise HTTPException(
                 status_code=401, detail={"code": "NOT_OPERATOR", "message": "ops token required"}
             )

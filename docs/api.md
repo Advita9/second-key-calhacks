@@ -4,7 +4,7 @@ All responses JSON. All state changes append an audit event. Errors never leak r
 
 ## Credentials
 
-- `OPS_TOKEN` (env). When set, operator routes need header `X-Ops-Token`: attest with BANK_REVIEW or CO_APPROVER, `/certificate`, `/release`, `/mutate`, `/deny`, every `/attack/*`, `/audit/tamper`, `/rooms/{room}/reset`, `POST /payments` bodies that carry `account_context` or `conversation`, and the room `board`/`ops` views (`/rooms/{room}/snapshot?role=` and `/ws?role=`; browsers pass `?token=`). Missing or wrong → 401 `{refused: true, reason: "ops token required"}`. CUSTOMER_CHECKIN attest and the `attacker` role never need it. When unset, routes are open (local dev); `/health.ops_token` says `set|unset`.
+- `OPS_TOKEN` (env). When set, operator routes need header `X-Ops-Token`: attest with BANK_REVIEW or CO_APPROVER, `/certificate`, `/release`, `/mutate`, `/deny`, every `/attack/*`, `/audit/tamper`, `/rooms/{room}/reset`, `POST /payments` bodies that carry `account_context` or `conversation`, and the room `board`/`ops` views: `/rooms/{room}/snapshot?role=` takes the header only (never a query token, so it stays out of URL logs); `/ws?role=` takes `?token=` because browsers cannot set headers on a WebSocket. Missing or wrong → 401 `{refused: true, reason: "ops token required"}`. CUSTOMER_CHECKIN attest and the `attacker` role never need it. When unset, routes are open (local dev); `/health.ops_token` says `set|unset`.
 - `BRIDGE_TOKEN` (env, falls back to `OPS_TOKEN`). When set, the bridge's JSON `POST /rooms/{room}/turns` needs `X-Bridge-Token` (or `X-Ops-Token`).
 - Error shapes: `Refusal` → 409 `{refused: true, invariant, text}`; unknown id → 404 `{error: "payment not found", key}`; bad patch → 400; rail failure → 502 `{refused: true, invariant: "RAIL_FAILED"}` (release rolled back, certificate still valid).
 
@@ -42,7 +42,7 @@ body partial payment → new fingerprint; all attestations and certificates void
 `POST /rooms/{room_id}/turns`
 JSON body `{turn_id, player_id, text, audio_url?}` (bridge; `X-Bridge-Token` when set)
 → `{margaret_text, margaret_audio_url, persuaded: bool, payment_id?, stage: 10|40|60|70|90|100, outcome?: {decision, rule_ids[], refusal?}}`
-Form body `text` and/or `audio` (push-to-talk player; audio goes through STT) → same shape, but `outcome` is the public one: `{decision, refusal}`, no rule ids.
+Form body `text` and/or `audio` (push-to-talk player; audio goes through STT) → same shape, but `outcome` is the public one: `{decision, refusal}`, no rule ids. One form turn per `player_id` per 3 s, else 429 `{code: "RATE_LIMIT"}`.
 `text` is at most 400 chars (same as the SpacetimeDB reducer). Room ids are 3 to 16 of `[A-Z0-9-]`, else 400. A payee name resolves to an account_ref only through the room's payee directory (exact lowercased display name of a prior payee: Bay Roofing, PG&E, Comcast, Priya); any other name mints `ext_new_<sha8>`, so a typed name can never borrow a prior payee's history.
 
 `POST /rooms/{room_id}/reset` (operator) → fresh Margaret, balance restored, the room's open payment cancelled → `{ok, room_id, persuasion, balance_cents, cancelled_payment_id}`.
@@ -65,7 +65,7 @@ Each returns `{steps[], refused: true, invariant, text}`, broadcasts an `attack`
 ## Eval
 
 `GET /eval/results` → latest `scripts/eval.py` output: `{unauthorized_releases, legit_completed, legit_total, scam_total, avg_friction_steps, cases[]}`
-`GET /health` → `{ok, mode: {extractor, margaret, nessie, tts, stt: real|mock, room: spacetime|memory}, policy_version, demo_mode, ops_token: set|unset}`
+`GET /health` → `{ok, mode: {extractor, margaret, nessie, tts, stt: real|mock, room: spacetime|memory}, policy_version, demo_mode, ops_token: set|unset, audit: {ok, length, anchor, first_bad_seq}}`. While `anchor` is `mismatch`, every audited write answers 503 `{refused: true, invariant: "AUDIT_ANCHOR_MISMATCH"}` until `POST /audit/acknowledge`.
 
 ## WebSocket `/ws`
 

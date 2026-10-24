@@ -100,3 +100,60 @@ def test_attacks_leave_nothing_eligible(client: TestClient) -> None:
         if p["state"] == "CANCELLED":
             assert all(c["voided"] for c in p["certificates"])
             assert all(a["voided"] for a in p["attestations"])
+
+
+def _nothing_certifiable(client: TestClient) -> None:
+    payments = client.get("/payments").json()["payments"]
+    assert payments
+    for p in payments:
+        assert p["state"] not in ("ELIGIBLE_TO_SUBMIT", "HELD", "PENDING_REVIEW", "DRAFT"), p[
+            "state"
+        ]
+        for c in p["certificates"]:
+            assert c["consumed"] or c["voided"], c
+
+
+def test_rail_failure_mid_replay_still_cleans_up(client: TestClient) -> None:
+    from kernel.nessie import MockNessieTransport, NessieRail
+
+    rail = deps.get_kernel().rail
+    assert isinstance(rail, NessieRail)
+    transport = rail.client._http._transport  # noqa: SLF001  the mock transport in tests
+    assert isinstance(transport, MockNessieTransport)
+    transport.fail_with = 500
+    r = client.post("/attack/replay")
+    assert r.status_code == 502
+    assert r.json() == {
+        "refused": True,
+        "invariant": "RAIL_FAILED",
+        "text": "SETTLEMENT REFUSED · RAIL_FAILED",
+    }
+    _nothing_certifiable(client)
+    p = client.get("/payments").json()["payments"][0]
+    assert p["state"] == "CANCELLED" and p["certificates"][0]["voided"] is True
+    assert client.get("/audit/verify").json()["ok"] is True
+
+
+def test_exception_mid_mutate_attack_still_cleans_up(
+    env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fastapi.testclient import TestClient as _TC
+
+    from api.main import create_app
+
+    deps.reset()
+    with _TC(create_app(), raise_server_exceptions=False) as c:
+        kernel = deps.get_kernel()
+
+        def boom(*args: object, **kwargs: object) -> object:
+            raise RuntimeError("mutate exploded mid-attack")
+
+        monkeypatch.setattr(kernel, "mutate", boom)
+        r = c.post("/attack/mutate")
+        assert r.status_code == 500
+        _nothing_certifiable(c)
+        p = c.get("/payments").json()["payments"][0]
+        assert p["state"] == "CANCELLED"
+        assert all(a["voided"] for a in p["attestations"]) and p["attestations"]
+        assert all(cert["voided"] for cert in p["certificates"]) and p["certificates"]
+    deps.reset()

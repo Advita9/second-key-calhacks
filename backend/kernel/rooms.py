@@ -52,14 +52,14 @@ REFERENCE_SPEAKER = "reference"
 FAIL_CLOSED_TEXT = "payment could not be created, fail closed"
 OPEN_STATES = frozenset({State.DRAFT, State.PENDING_REVIEW, State.HELD, State.ELIGIBLE_TO_SUBMIT})
 NEW_REF_PREFIX = "ext_new_"
-# The only display names that resolve to a prior payee ref in the room. Exact match on the
-# lowercased name; everything else mints a fresh ref so a typed name can never borrow a known
-# payee's history ("send $8,000 to Rosa" does not become ext_rosa).
+# The only display names that resolve to an existing ref in the room: known billers, exact
+# match on the lowercased name. Everything else (including family and friends such as Priya
+# or Rosa) mints a fresh ref, so a typed name can never borrow a prior payee's history and
+# "send $8,000 to Priya" on ACH cannot reach A-01.
 DEFAULT_PAYEE_PAIRS: tuple[tuple[str, str], ...] = (
     ("Bay Roofing", "ext_bay_roofing"),
     ("PG&E", "ext_pge"),
     ("Comcast", "ext_comcast"),
-    ("Priya", "ext_priya"),
 )
 
 
@@ -79,8 +79,14 @@ def load_default_context(path: Path | None = None) -> AccountContext:
 def payee_directory(
     ctx: AccountContext, pairs: Sequence[tuple[str, str]] = DEFAULT_PAYEE_PAIRS
 ) -> dict[str, str]:
-    """Lowercased display name -> account_ref, only for refs that are prior payees in `ctx`."""
-    return {name.strip().lower(): ref for name, ref in pairs if ref in ctx.prior_payees}
+    """Lowercased display name -> account_ref, only for names on the known-biller list whose
+    ref is also a prior payee in `ctx`."""
+    billers = {b.strip().lower() for b in ctx.known_billers}
+    return {
+        name.strip().lower(): ref
+        for name, ref in pairs
+        if name.strip().lower() in billers and ref in ctx.prior_payees
+    }
 
 
 def mint_ref(name: str) -> str:

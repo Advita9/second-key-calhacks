@@ -98,10 +98,11 @@ def test_board_ops_roles_need_token_when_set(
             assert r.status_code == 401, role
             r = c.get("/rooms/DEMO/snapshot", params={"role": role, "token": "wrong"})
             assert r.status_code == 401, role
+            # Snapshot takes the header only; a query token is ignored (stays out of URL logs).
             r = c.get("/rooms/DEMO/snapshot", params={"role": role, "token": tok})
-            assert r.status_code == 200 and r.json()["role"] == role
+            assert r.status_code == 401
             r = c.get("/rooms/DEMO/snapshot", params={"role": role}, headers={"X-Ops-Token": tok})
-            assert r.status_code == 200
+            assert r.status_code == 200 and r.json()["role"] == role
             with c.websocket_connect(f"/ws?room=DEMO&role={role}") as ws:
                 msg = ws.receive_json()
                 assert msg["type"] == "error" and msg["code"] == "NOT_OPERATOR"
@@ -122,3 +123,17 @@ def test_payment_event_carries_display_fields(client: TestClient) -> None:
         ev = _next_of(ws, "payment")
         assert ev["amount_cents"] == 800_000 and ev["rail"] == "ACH"
         assert ev["beneficiary"] == {"name": "Bay Roofing", "account_ref": "ext_bay_roofing"}
+
+
+def test_board_socket_gets_room_push_after_http_join(client: TestClient) -> None:
+    import time
+
+    with client.websocket_connect("/ws?room=DEMO&role=board") as ws:
+        first = ws.receive_json()
+        assert first["type"] == "room" and first["snapshot"]["players"] == []
+        started = time.monotonic()
+        r = client.post("/rooms/DEMO/join", json={"handle": "alice"})
+        assert r.status_code == 200
+        msg = _next_of(ws, "room", tries=5)
+        assert time.monotonic() - started < 1.0
+        assert [p["handle"] for p in msg["snapshot"]["players"]] == ["alice"]

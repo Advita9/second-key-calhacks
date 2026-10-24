@@ -24,6 +24,7 @@ from api.room_ws import RoomHub, make_router
 from api.routes import attack, audit, evalres, payments, rooms
 from api.voice_routes import router as voice_router
 from api.voice_routes import set_stt
+from kernel.audit import AuditChainError
 from kernel.llm.cache import default_cache_root as llm_cache_root
 from kernel.models import Refusal
 from kernel.rail import RailError
@@ -73,6 +74,15 @@ def cache_counts(env: Mapping[str, str]) -> dict[str, int]:
         "llm_entries": n(llm_cache_root(env), "*.json"),
         "audio_entries": n(audio_cache_root(dict(env)), "*.wav"),
     }
+
+
+def audit_status() -> dict[str, Any]:
+    """`/health.audit`: chain verification summary. Reports a mismatch, never raises."""
+    try:
+        v = deps.get_kernel().audit_verify()
+    except Exception as e:  # noqa: BLE001  health must answer even when the log is broken
+        return {"ok": False, "anchor": "error", "error": type(e).__name__}
+    return {"ok": v.ok, "length": v.length, "anchor": v.anchor, "first_bad_seq": v.first_bad_seq}
 
 
 def _authorize_room_role(role: str, token: str | None) -> bool:
@@ -138,6 +148,19 @@ def create_app() -> FastAPI:
             status_code=409,
         )
 
+    @app.exception_handler(AuditChainError)
+    async def _chain(_: Request, exc: AuditChainError) -> JSONResponse:
+        # The audit table was altered while the kernel was down; appends are blocked until an
+        # operator calls POST /audit/acknowledge. Report, never write.
+        return JSONResponse(
+            {
+                "refused": True,
+                "invariant": "AUDIT_ANCHOR_MISMATCH",
+                "text": "SETTLEMENT REFUSED · AUDIT_ANCHOR_MISMATCH",
+            },
+            status_code=503,
+        )
+
     @app.exception_handler(RailError)
     async def _rail(_: Request, exc: RailError) -> JSONResponse:
         # Release rolled back; the certificate is still valid for a retry.
@@ -178,6 +201,7 @@ def create_app() -> FastAPI:
             "demo_mode": settings.demo_mode,
             "ops_token": "set" if settings.ops_token_set else "unset",
             "cache": cache_counts(settings.env),
+            "audit": audit_status(),
         }
 
     return app
