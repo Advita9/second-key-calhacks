@@ -45,6 +45,7 @@ from kernel.models import (
 from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, Policy, decide, fail_closed
 from kernel.rail import NullTransferRail, RailError, TransferRail
 from kernel.state import (
+    Cancelled,
     Decided,
     EnteredReview,
     HoldLifted,
@@ -379,6 +380,35 @@ class Kernel:
         log.info(
             "payment.released",
             extra={"payment_id": payment.id, "certificate_id": cert.id, "transfer_id": transfer_id},
+        )
+        return payment
+
+    def cancel(self, payment_id: str, actor_id: str, note: str | None = None) -> Payment:
+        """Operator cancel (the /ops Deny button). Pre-settlement states go to CANCELLED and
+        every attestation and certificate on the payment is voided in the same transaction.
+        DENIED and SUBMITTED are terminal and refuse (I6 / I1)."""
+        actor = f"{Capability.BANK_REVIEW.value}:{actor_id}"
+        with self._lock:
+            payment = self._load(payment_id)
+            self._refuse_if_terminal(payment, actor, "cancel")
+            now = self.clock.now()
+            with immediate(self.conn):
+                voided_att = attest_mod.void_all_for_payment(self.conn, payment.id, now)
+                voided_cert = certs_mod.void_all_for_payment(self.conn, payment.id, now)
+                self.audit.append(
+                    actor,
+                    "VOIDED",
+                    {
+                        "payment_id": payment.id,
+                        "attestations": voided_att,
+                        "certificates": voided_cert,
+                        "reason": "CANCELLED",
+                        "has_note": note is not None,
+                    },
+                )
+                payment = transition(payment, Cancelled(), audit=self.audit, actor=actor)
+        log.info(
+            "payment.cancelled", extra={"payment_id": payment.id, "state": payment.state.value}
         )
         return payment
 

@@ -1,0 +1,32 @@
+{
+ "method": "POST",
+ "url": "https://api.nessieisreal.com/customers?key=<KEY>",
+ "request_body": {
+  "first_name": "Margaret",
+  "last_name": "Demo",
+  "address": {
+   "street_number": "1",
+   "street_name": "Demo Street",
+   "city": "Oakland",
+   "state": "CA",
+   "zip": "94612"
+  }
+ },
+ "status": 201,
+ "response": {
+  "code": 201,
+  "message": "Customer created",
+  "objectCreated": {
+   "first_name": "Margaret",
+   "last_name": "Demo",
+   "address": {
+    "street_number": "1",
+    "street_name": "Demo Street",
+    "city": "Oakland",
+    "state": "CA",
+    "zip": "94612"
+   },
+   "_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+  }
+ }
+}

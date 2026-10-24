@@ -1,0 +1,25 @@
+{
+ "method": "POST",
+ "url": "https://api.nessieisreal.com/accounts/43c2edc2-5c5b-47cf-94ef-0ba089d960da/deposits?key=<KEY>",
+ "request_body": {
+  "medium": "balance",
+  "transaction_date": "2026-10-24",
+  "status": "completed",
+  "amount": 1,
+  "description": "second-key probe_060444 100c"
+ },
+ "status": 201,
+ "response": {
+  "code": 201,
+  "message": "Deposit created",
+  "objectCreated": {
+   "medium": "balance",
+   "transaction_date": "2026-10-24",
+   "status": "completed",
+   "amount": 1,
+   "description": "second-key probe_060444 100c",
+   "_id": "9c5e2599-9471-4b90-a624-3304db008733",
+   "creation_date": "2026-10-24"
+  }
+ }
+}

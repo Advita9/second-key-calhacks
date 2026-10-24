@@ -1,0 +1,27 @@
+{
+ "method": "POST",
+ "url": "https://api.nessieisreal.com/accounts/56d49767-80df-4d90-93a2-8b1d026d4635/withdrawals?key=<KEY>",
+ "request_body": {
+  "medium": "balance",
+  "transaction_date": "2026-10-24",
+  "status": "completed",
+  "amount": 1,
+  "description": "second-key probe_060444 100c"
+ },
+ "status": 201,
+ "response": {
+  "code": 201,
+  "message": "Withdrawal created",
+  "objectCreated": {
+   "medium": "balance",
+   "transaction_date": "2026-10-24",
+   "status": "completed",
+   "amount": 1,
+   "description": "second-key probe_060444 100c",
+   "_id": "956efd0e-8a91-482b-8dd3-47ac4d59340a",
+   "creation_date": "2026-10-24",
+   "type": "withdrawal",
+   "payer_id": "56d49767-80df-4d90-93a2-8b1d026d4635"
+  }
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "method": "GET",
+ "url": "https://api.nessieisreal.com/accounts/56d49767-80df-4d90-93a2-8b1d026d4635?key=<KEY>",
+ "request_body": null,
+ "status": 200,
+ "response": {
+  "_id": "56d49767-80df-4d90-93a2-8b1d026d4635",
+  "type": "Checking",
+  "nickname": "acc_margaret",
+  "rewards": 0,
+  "balance": 24000,
+  "account_number": "0358382486803524",
+  "customer_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+ }
+}

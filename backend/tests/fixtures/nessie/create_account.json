@@ -1,0 +1,24 @@
+{
+ "method": "POST",
+ "url": "https://api.nessieisreal.com/customers/51894b32-1d91-4d06-9556-8b227871a5b1/accounts?key=<KEY>",
+ "request_body": {
+  "type": "Checking",
+  "nickname": "acc_margaret",
+  "rewards": 0,
+  "balance": 24000
+ },
+ "status": 201,
+ "response": {
+  "code": 201,
+  "message": "Account created",
+  "objectCreated": {
+   "type": "Checking",
+   "nickname": "acc_margaret",
+   "rewards": 0,
+   "balance": 24000,
+   "_id": "56d49767-80df-4d90-93a2-8b1d026d4635",
+   "account_number": "0358382486803524",
+   "customer_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+  }
+ }
+}

@@ -1,0 +1,196 @@
+[
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/customers?key=<KEY>",
+  "request_body": {
+   "first_name": "Margaret",
+   "last_name": "Demo",
+   "address": {
+    "street_number": "1",
+    "street_name": "Demo Street",
+    "city": "Oakland",
+    "state": "CA",
+    "zip": "94612"
+   }
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Customer created",
+   "objectCreated": {
+    "first_name": "Margaret",
+    "last_name": "Demo",
+    "address": {
+     "street_number": "1",
+     "street_name": "Demo Street",
+     "city": "Oakland",
+     "state": "CA",
+     "zip": "94612"
+    },
+    "_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+   }
+  }
+ },
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/customers/51894b32-1d91-4d06-9556-8b227871a5b1/accounts?key=<KEY>",
+  "request_body": {
+   "type": "Checking",
+   "nickname": "acc_margaret",
+   "rewards": 0,
+   "balance": 24000
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Account created",
+   "objectCreated": {
+    "type": "Checking",
+    "nickname": "acc_margaret",
+    "rewards": 0,
+    "balance": 24000,
+    "_id": "56d49767-80df-4d90-93a2-8b1d026d4635",
+    "account_number": "0358382486803524",
+    "customer_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+   }
+  }
+ },
+ {
+  "method": "GET",
+  "url": "https://api.nessieisreal.com/accounts/56d49767-80df-4d90-93a2-8b1d026d4635?key=<KEY>",
+  "request_body": null,
+  "status": 200,
+  "response": {
+   "_id": "56d49767-80df-4d90-93a2-8b1d026d4635",
+   "type": "Checking",
+   "nickname": "acc_margaret",
+   "rewards": 0,
+   "balance": 24000,
+   "account_number": "0358382486803524",
+   "customer_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+  }
+ },
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/customers?key=<KEY>",
+  "request_body": {
+   "first_name": "Probe",
+   "last_name": "Payee",
+   "address": {
+    "street_number": "1",
+    "street_name": "Demo Street",
+    "city": "Oakland",
+    "state": "CA",
+    "zip": "94612"
+   }
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Customer created",
+   "objectCreated": {
+    "first_name": "Probe",
+    "last_name": "Payee",
+    "address": {
+     "street_number": "1",
+     "street_name": "Demo Street",
+     "city": "Oakland",
+     "state": "CA",
+     "zip": "94612"
+    },
+    "_id": "d27ab450-f529-40ac-b50a-5ed7e2a1da04"
+   }
+  }
+ },
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/customers/d27ab450-f529-40ac-b50a-5ed7e2a1da04/accounts?key=<KEY>",
+  "request_body": {
+   "type": "Checking",
+   "nickname": "ext_probe_payee",
+   "rewards": 0,
+   "balance": 0
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Account created",
+   "objectCreated": {
+    "type": "Checking",
+    "nickname": "ext_probe_payee",
+    "rewards": 0,
+    "balance": 0,
+    "_id": "43c2edc2-5c5b-47cf-94ef-0ba089d960da",
+    "account_number": "0284893279760327",
+    "customer_id": "d27ab450-f529-40ac-b50a-5ed7e2a1da04"
+   }
+  }
+ },
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/accounts/56d49767-80df-4d90-93a2-8b1d026d4635/withdrawals?key=<KEY>",
+  "request_body": {
+   "medium": "balance",
+   "transaction_date": "2026-10-24",
+   "status": "completed",
+   "amount": 1,
+   "description": "second-key probe_060444 100c"
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Withdrawal created",
+   "objectCreated": {
+    "medium": "balance",
+    "transaction_date": "2026-10-24",
+    "status": "completed",
+    "amount": 1,
+    "description": "second-key probe_060444 100c",
+    "_id": "956efd0e-8a91-482b-8dd3-47ac4d59340a",
+    "creation_date": "2026-10-24",
+    "type": "withdrawal",
+    "payer_id": "56d49767-80df-4d90-93a2-8b1d026d4635"
+   }
+  }
+ },
+ {
+  "method": "POST",
+  "url": "https://api.nessieisreal.com/accounts/43c2edc2-5c5b-47cf-94ef-0ba089d960da/deposits?key=<KEY>",
+  "request_body": {
+   "medium": "balance",
+   "transaction_date": "2026-10-24",
+   "status": "completed",
+   "amount": 1,
+   "description": "second-key probe_060444 100c"
+  },
+  "status": 201,
+  "response": {
+   "code": 201,
+   "message": "Deposit created",
+   "objectCreated": {
+    "medium": "balance",
+    "transaction_date": "2026-10-24",
+    "status": "completed",
+    "amount": 1,
+    "description": "second-key probe_060444 100c",
+    "_id": "9c5e2599-9471-4b90-a624-3304db008733",
+    "creation_date": "2026-10-24"
+   }
+  }
+ },
+ {
+  "method": "GET",
+  "url": "https://api.nessieisreal.com/accounts/56d49767-80df-4d90-93a2-8b1d026d4635?key=<KEY>",
+  "request_body": null,
+  "status": 200,
+  "response": {
+   "_id": "56d49767-80df-4d90-93a2-8b1d026d4635",
+   "type": "Checking",
+   "nickname": "acc_margaret",
+   "rewards": 0,
+   "balance": 24000,
+   "account_number": "0358382486803524",
+   "customer_id": "51894b32-1d91-4d06-9556-8b227871a5b1"
+  }
+ }
+]
