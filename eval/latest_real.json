@@ -5,18 +5,14 @@
   "scam_total": 10,
   "avg_friction_steps": 0.0,
   "outcome_mismatches": [],
-  "rule_mismatches": [
-    "S-03",
-    "S-07",
-    "S-10"
-  ],
+  "rule_mismatches": [],
   "per_rule_hits": {
     "A-01": 3,
     "D-01": 1,
     "H-01": 1,
     "H-02": 5,
     "H-03": 1,
-    "H-04": 8,
+    "H-04": 9,
     "H-05": 4,
     "H-06": 3
   },
@@ -28,9 +24,9 @@
   "extractor_model": "claude-sonnet-5-5",
   "shared_evidence_included": false,
   "policy_version": "v1",
-  "git_sha": "6cca848999fbcdebf8ae2f61feff6c671de31875",
+  "git_sha": "a290460a748144fa9b7feb37678f3f9ad2b5484a",
   "git_dirty": true,
-  "timestamp": "2026-10-24T05:54:39+00:00",
+  "timestamp": "2026-10-24T06:24:38+00:00",
   "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
   "subset": [
     "L-01",
@@ -48,6 +44,65 @@
   ],
   "schema_errors": [],
   "mock_note": null,
+  "property_suite": {
+    "dir": "backend/tests/property",
+    "files": {
+      "test_apply_never_raises.py": 2,
+      "test_found_apply_overflow.py": 4,
+      "test_found_i7_delete_reports_next_seq.py": 1,
+      "test_i1_no_submit_without_cert.py": 3,
+      "test_i2_mutation_voids.py": 3,
+      "test_i3_one_time_cert.py": 4,
+      "test_i4_model_cannot_release.py": 3,
+      "test_i5_conflict.py": 3,
+      "test_i6_deny_final.py": 4,
+      "test_i7_audit_chain.py": 5
+    },
+    "test_functions": 32,
+    "hypothesis_profiles": {
+      "dev": 200,
+      "ci": 2000
+    },
+    "invariant_modules": {
+      "I1": [
+        "test_i1_no_submit_without_cert.py"
+      ],
+      "I2": [
+        "test_i2_mutation_voids.py"
+      ],
+      "I3": [
+        "test_i3_one_time_cert.py"
+      ],
+      "I4": [
+        "test_i4_model_cannot_release.py"
+      ],
+      "I5": [
+        "test_i5_conflict.py"
+      ],
+      "I6": [
+        "test_i6_deny_final.py"
+      ],
+      "I7": [
+        "test_i7_audit_chain.py"
+      ]
+    },
+    "invariants_covered": [
+      "I1",
+      "I2",
+      "I3",
+      "I4",
+      "I5",
+      "I6",
+      "I7"
+    ],
+    "invariants_missing": [],
+    "note": "counts from a text scan of def test_*; not a pass/fail claim"
+  },
+  "suite_counts": {
+    "unit": 313,
+    "api": 39,
+    "voice": 51
+  },
   "cases": [
     {
       "id": "L-01",
@@ -148,18 +203,21 @@
         "H-01",
         "H-02",
         "H-03",
-        "D-01"
+        "D-01",
+        "H-04",
+        "H-05",
+        "H-06"
       ],
-      "rules_ok": false,
+      "rules_ok": true,
       "signals": [
         {
           "kind": "authority",
-          "score": 0.95,
+          "score": 0.97,
           "source_id": "EV-0001"
         },
         {
           "kind": "threat",
-          "score": 0.9,
+          "score": 0.95,
           "source_id": "EV-0001"
         },
         {
@@ -179,12 +237,12 @@
         },
         {
           "kind": "urgency",
-          "score": 0.9,
+          "score": 0.93,
           "source_id": "EV-0005"
         },
         {
           "kind": "threat",
-          "score": 0.93,
+          "score": 0.95,
           "source_id": "EV-0005"
         }
       ],
@@ -238,7 +296,7 @@
         },
         {
           "kind": "threat",
-          "score": 0.4,
+          "score": 0.35,
           "source_id": "EV-0003"
         },
         {
@@ -248,7 +306,7 @@
         },
         {
           "kind": "urgency",
-          "score": 0.6,
+          "score": 0.55,
           "source_id": "EV-0005"
         }
       ],
@@ -298,7 +356,7 @@
         },
         {
           "kind": "secrecy",
-          "score": 0.85,
+          "score": 0.9,
           "source_id": "EV-0005"
         }
       ],
@@ -336,13 +394,14 @@
       ],
       "allowed_rule_ids": [
         "H-04",
-        "H-06"
+        "H-06",
+        "H-05"
       ],
-      "rules_ok": false,
+      "rules_ok": true,
       "signals": [
         {
           "kind": "authority",
-          "score": 0.85,
+          "score": 0.8,
           "source_id": "EV-0001"
         },
         {
@@ -405,7 +464,8 @@
       "outcome": "HOLD",
       "outcome_ok": true,
       "rule_ids": [
-        "H-02"
+        "H-02",
+        "H-04"
       ],
       "allowed_rule_ids": [
         "H-02",
@@ -415,7 +475,7 @@
       "signals": [
         {
           "kind": "urgency",
-          "score": 0.7,
+          "score": 0.8,
           "source_id": "EV-0003"
         },
         {
@@ -425,7 +485,7 @@
         },
         {
           "kind": "secrecy",
-          "score": 0.9,
+          "score": 0.85,
           "source_id": "EV-0003"
         },
         {
@@ -435,13 +495,18 @@
         },
         {
           "kind": "secrecy",
-          "score": 0.92,
+          "score": 0.95,
           "source_id": "EV-0005"
         },
         {
-          "kind": "new_relationship",
+          "kind": "authority",
           "score": 0.5,
           "source_id": "EV-0001"
+        },
+        {
+          "kind": "new_relationship",
+          "score": 0.4,
+          "source_id": "EV-0003"
         }
       ],
       "friction_steps": 0,
@@ -477,9 +542,10 @@
       ],
       "allowed_rule_ids": [
         "H-04",
-        "H-05"
+        "H-05",
+        "H-06"
       ],
-      "rules_ok": false,
+      "rules_ok": true,
       "signals": [
         {
           "kind": "authority",
@@ -498,7 +564,7 @@
         },
         {
           "kind": "urgency",
-          "score": 0.8,
+          "score": 0.7,
           "source_id": "EV-0003"
         },
         {
@@ -508,7 +574,7 @@
         },
         {
           "kind": "new_relationship",
-          "score": 0.7,
+          "score": 0.8,
           "source_id": "EV-0005"
         }
       ],
@@ -562,7 +628,7 @@
         },
         {
           "kind": "new_relationship",
-          "score": 0.55,
+          "score": 0.6,
           "source_id": "EV-0001"
         },
         {
@@ -673,37 +739,37 @@
       "signals": [
         {
           "kind": "secrecy",
-          "score": 0.9,
+          "score": 0.95,
           "source_id": "EV-0001"
+        },
+        {
+          "kind": "urgency",
+          "score": 0.9,
+          "source_id": "EV-0003"
+        },
+        {
+          "kind": "payment_method",
+          "score": 0.9,
+          "source_id": "EV-0003"
         },
         {
           "kind": "new_relationship",
-          "score": 0.6,
-          "source_id": "EV-0001"
-        },
-        {
-          "kind": "urgency",
-          "score": 0.85,
+          "score": 0.7,
           "source_id": "EV-0003"
         },
         {
           "kind": "payment_method",
-          "score": 0.85,
-          "source_id": "EV-0003"
-        },
-        {
-          "kind": "urgency",
-          "score": 0.85,
+          "score": 0.95,
           "source_id": "EV-0004"
         },
         {
-          "kind": "payment_method",
-          "score": 0.85,
+          "kind": "urgency",
+          "score": 0.9,
           "source_id": "EV-0004"
         },
         {
           "kind": "secrecy",
-          "score": 0.8,
+          "score": 0.85,
           "source_id": "EV-0004"
         },
         {
@@ -759,7 +825,7 @@
         },
         {
           "kind": "urgency",
-          "score": 0.85,
+          "score": 0.9,
           "source_id": "EV-0003"
         },
         {
@@ -768,18 +834,13 @@
           "source_id": "EV-0003"
         },
         {
-          "kind": "new_relationship",
-          "score": 0.5,
-          "source_id": "EV-0001"
-        },
-        {
           "kind": "urgency",
-          "score": 0.85,
+          "score": 0.9,
           "source_id": "EV-0005"
         },
         {
-          "kind": "payment_method",
-          "score": 0.55,
+          "kind": "new_relationship",
+          "score": 0.6,
           "source_id": "EV-0005"
         }
       ],
@@ -826,9 +887,9 @@
       "authority": {
         "agree": 3,
         "mock_only": 0,
-        "real_only": 2,
-        "neither": 5,
-        "agreement": 0.8
+        "real_only": 3,
+        "neither": 4,
+        "agreement": 0.7
       },
       "payment_method": {
         "agree": 5,
@@ -880,12 +941,12 @@
           "threat": 0.8
         },
         "real_kinds": {
-          "urgency": 0.9,
+          "urgency": 0.93,
           "secrecy": 0.97,
-          "authority": 0.95,
+          "authority": 0.97,
           "payment_method": 0.9,
           "new_relationship": 0.8,
-          "threat": 0.93
+          "threat": 0.95
         },
         "real_ok": true,
         "outcome_mock": "DENY",
@@ -902,7 +963,7 @@
           "urgency": 0.9,
           "authority": 0.9,
           "payment_method": 0.97,
-          "threat": 0.4
+          "threat": 0.35
         },
         "real_ok": true,
         "outcome_mock": "HOLD",
@@ -931,7 +992,7 @@
         },
         "real_kinds": {
           "urgency": 0.9,
-          "authority": 0.85,
+          "authority": 0.8,
           "payment_method": 0.9,
           "threat": 0.85
         },
@@ -947,10 +1008,11 @@
           "payment_method": 0.9
         },
         "real_kinds": {
-          "urgency": 0.7,
-          "secrecy": 0.92,
+          "urgency": 0.8,
+          "secrecy": 0.95,
+          "authority": 0.5,
           "payment_method": 0.95,
-          "new_relationship": 0.5,
+          "new_relationship": 0.4,
           "threat": 0.5
         },
         "real_ok": true,
@@ -967,7 +1029,7 @@
           "urgency": 0.85,
           "authority": 0.9,
           "payment_method": 0.75,
-          "new_relationship": 0.7,
+          "new_relationship": 0.8,
           "threat": 0.85
         },
         "real_ok": true,
@@ -982,7 +1044,7 @@
         "real_kinds": {
           "urgency": 0.9,
           "payment_method": 0.6,
-          "new_relationship": 0.55
+          "new_relationship": 0.6
         },
         "real_ok": true,
         "outcome_mock": "HOLD",
@@ -1006,5 +1068,9 @@
         "outcome_real": "HOLD"
       }
     ]
+  },
+  "llm_cache": {
+    "hits": 12,
+    "misses": 10
   }
 }

@@ -5,11 +5,7 @@
   "scam_total": 20,
   "avg_friction_steps": 0.8,
   "outcome_mismatches": [],
-  "rule_mismatches": [
-    "L-23",
-    "S-03",
-    "S-17"
-  ],
+  "rule_mismatches": [],
   "per_rule_hits": {
     "A-01": 27,
     "D-01": 3,
@@ -17,9 +13,9 @@
     "H-01": 16,
     "H-02": 7,
     "H-03": 14,
-    "H-04": 7,
+    "H-04": 5,
     "H-05": 7,
-    "H-06": 6
+    "H-06": 5
   },
   "signals_required_total": 9,
   "signals_required_caught": 9,
@@ -29,13 +25,72 @@
   "extractor_model": null,
   "shared_evidence_included": false,
   "policy_version": "v1",
-  "git_sha": "6cca848999fbcdebf8ae2f61feff6c671de31875",
+  "git_sha": "a290460a748144fa9b7feb37678f3f9ad2b5484a",
   "git_dirty": true,
-  "timestamp": "2026-10-24T05:54:39+00:00",
+  "timestamp": "2026-10-24T06:24:39+00:00",
   "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
   "subset": null,
   "schema_errors": [],
   "mock_note": "MockExtractor is keyword-based over conversation text; numbers with the real extractor are separate",
+  "property_suite": {
+    "dir": "backend/tests/property",
+    "files": {
+      "test_apply_never_raises.py": 2,
+      "test_found_apply_overflow.py": 4,
+      "test_found_i7_delete_reports_next_seq.py": 1,
+      "test_i1_no_submit_without_cert.py": 3,
+      "test_i2_mutation_voids.py": 3,
+      "test_i3_one_time_cert.py": 4,
+      "test_i4_model_cannot_release.py": 3,
+      "test_i5_conflict.py": 3,
+      "test_i6_deny_final.py": 4,
+      "test_i7_audit_chain.py": 5
+    },
+    "test_functions": 32,
+    "hypothesis_profiles": {
+      "dev": 200,
+      "ci": 2000
+    },
+    "invariant_modules": {
+      "I1": [
+        "test_i1_no_submit_without_cert.py"
+      ],
+      "I2": [
+        "test_i2_mutation_voids.py"
+      ],
+      "I3": [
+        "test_i3_one_time_cert.py"
+      ],
+      "I4": [
+        "test_i4_model_cannot_release.py"
+      ],
+      "I5": [
+        "test_i5_conflict.py"
+      ],
+      "I6": [
+        "test_i6_deny_final.py"
+      ],
+      "I7": [
+        "test_i7_audit_chain.py"
+      ]
+    },
+    "invariants_covered": [
+      "I1",
+      "I2",
+      "I3",
+      "I4",
+      "I5",
+      "I6",
+      "I7"
+    ],
+    "invariants_missing": [],
+    "note": "counts from a text scan of def test_*; not a pass/fail claim"
+  },
+  "suite_counts": {
+    "unit": 313,
+    "api": 39,
+    "voice": 51
+  },
   "cases": [
     {
       "id": "L-01",
@@ -748,18 +803,7 @@
         "H-01"
       ],
       "rules_ok": true,
-      "signals": [
-        {
-          "kind": "new_relationship",
-          "score": 0.7,
-          "source_id": "EV-0003"
-        },
-        {
-          "kind": "payment_method",
-          "score": 0.5,
-          "source_id": "EV-0003"
-        }
-      ],
+      "signals": [],
       "friction_steps": 2,
       "max_friction_steps": 2,
       "final_state": "SUBMITTED",
@@ -787,26 +831,14 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03",
-        "H-04"
+        "H-03"
       ],
       "allowed_rule_ids": [
         "H-01",
         "H-03"
       ],
-      "rules_ok": false,
-      "signals": [
-        {
-          "kind": "urgency",
-          "score": 0.8,
-          "source_id": "EV-0003"
-        },
-        {
-          "kind": "payment_method",
-          "score": 0.6,
-          "source_id": "EV-0005"
-        }
-      ],
+      "rules_ok": true,
+      "signals": [],
       "friction_steps": 2,
       "max_friction_steps": 2,
       "final_state": "SUBMITTED",
@@ -909,11 +941,6 @@
           "kind": "payment_method",
           "score": 0.6,
           "source_id": "EV-0003"
-        },
-        {
-          "kind": "urgency",
-          "score": 0.6,
-          "source_id": "EV-0003"
         }
       ],
       "friction_steps": 2,
@@ -976,21 +1003,14 @@
       "outcome": "HOLD",
       "outcome_ok": true,
       "rule_ids": [
-        "H-03",
-        "H-04"
+        "H-03"
       ],
       "allowed_rule_ids": [
         "H-03",
         "H-04"
       ],
       "rules_ok": true,
-      "signals": [
-        {
-          "kind": "urgency",
-          "score": 0.8,
-          "source_id": "EV-0001"
-        }
-      ],
+      "signals": [],
       "friction_steps": 2,
       "max_friction_steps": 2,
       "final_state": "SUBMITTED",
@@ -1159,13 +1179,7 @@
       ],
       "allowed_rule_ids": [],
       "rules_ok": true,
-      "signals": [
-        {
-          "kind": "new_relationship",
-          "score": 0.7,
-          "source_id": "EV-0002"
-        }
-      ],
+      "signals": [],
       "friction_steps": 2,
       "max_friction_steps": 2,
       "final_state": "SUBMITTED",
@@ -1597,9 +1611,12 @@
         "H-01",
         "H-02",
         "H-03",
-        "D-01"
+        "D-01",
+        "H-04",
+        "H-05",
+        "H-06"
       ],
-      "rules_ok": false,
+      "rules_ok": true,
       "signals": [
         {
           "kind": "secrecy",
@@ -1638,11 +1655,6 @@
         },
         {
           "kind": "secrecy",
-          "score": 0.7,
-          "source_id": "EV-0003"
-        },
-        {
-          "kind": "threat",
           "score": 0.7,
           "source_id": "EV-0003"
         },
@@ -1878,7 +1890,8 @@
       ],
       "allowed_rule_ids": [
         "H-04",
-        "H-06"
+        "H-06",
+        "H-05"
       ],
       "rules_ok": true,
       "signals": [
@@ -2072,7 +2085,8 @@
       ],
       "allowed_rule_ids": [
         "H-04",
-        "H-05"
+        "H-05",
+        "H-06"
       ],
       "rules_ok": true,
       "signals": [
@@ -2252,16 +2266,6 @@
         {
           "kind": "threat",
           "score": 0.8,
-          "source_id": "EV-0003"
-        },
-        {
-          "kind": "threat",
-          "score": 0.8,
-          "source_id": "EV-0004"
-        },
-        {
-          "kind": "urgency",
-          "score": 0.6,
           "source_id": "EV-0003"
         }
       ],
@@ -2473,8 +2477,7 @@
       "outcome_ok": true,
       "rule_ids": [
         "H-01",
-        "H-03",
-        "H-06"
+        "H-03"
       ],
       "allowed_rule_ids": [
         "H-01",
@@ -2482,13 +2485,8 @@
         "H-04",
         "H-05"
       ],
-      "rules_ok": false,
+      "rules_ok": true,
       "signals": [
-        {
-          "kind": "threat",
-          "score": 0.7,
-          "source_id": "EV-0001"
-        },
         {
           "kind": "urgency",
           "score": 0.6,
@@ -2669,5 +2667,6 @@
       "error": null,
       "audit_ok": true
     }
-  ]
+  ],
+  "llm_cache": null
 }

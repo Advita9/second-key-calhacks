@@ -25,7 +25,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Mapping
@@ -142,6 +144,68 @@ def git_dirty() -> bool | None:
         return bool(out.stdout.strip())
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+# ----------------------------------------------------------------------------- test suites
+
+TESTS_DIR = BACKEND / "tests"
+_TEST_DEF = re.compile(r"^\s*(?:async\s+)?def (test_\w+)\s*\(", re.MULTILINE)
+_PROFILE = re.compile(r'register_profile\(\s*"(\w+)",\s*max_examples=(\d+)')
+_INVARIANT_MODULE = re.compile(r"^test_i([1-7])_")
+
+
+def scan_tests(subdir: str) -> dict[str, Any]:
+    """Count `def test_*` functions per file by text scan. Counts only; no PASS claim."""
+    root = TESTS_DIR / subdir
+    files: dict[str, int] = {}
+    for f in sorted(root.glob("test_*.py")) if root.is_dir() else []:
+        files[f.name] = len(_TEST_DEF.findall(f.read_text(encoding="utf-8")))
+    return {
+        "dir": str(root.relative_to(REPO_ROOT)),
+        "files": files,
+        "test_functions": sum(files.values()),
+    }
+
+
+def hypothesis_profiles() -> dict[str, int]:
+    conftest = TESTS_DIR / "conftest.py"
+    if not conftest.is_file():
+        return {}
+    return {name: int(n) for name, n in _PROFILE.findall(conftest.read_text(encoding="utf-8"))}
+
+
+def property_suite() -> dict[str, Any]:
+    scan = scan_tests("property")
+    invariants: dict[str, list[str]] = {}
+    for name in scan["files"]:
+        m = _INVARIANT_MODULE.match(name)
+        if m:
+            invariants.setdefault(f"I{m.group(1)}", []).append(name)
+    covered = sorted(invariants)
+    return {
+        **scan,
+        "hypothesis_profiles": hypothesis_profiles(),
+        "invariant_modules": {k: invariants[k] for k in covered},
+        "invariants_covered": covered,
+        "invariants_missing": [f"I{i}" for i in range(1, 8) if f"I{i}" not in invariants],
+        "note": "counts from a text scan of def test_*; not a pass/fail claim",
+    }
+
+
+class _CacheCounter(logging.Handler):
+    """Counts the ClaudeExtractor's own cache_hit log field. hits+misses == real calls made."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.INFO)
+        self.hits = 0
+        self.misses = 0
+
+    def emit(self, record: logging.LogRecord) -> None:
+        hit = getattr(record, "cache_hit", None)
+        if hit is True:
+            self.hits += 1
+        elif hit is False:
+            self.misses += 1
 
 
 # ----------------------------------------------------------------------------- one case
@@ -370,6 +434,11 @@ def main(argv: list[str] | None = None) -> int:
     extractor, mode = build_extractor(env)
     if args.real and mode != "real":
         sys.exit("--real given but the factory chose the mock extractor")
+    cache_counter = _CacheCounter()
+    claude_log = logging.getLogger("second_key.llm.claude")
+    claude_log.addHandler(cache_counter)
+    if claude_log.level == logging.NOTSET or claude_log.level > logging.INFO:
+        claude_log.setLevel(logging.INFO)
 
     all_cases = load_cases(args.suite)
     schema_errors = validate_cases(all_cases)
@@ -425,6 +494,8 @@ def main(argv: list[str] | None = None) -> int:
         "subset": wanted or None,
         "schema_errors": schema_errors,
         "mock_note": MOCK_NOTE if mode == "mock" else None,
+        "property_suite": property_suite(),
+        "suite_counts": {k: scan_tests(k)["test_functions"] for k in ("unit", "api", "voice")},
         "cases": rows,
     }
 
@@ -444,6 +515,12 @@ def main(argv: list[str] | None = None) -> int:
             result["extractor_agreement"] = extractor_agreement(
                 picked, real=real_x, shared=shared, policy=policy
             )
+
+    result["llm_cache"] = (
+        {"hits": cache_counter.hits, "misses": cache_counter.misses}
+        if cache_counter.hits or cache_counter.misses
+        else None
+    )
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -465,6 +542,14 @@ def main(argv: list[str] | None = None) -> int:
     if agr:
         kinds = ", ".join(f"{k}={v['agreement']}" for k, v in agr["per_kind"].items())
         print(f"extractor_agreement (n={agr['n']}): outcome={agr['outcome_agreement']}  {kinds}")
+    ps = result["property_suite"]
+    print(
+        f"property_suite: {ps['test_functions']} test functions in {len(ps['files'])} files, "
+        f"profiles={ps['hypothesis_profiles']}, invariants={ps['invariants_covered']}  "
+        f"suite_counts={result['suite_counts']}"
+    )
+    if result["llm_cache"]:
+        print(f"llm_cache: {result['llm_cache']}")
     print(f"wrote {out}")
 
     full_suite = not wanted
