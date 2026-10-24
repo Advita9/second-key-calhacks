@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-23 23:30 PDT
-Current task: items 1-2 under invariant review; item 3 (certs/service) building; items 9, 10a, 11 building in parallel lanes. Fixtures (item 8 data) done: 60 cases validated.
-Iteration: 3
+Last updated: 2026-10-24 00:25 PDT
+Current task: kernel review fixes (Task C) in progress; T7 nessie+rooms+api building; eval.py building; property tests (item 4) building; LLM boundary review running. Done: 0,5,6,9,10,11 (items 1-3 await re-review).
+Iteration: 4
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
@@ -20,12 +20,12 @@ Iteration: 3
 - [ ] 2. Policy engine: YAML v1, safe expression parser, precedence, tests.
 - [~] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
 - [ ] 4. Hypothesis property tests over random action traces for I1 to I7. Review by invariant-reviewer, attack by red-team.
-- [ ] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
-- [ ] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
+- [x] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
+- [x] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
 - [ ] 7. FastAPI routes per docs/api.md, WS, audit endpoints, attack panel, mutate/tamper under DEMO_MODE. Nessie client + mock.
 - [ ] 8. Fixtures: 60 cases (Diya's spec: 40 legit incl. 10 hard, 20 scams), evidence.json, mule list, known billers, baselines. eval.py. Hit G3.
 - [x] 9. SpacetimeDB module + bridge. Fallback RoomStore if blocked. Hit G4.
-- [ ] 10. Frontend /board, /play, /ops. Playwright smoke. Hit G5.
+- [x] 10. Frontend /board, /play, /ops. Playwright smoke. Hit G5.
 - [x] 11. Voice: MockTTS via `say`, Cartesia clients, push-to-talk. Hit G6.
 - [ ] 12. Demo mode, LLM cache, demo.py. Hit G7.
 - [ ] 13. README, MORNING.md, DEVPOST_DRAFT.md, DECISIONS.md. Hit G8.
