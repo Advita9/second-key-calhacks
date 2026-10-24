@@ -2,10 +2,32 @@
 
 from __future__ import annotations
 
+import unicodedata
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, field_validator
+
+_DROPPED_CATEGORIES = frozenset({"Cf", "Cc", "Zs"})
+
+
+def normalize_ref(s: str) -> str:
+    """Canonical form for account references and actor ids: NFKC, strip, drop format /
+    control / space characters inside, casefold. So `EXT_PRIYA`, `ext_priya ` and
+    `ext_priya\u200b` are one ref. NFKC does NOT fold Cyrillic/Greek homoglyphs onto Latin:
+    those are different refs, which is acceptable because refs are bank account identifiers,
+    not display names (docs/DECISIONS.md).
+    """
+    out = unicodedata.normalize("NFKC", s).strip()
+    out = "".join(ch for ch in out if unicodedata.category(ch) not in _DROPPED_CATEGORIES)
+    return out.casefold()
+
+
+def _validated_ref(value: str, what: str) -> str:
+    out = normalize_ref(value)
+    if not out:
+        raise ValueError(f"{what} is empty after normalization")
+    return out
 
 
 class StrictModel(BaseModel):
@@ -57,6 +79,11 @@ class Beneficiary(StrictModel):
     account_ref: str = Field(min_length=1)
     is_new: bool
 
+    @field_validator("account_ref", mode="after")
+    @classmethod
+    def _norm_ref(cls, v: str) -> str:
+        return _validated_ref(v, "account_ref")
+
 
 class PaymentIn(StrictModel):
     account_id: str = Field(min_length=1)
@@ -65,6 +92,11 @@ class PaymentIn(StrictModel):
     beneficiary: Beneficiary
     rail: Rail
     conversation_id: str
+
+    @field_validator("account_id", mode="after")
+    @classmethod
+    def _norm_account(cls, v: str) -> str:
+        return _validated_ref(v, "account_id")
 
 
 class Payment(PaymentIn):
@@ -82,6 +114,11 @@ class AccountContext(StrictModel):
     prior_payees: list[str]
     mule_list: list[str]
     known_biller_cap_cents: int = Field(default=1_500_000, ge=0)
+
+    @field_validator("prior_payees", "mule_list", mode="after")
+    @classmethod
+    def _norm_refs(cls, v: list[str]) -> list[str]:
+        return [normalize_ref(x) for x in v]
 
 
 class Attestation(StrictModel):

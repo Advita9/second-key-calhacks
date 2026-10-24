@@ -6,6 +6,9 @@
 backend/.venv/
 backend/cache/
 backend/*.db
+backend/*.db.head.json
+backend/*.db-wal
+backend/*.db-shm
 backend/.pytest_cache/
 backend/.hypothesis/
 backend/.mypy_cache/

@@ -8,7 +8,7 @@ from datetime import datetime
 
 from kernel.clock import Clock
 from kernel.db import Connection, immediate
-from kernel.models import Attestation, Capability, Invariant, Payment
+from kernel.models import Attestation, Capability, Invariant, Payment, normalize_ref
 
 # Who may do what. CO_APPROVER and CUSTOMER_CHECKIN can only add evidence.
 CAN_LIFT_HOLD: frozenset[Capability] = frozenset({Capability.BANK_REVIEW})
@@ -21,9 +21,10 @@ _COLS = "id, payment_id, actor_id, capability, fingerprint, note, created_at, vo
 def conflict(payment: Payment, actor_id: str) -> Invariant | None:
     """I5: an actor whose id is the beneficiary's account_ref may not attest to the payment.
 
-    Compares refs only. Display names are attacker controlled and never consulted.
+    Compares normalized refs only (see models.normalize_ref). Display names are attacker
+    controlled and never consulted.
     """
-    if actor_id == payment.beneficiary.account_ref:
+    if normalize_ref(actor_id) == normalize_ref(payment.beneficiary.account_ref):
         return Invariant.I5_CONFLICT
     return None
 

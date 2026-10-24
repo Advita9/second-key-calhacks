@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from kernel.llm.types import Signal
-from kernel.models import Beneficiary, Decision, Outcome, Rail
+from kernel.models import Beneficiary, Decision, Outcome, PaymentIn, Rail
 from kernel.policy.engine import (
     DEFAULT_RULE_ID,
     EVAL_ERROR_RULE_ID,
@@ -41,7 +41,7 @@ def test_v1_loads(v1: Policy) -> None:
     assert v1.default is Outcome.HOLD
     assert v1.precedence == (Outcome.DENY, Outcome.HOLD, Outcome.ALLOW)
     ids = [r.id for r in v1.rules]
-    assert ids == ["D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06", "A-01"]
+    assert ids == ["D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06", "H-07", "A-01"]
     assert set(v1.compiled) == set(ids)
 
 
@@ -117,11 +117,71 @@ def test_spoofed_biller_name_with_new_ref_holds_not_allows(v1: Policy) -> None:
     assert d.outcome is Outcome.HOLD and d.rule_ids == (DEFAULT_RULE_ID,)
 
 
-def test_no_v1_rule_reads_name_on_biller_list(v1: Policy) -> None:
+def test_no_allow_rule_reads_name_on_biller_list(v1: Policy) -> None:
+    """A display name may demand friction (H-07) but may never grant ALLOW."""
     from kernel.policy.expr import free_identifiers
 
-    used = frozenset().union(*(free_identifiers(n) for n in v1.compiled.values()))
-    assert "beneficiary.name_on_biller_list" not in used
+    for rule in v1.rules:
+        if rule.outcome is Outcome.ALLOW:
+            assert "beneficiary.name_on_biller_list" not in free_identifiers(v1.compiled[rule.id])
+
+
+def test_h07_p2p_on_irreversible_rail_over_1000_holds(v1: Policy) -> None:
+    """S-05 shape: prior payee, ZELLE, $1,500, not a biller, zero signals."""
+    ctx = account_context(prior_payees=["ext_robert_hale"], baseline_90d_cents=240_000)
+    p = payment_in(
+        amount_cents=150_000,
+        beneficiary=Beneficiary(name="Robert Hale", account_ref="ext_robert_hale", is_new=False),
+        rail=Rail.ZELLE,
+    )
+    d = decide(p, [], ctx, v1)
+    assert d.outcome is Outcome.HOLD and d.rule_ids == ("H-07", "A-01")
+    # Under $1,000 on ZELLE to the same payee: no H-07.
+    d = decide(payment_in_like(p, amount_cents=100_000), [], ctx, v1)
+    assert d.outcome is Outcome.ALLOW and d.rule_ids == ("A-01",)
+    # Same amount on ACH: no H-07.
+    d = decide(payment_in_like(p, rail=Rail.ACH), [], ctx, v1)
+    assert d.outcome is Outcome.ALLOW
+    # A biller by name on WIRE is exempt from H-07.
+    biller = payment_in(
+        amount_cents=800_000,
+        beneficiary=Beneficiary(name="Bay Roofing", account_ref="ext_bay_roofing", is_new=False),
+        rail=Rail.WIRE,
+    )
+    d = decide(biller, [], account_context(), v1)
+    assert d.outcome is Outcome.ALLOW and d.rule_ids == ("A-01",)
+
+
+def payment_in_like(p: PaymentIn, **over: object) -> PaymentIn:
+    return PaymentIn.model_validate({**p.model_dump(), **over})
+
+
+def test_env_refs_are_normalized_before_comparison() -> None:
+    ctx = account_context(prior_payees=["EXT_PGE "], mule_list=["ext_9f31\u200b"])
+    prior = payment_in(beneficiary=Beneficiary(name="x", account_ref=" ext_pge", is_new=True))
+    mule = payment_in(beneficiary=Beneficiary(name="x", account_ref="EXT_9F31", is_new=True))
+    env_prior = build_env(prior, [], ctx)
+    assert env_prior["beneficiary.is_known_biller"] is True
+    assert env_prior["beneficiary.is_new"] is True  # caller flag still counts
+    assert build_env(mule, [], ctx)["beneficiary.on_mule_list"] is True
+
+
+def test_cyrillic_homoglyph_ref_is_a_different_ref(v1: Policy) -> None:
+    """NFKC does not fold Cyrillic е onto Latin e. Refs are account identifiers, not display
+    names, so a homoglyph ref is simply another (unknown, new) payee; it is not DENY by D-01
+    but it is also not a prior payee, so it never inherits A-01 either."""
+    latin = "ext_9f31"
+    cyrillic = "\u0435xt_9f31"  # Cyrillic small ie
+    assert latin != cyrillic
+    ctx = account_context(mule_list=[latin], prior_payees=[latin])
+    p = payment_in(
+        amount_cents=100, beneficiary=Beneficiary(name="x", account_ref=cyrillic, is_new=False)
+    )
+    env = build_env(p, [], ctx)
+    assert env["beneficiary.on_mule_list"] is False
+    assert env["beneficiary.is_known_biller"] is False and env["beneficiary.is_new"] is True
+    d = decide(p, [], ctx, v1)
+    assert d.outcome is Outcome.HOLD and d.rule_ids == (DEFAULT_RULE_ID,)
 
 
 def test_env_mule_list_matches_account_ref_never_name() -> None:
@@ -171,7 +231,7 @@ def test_scenario_a_irs_wire_holds_on_h01_and_h03(v1: Policy) -> None:
     )
     d = decide(p, [sig("secrecy", 0.9), sig("authority", 0.8)], account_context(), v1)
     assert d.outcome is Outcome.HOLD
-    assert d.rule_ids == ("H-01", "H-02", "H-03")
+    assert d.rule_ids == ("H-01", "H-02", "H-03", "H-07")
 
 
 def test_mule_list_denies_and_deny_wins_over_everything(v1: Policy) -> None:
@@ -204,7 +264,7 @@ def test_rule_ids_in_yaml_order(v1: Policy) -> None:
         sig("threat", 0.9),
     ]
     d = decide(p, sigs, account_context(), v1)
-    assert d.rule_ids == ("D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06")
+    assert d.rule_ids == ("D-01", "H-01", "H-02", "H-03", "H-04", "H-05", "H-06", "H-07")
 
 
 @pytest.mark.parametrize(

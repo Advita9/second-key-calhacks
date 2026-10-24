@@ -24,6 +24,11 @@ rules:
   - id: H-06
     when: signals.threat >= 0.7
     outcome: HOLD
+  # Person-to-person transfers on irreversible rails above $1,000 always get a check-in, even
+  # to a prior payee and even when the model sees nothing (fact-only; closes the S-05 gap).
+  - id: H-07
+    when: rail in [WIRE, ZELLE, CRYPTO] and not beneficiary.name_on_biller_list and amount_cents > 100000
+    outcome: HOLD
   - id: A-01
     when: beneficiary.is_known_biller and amount_cents <= known_biller_cap_cents
     outcome: ALLOW

@@ -25,7 +25,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from kernel import attest as attest_mod
 from kernel import certs as certs_mod
-from kernel.audit import AuditEvent, AuditLog, VerifyResult
+from kernel.audit import AuditEvent, AuditLog, VerifyResult, anchor_path_for
 from kernel.clock import Clock, SystemClock
 from kernel.db import connect, immediate, insert_payment, list_payment_ids, load_payment
 from kernel.fingerprint import fingerprint
@@ -41,6 +41,7 @@ from kernel.models import (
     PaymentIn,
     Refusal,
     State,
+    normalize_ref,
 )
 from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, Policy, decide, fail_closed
 from kernel.rail import NullTransferRail, RailError, RailUnknownOutcome, TransferRail
@@ -164,7 +165,7 @@ class Kernel:
         self.cert_ttl_s = cert_ttl_s
         self.extractor_timeout_s = extractor_timeout_s
         self.conn = connect(db_path)
-        self.audit = AuditLog(self.conn, self.clock)
+        self.audit = AuditLog(self.conn, self.clock, anchor_path=anchor_path_for(db_path))
         self._lock = threading.RLock()
         # Per-payment data that is not part of the money-moving record.
         self._conversations: dict[str, tuple[EvidenceItem, ...]] = {}
@@ -224,6 +225,7 @@ class Kernel:
         capability: Capability,
         note: str | None = None,
     ) -> Payment:
+        actor_id = normalize_ref(actor_id)
         actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
@@ -266,6 +268,7 @@ class Kernel:
     def issue_certificate(
         self, payment_id: str, actor_id: str, capability: Capability
     ) -> Certificate:
+        actor_id = normalize_ref(actor_id)
         actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
@@ -415,6 +418,7 @@ class Kernel:
         """Operator cancel (the /ops Deny button). BANK_REVIEW only. Pre-settlement states go
         to CANCELLED and every attestation and certificate on the payment is voided in the same
         transaction. DENIED and SUBMITTED are terminal and refuse (I6 / I1)."""
+        actor_id = normalize_ref(actor_id)
         actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
@@ -532,6 +536,14 @@ class Kernel:
     def audit_verify(self) -> VerifyResult:
         with self._lock:
             return self.audit.verify()
+
+    def acknowledge_audit_anchor(self, actor_id: str) -> AuditEvent:
+        """Ops only (the route enforces the token). Accept the current audit table as the new
+        baseline after the sidecar anchor disagreed with it. Audited."""
+        with self._lock:
+            return self.audit.acknowledge_anchor(
+                _actor(Capability.BANK_REVIEW, normalize_ref(actor_id))
+            )
 
     def apply(self, cmd: Cmd) -> CmdResult:
         """Never raises. For random traces and the demo script."""

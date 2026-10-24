@@ -58,7 +58,8 @@ Each returns `{steps[], refused: true, invariant, text}`, broadcasts an `attack`
 ## Audit
 
 `GET /audit?limit=200` → chained events `{seq, ts, actor, kind, payload, prev_hash, hash}`
-`GET /audit/verify` → `{ok: bool, length, first_bad_seq?}`
+`GET /audit/verify` → `{ok: bool, length, first_bad_seq?, anchor: "ok"|"mismatch"|"none"}`. `anchor` compares the table to the durable sidecar anchor (`<db>.head.json`); `mismatch` means rows were erased or rewritten while the kernel was down, and the log refuses new rows until an operator acknowledges.
+`POST /audit/acknowledge` (operator, `X-Ops-Token` when set) body `{actor_id?}` → accepts the current table as the new baseline; audited as `AUDIT_ANCHOR_ACKNOWLEDGED`.
 `POST /audit/tamper` (DEMO_MODE only) edits one past record so verify goes red on stage.
 
 ## Eval
@@ -96,6 +97,9 @@ rules:
   - id: H-06
     when: signals.threat >= 0.7
     outcome: HOLD
+  - id: H-07
+    when: rail in [WIRE, ZELLE, CRYPTO] and not beneficiary.name_on_biller_list and amount_cents > 100000
+    outcome: HOLD
   - id: A-01
     when: beneficiary.is_known_biller and amount_cents <= known_biller_cap_cents
     outcome: ALLOW
@@ -105,7 +109,7 @@ precedence: [DENY, HOLD, ALLOW]
 
 Every rule is evaluated; the strongest outcome among the rules that fired wins (DENY > HOLD > ALLOW, the only precedence the loader accepts). No rule firing gives the default (HOLD, rule id `DEFAULT`). A rule that errors counts as HOLD with rule id `X-01`. Extractor failure adds `X-00` and never lowers the outcome.
 
-Environment identifiers (`kernel/policy/env.py`): `amount_cents, currency, rail, baseline_90d_cents, known_biller_cap_cents, beneficiary.is_new, beneficiary.is_known_biller, beneficiary.name_on_biller_list, beneficiary.on_mule_list, signals.<kind>, signals.count`. `is_new` is true when the caller says so OR the account_ref is not a prior payee. `is_known_biller` and `on_mule_list` match on account_ref only; display names are never trusted.
+Environment identifiers (`kernel/policy/env.py`): `amount_cents, currency, rail, baseline_90d_cents, known_biller_cap_cents, beneficiary.is_new, beneficiary.is_known_biller, beneficiary.name_on_biller_list, beneficiary.on_mule_list, signals.<kind>, signals.count`. `is_new` is true when the caller says so OR the account_ref is not a prior payee. `is_known_biller` and `on_mule_list` match on account_ref only; display names are never trusted. Refs and actor ids are normalized (NFKC, strip, invisible characters removed, casefold) before any comparison and before fingerprinting.
 
 Audit kinds on a payment: `CREATED, ENTERED_REVIEW, EXTRACTED | EXTRACTOR_FAILED, DECIDED, ATTESTED, HOLD_LIFTED, CERT_ISSUED, CERT_CONSUMED, RELEASED, SIBLING_CERTS_VOIDED, VOIDED, MUTATED, CANCELLED, REFUSED, RAIL_FAILED, RAIL_PARTIAL, RELEASE_UNRECORDED`. After `RAIL_PARTIAL` or `RELEASE_UNRECORDED` the payment is frozen: certificate, release and mutate refuse with `I1_NOT_ELIGIBLE` (reason `RELEASE_UNRECORDED`) until an operator reconciles the rail reference recorded in the event.
 

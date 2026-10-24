@@ -383,7 +383,7 @@ def test_null_extractor_still_holds_scenario_a(kernel: Kernel) -> None:
         ),
         account_context(),
     )
-    assert p.state is State.HELD and d.rule_ids == ("H-01", "H-03")
+    assert p.state is State.HELD and d.rule_ids == ("H-01", "H-03", "H-07")
 
 
 def test_unknown_payment_is_key_error(kernel: Kernel) -> None:
@@ -529,3 +529,30 @@ def test_actor_label_is_capped() -> None:
 
     assert len(_actor(Capability.BANK_REVIEW, "x" * 500)) == MAX_ACTOR_LEN
     assert _actor(Capability.CO_APPROVER, "priya") == "CO_APPROVER:priya"
+
+
+@pytest.mark.parametrize("actor_id", ["ext_priya ", " ext_priya", "ext_priya\u200b", "EXT_PRIYA"])
+def test_lookalike_actor_ids_are_the_beneficiary_everywhere(kernel: Kernel, actor_id: str) -> None:
+    pid = held(kernel)  # beneficiary account_ref ext_priya
+    for cap in Capability:
+        with pytest.raises(Refusal) as ei:
+            kernel.attest(pid, actor_id, cap)
+        assert ei.value.invariant is Invariant.I5_CONFLICT
+    with pytest.raises(Refusal) as ei:
+        kernel.cancel(pid, actor_id, Capability.BANK_REVIEW)
+    assert ei.value.invariant is Invariant.I5_CONFLICT
+    kernel.attest(pid, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(Refusal) as ei:
+        kernel.issue_certificate(pid, actor_id, Capability.BANK_REVIEW)
+    assert ei.value.invariant is Invariant.I5_CONFLICT
+    assert kernel.get(pid).certificates == []
+
+
+def test_actor_ids_are_stored_normalized(kernel: Kernel) -> None:
+    pid = held(kernel)
+    kernel.attest(pid, " OPS_1\u200b", Capability.BANK_REVIEW)
+    rec = kernel.get(pid)
+    assert rec.attestations[0].actor_id == "ops_1"
+    assert rec.history[-2].actor == "BANK_REVIEW:ops_1"
+    cert = kernel.issue_certificate(pid, "Ops_2 ", Capability.BANK_REVIEW)
+    assert cert.actor_id == "ops_2"

@@ -62,3 +62,28 @@ def test_name_and_conversation_do_not_change_it() -> None:
     )
     assert fingerprint(renamed, "v1") == base
     assert fingerprint(payment_in(conversation_id="conv_other"), "v1") == base
+
+
+def test_lookalike_refs_share_one_fingerprint() -> None:
+    base = fingerprint(payment_in(), "v1")
+    for ref in (
+        "EXT_BAY_ROOFING",
+        " ext_bay_roofing",
+        "ext_bay_roofing\u200b",
+        "ext_bay_roofing\t",
+    ):
+        same = payment_in(beneficiary=Beneficiary(name="x", account_ref=ref, is_new=True))
+        assert same.beneficiary.account_ref == "ext_bay_roofing"
+        assert fingerprint(same, "v1") == base
+    assert payment_in(account_id="ACC_MARGARET ").account_id == "acc_margaret"
+    assert fingerprint(payment_in(account_id="ACC_MARGARET "), "v1") == base
+
+
+def test_ref_that_normalizes_to_empty_is_rejected() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        Beneficiary(name="x", account_ref=" \u200b ", is_new=True)
+    with pytest.raises(ValidationError):
+        payment_in(account_id="\u200b")

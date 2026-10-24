@@ -26,6 +26,17 @@ def verify() -> dict[str, Any]:
     return deps.get_kernel().audit_verify().model_dump(mode="json")
 
 
+@router.post("/audit/acknowledge", dependencies=[Depends(deps.ops_guard)])
+def acknowledge(body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Ops only. After `verify` reports `anchor: "mismatch"` (the audit table was altered while
+    the kernel was down), accept the current table as the new baseline. Audited as
+    AUDIT_ANCHOR_ACKNOWLEDGED; `append` is blocked until this is called."""
+    actor_id = str((body or {}).get("actor_id") or "ops")
+    kernel = deps.get_kernel()
+    ev = kernel.acknowledge_audit_anchor(actor_id)
+    return {"acknowledged_seq": ev.seq, "verify": kernel.audit_verify().model_dump(mode="json")}
+
+
 @router.post("/audit/tamper", dependencies=[Depends(deps.ops_guard)])
 def tamper() -> dict[str, Any]:
     """DEMO ONLY: edit one past payload in place so `/audit/verify` goes red on stage."""

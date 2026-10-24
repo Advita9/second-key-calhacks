@@ -1,6 +1,7 @@
 """BLOCKED (green regressions): the model layer and the policy loader. I4 and fail-closed.
 
-- The 20 scam fixtures with a zero-signal extractor: 19 of 20 still HOLD or DENY on facts alone.
+- The 20 scam fixtures with a zero-signal extractor: all 20 HOLD or DENY on facts alone
+  (19 when found; H-07 closed S-05, see docs/DECISIONS.md).
   Only S-05 relies on signals (documented in test_found_compromised_extractor_allows_s05).
 - Prompt injection in conversation text cannot force or lower signals.
 - A foreign source_id is rejected by the per-request Literal; sanitize drops bad spans and bad
@@ -57,9 +58,9 @@ def test_zero_signal_holds_or_denies_19_of_20_scams() -> None:
         results[case["id"]] = decide(p, [], ctx, POLICY).outcome.value
     allowed = [cid for cid, o in results.items() if o == "ALLOW"]
     held_or_denied = [cid for cid, o in results.items() if o in ("HOLD", "DENY")]
-    assert len(held_or_denied) == 19
+    assert len(held_or_denied) == 20  # was 19 when found; H-07 now holds S-05 on facts
     # Exactly one scam relies on signals and flips to ALLOW when the model is blind: S-05.
-    assert allowed == ["S-05"], allowed
+    assert allowed == [], allowed
 
 
 def test_prompt_injection_in_conversation_text_forces_nothing() -> None:

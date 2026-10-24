@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from kernel.audit import GENESIS_HASH, AuditChainError, AuditLog, chain_hash
+from kernel.audit import GENESIS_HASH, AuditChainError, AuditLog, anchor_path_for, chain_hash
 from kernel.clock import FakeClock
 from kernel.db import SCHEMA, Connection, connect, immediate
 
@@ -201,3 +202,132 @@ def test_commit_failure_rolls_back_head(clock: FakeClock) -> None:
     assert r.ok and r.length == 1
     ev = log.append("t", "K", {"n": 3})
     assert ev.seq == 2 and log.verify().ok
+
+
+# ------------------------------------------------- sidecar anchor (I7 across restarts)
+
+
+def _file_log(path: Path, clock: FakeClock) -> AuditLog:
+    return AuditLog(connect(str(path)), clock, anchor_path=anchor_path_for(str(path)))
+
+
+def test_sidecar_written_on_commit_and_ok_after_restart(tmp_path: Path, clock: FakeClock) -> None:
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    assert log.verify().anchor == "none"  # empty table, no sidecar yet
+    for i in range(3):
+        log.append("t", "K", {"n": i})
+    side = json.loads((tmp_path / "a.db.head.json").read_text())
+    assert side["seq"] == 3 and side["hash"] == log.tail(1)[0].hash and "updated_at" in side
+    log.conn.close()
+    again = _file_log(db, clock)
+    r = again.verify()
+    assert r.ok and r.anchor == "ok" and r.length == 3
+    again.append("t", "K", {"n": 3})
+    assert json.loads((tmp_path / "a.db.head.json").read_text())["seq"] == 4
+
+
+def test_tail_erased_while_down_is_detected_and_blocks_append(
+    tmp_path: Path, clock: FakeClock
+) -> None:
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    for i in range(5):
+        log.append("t", "K", {"n": i})
+    log.conn.close()
+    raw = sqlite3.connect(str(db))
+    raw.execute("DELETE FROM audit WHERE seq > 3")
+    raw.commit()
+    raw.close()
+    again = _file_log(db, clock)
+    r = again.verify()
+    assert not r.ok and r.anchor == "mismatch" and r.first_bad_seq == 4 and r.length == 3
+    with pytest.raises(AuditChainError):
+        again.append("t", "K", {"n": 9})
+    assert again.conn.execute("SELECT count(*) FROM audit").fetchone()[0] == 3
+
+
+def test_rewritten_row_while_down_is_detected(tmp_path: Path, clock: FakeClock) -> None:
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    for i in range(4):
+        log.append("t", "K", {"n": i})
+    log.conn.close()
+    # Rewrite the whole chain consistently (an attacker with time and the hash function).
+    raw = sqlite3.connect(str(db))
+    rows = raw.execute("SELECT seq, ts, actor, kind FROM audit ORDER BY seq").fetchall()
+    prev = GENESIS_HASH
+    for seq, ts, actor, kind in rows:
+        payload = json.dumps({"n": -seq}, sort_keys=True, separators=(",", ":"))
+        h = chain_hash(seq, ts, actor, kind, payload, prev)
+        raw.execute(
+            "UPDATE audit SET payload=?, prev_hash=?, hash=? WHERE seq=?", (payload, prev, h, seq)
+        )
+        prev = h
+    raw.commit()
+    raw.close()
+    again = _file_log(db, clock)
+    r = again.verify()
+    assert not r.ok and r.anchor == "mismatch" and r.first_bad_seq == 4
+
+
+def test_missing_or_corrupt_sidecar_with_history_is_a_mismatch(
+    tmp_path: Path, clock: FakeClock
+) -> None:
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    log.append("t", "K", {})
+    log.conn.close()
+    side = tmp_path / "a.db.head.json"
+    side.unlink()
+    r = _file_log(db, clock).verify()
+    assert not r.ok and r.anchor == "mismatch" and r.first_bad_seq == 1
+    side.write_text("{not json")
+    r = _file_log(db, clock).verify()
+    assert not r.ok and r.anchor == "mismatch"
+
+
+def test_acknowledge_anchor_is_audited_and_unblocks(tmp_path: Path, clock: FakeClock) -> None:
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    for i in range(4):
+        log.append("t", "K", {"n": i})
+    log.conn.close()
+    raw = sqlite3.connect(str(db))
+    raw.execute("DELETE FROM audit WHERE seq > 2")
+    raw.commit()
+    raw.close()
+    again = _file_log(db, clock)
+    assert again.verify().anchor == "mismatch"
+    ev = again.acknowledge_anchor("BANK_REVIEW:ops_1")
+    assert ev.kind == "AUDIT_ANCHOR_ACKNOWLEDGED" and ev.seq == 3
+    assert ev.payload["previous_anchor_seq"] == 4 and ev.payload["table_seq"] == 2
+    r = again.verify()
+    assert r.ok and r.anchor == "ok" and r.length == 3
+    again.append("t", "K", {"n": 9})
+    assert json.loads((tmp_path / "a.db.head.json").read_text())["seq"] == 4
+    assert again.verify().ok
+
+
+def test_memory_db_has_no_sidecar(log: AuditLog) -> None:
+    log.append("t", "K", {})
+    assert log.verify().anchor == "none" and log.verify().ok
+    assert anchor_path_for(":memory:") is None
+
+
+def test_crash_between_commit_and_sidecar_write_is_tolerated(
+    tmp_path: Path, clock: FakeClock
+) -> None:
+    """Sidecar one row behind the table (process died after COMMIT, before os.replace) is fine:
+    the anchored row still matches."""
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    for i in range(3):
+        log.append("t", "K", {"n": i})
+    side = tmp_path / "a.db.head.json"
+    saved = side.read_text()
+    log.append("t", "K", {"n": 3})
+    side.write_text(saved)  # roll the sidecar back one row
+    log.conn.close()
+    r = _file_log(db, clock).verify()
+    assert r.ok and r.anchor == "ok" and r.length == 4

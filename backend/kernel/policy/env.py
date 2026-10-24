@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from kernel.llm.types import SIGNAL_KINDS, Signal
-from kernel.models import AccountContext, Beneficiary, PaymentIn, Rail
+from kernel.models import AccountContext, Beneficiary, PaymentIn, Rail, normalize_ref
 
 KNOWN_IDENTIFIERS: frozenset[str] = frozenset(
     {
@@ -31,7 +31,8 @@ def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> d
       trusted to say a payee is old.
     - is_known_biller: account_ref in prior_payees. ONLY by ref: a display name is attacker
       controlled ("PG&E" with a fresh account_ref must not be trusted).
-    - name_on_biller_list: name in known_billers. Informational only; no v1 rule may ALLOW on it.
+    - name_on_biller_list: exact display-name match against known_billers. No ALLOW rule may
+      read it; H-07 uses its absence to demand a check-in on person-to-person rails.
     - on_mule_list: account_ref in mule_list. Never by name; names can be spoofed.
     - signals.<kind>: max score among signals of that kind, 0.0 if none.
     """
@@ -39,18 +40,21 @@ def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> d
     for s in signals:
         if s.score > maxes[s.kind]:
             maxes[s.kind] = s.score
+    # Models already normalize refs; normalize again here so the comparison never depends on
+    # how the objects were built.
+    ref = normalize_ref(p.beneficiary.account_ref)
+    prior = {normalize_ref(x) for x in ctx.prior_payees}
+    mules = {normalize_ref(x) for x in ctx.mule_list}
     env: dict[str, object] = {
         "amount_cents": p.amount_cents,
         "currency": p.currency,
         "rail": p.rail.value,
         "baseline_90d_cents": ctx.baseline_90d_cents,
         "known_biller_cap_cents": ctx.known_biller_cap_cents,
-        "beneficiary.is_new": (
-            p.beneficiary.is_new or p.beneficiary.account_ref not in ctx.prior_payees
-        ),
-        "beneficiary.is_known_biller": p.beneficiary.account_ref in ctx.prior_payees,
+        "beneficiary.is_new": p.beneficiary.is_new or ref not in prior,
+        "beneficiary.is_known_biller": ref in prior,
         "beneficiary.name_on_biller_list": p.beneficiary.name in ctx.known_billers,
-        "beneficiary.on_mule_list": p.beneficiary.account_ref in ctx.mule_list,
+        "beneficiary.on_mule_list": ref in mules,
         "signals.count": len(signals),
     }
     for kind in SIGNAL_KINDS:
