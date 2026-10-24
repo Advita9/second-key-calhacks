@@ -4,7 +4,8 @@
 one write transaction. The UPDATE is pinned to the caller's (id, state, fingerprint), so a
 stale handle can neither move the state nor revert a fingerprint. Only `Mutated` rewrites
 the money fields and the fingerprint. `Released` additionally requires a consumed,
-unvoided certificate bound to the current fingerprint to exist in the same transaction (I1).
+unvoided certificate bound to the current fingerprint, consumed before it expired, to
+exist in the same transaction (I1).
 
 Nothing else in the kernel may assign `.state`, build a non-DRAFT `State`, `model_copy` a
 payment, or `UPDATE payment`; `tests/unit/test_state.py` greps for it.
@@ -116,7 +117,7 @@ def transition(p: Payment, ev: Event, *, audit: AuditLog, actor: str) -> Payment
         if isinstance(ev, Released):
             bound = conn.execute(
                 "SELECT 1 FROM certificate WHERE id=? AND payment_id=? AND fingerprint=? "
-                "AND voided_at IS NULL AND consumed_at IS NOT NULL",
+                "AND voided_at IS NULL AND consumed_at IS NOT NULL AND expires_at > consumed_at",
                 (ev.certificate_id, p.id, p.fingerprint),
             ).fetchone()
             if bound is None:

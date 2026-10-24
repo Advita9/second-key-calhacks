@@ -12,7 +12,7 @@ from typing import Any
 
 from kernel.clock import FakeClock
 from kernel.db import load_payment
-from kernel.models import Invariant, Payment, Refusal, State
+from kernel.models import Capability, Invariant, Payment, Refusal, State
 from kernel.service import (
     Attest,
     Cmd,
@@ -171,7 +171,7 @@ class Driver:
         if not isinstance(cmd, Cancel):
             return self.kernel.apply(cmd)
         try:
-            p = self.kernel.cancel(cmd.payment_id, cmd.actor_id, cmd.note)
+            p = self.kernel.cancel(cmd.payment_id, cmd.actor_id, Capability.BANK_REVIEW, cmd.note)
             return CmdResult(ok=True, payment=p)
         except Refusal as r:
             return CmdResult(ok=False, invariant=r.invariant, error=r.text)

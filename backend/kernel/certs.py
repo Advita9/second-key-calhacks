@@ -79,15 +79,20 @@ def issue(
     return cert
 
 
-def get(conn: sqlite3.Connection, certificate_id: str) -> Certificate | None:
-    r = conn.execute(f"SELECT {_COLS} FROM certificate WHERE id=?", (certificate_id,)).fetchone()
+def get(conn: Connection, certificate_id: str) -> Certificate | None:
+    with conn.lock:
+        r = conn.execute(
+            f"SELECT {_COLS} FROM certificate WHERE id=?", (certificate_id,)
+        ).fetchone()
     return _row(r) if r is not None else None
 
 
-def list_for_payment(conn: sqlite3.Connection, payment_id: str) -> list[Certificate]:
-    rows = conn.execute(
-        f"SELECT {_COLS} FROM certificate WHERE payment_id=? ORDER BY issued_at, id", (payment_id,)
-    ).fetchall()
+def list_for_payment(conn: Connection, payment_id: str) -> list[Certificate]:
+    with conn.lock:
+        rows = conn.execute(
+            f"SELECT {_COLS} FROM certificate WHERE payment_id=? ORDER BY issued_at, id",
+            (payment_id,),
+        ).fetchall()
     return [_row(r) for r in rows]
 
 

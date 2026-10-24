@@ -27,7 +27,7 @@ from kernel import attest as attest_mod
 from kernel import certs as certs_mod
 from kernel.audit import AuditEvent, AuditLog, VerifyResult
 from kernel.clock import Clock, SystemClock
-from kernel.db import connect, immediate, insert_payment, load_payment
+from kernel.db import connect, immediate, insert_payment, list_payment_ids, load_payment
 from kernel.fingerprint import fingerprint
 from kernel.llm.types import EvidenceItem, Extractor, ExtractorResult, NullExtractor, Signal
 from kernel.models import (
@@ -43,7 +43,7 @@ from kernel.models import (
     State,
 )
 from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, Policy, decide, fail_closed
-from kernel.rail import NullTransferRail, RailError, TransferRail
+from kernel.rail import NullTransferRail, RailError, RailUnknownOutcome, TransferRail
 from kernel.state import (
     Cancelled,
     Decided,
@@ -59,6 +59,14 @@ log = logging.getLogger("second_key.kernel")
 
 SYSTEM_ACTOR = "system"
 _TERMINAL = (State.SUBMITTED, State.CANCELLED)
+MAX_ACTOR_LEN = 64
+# Audit kinds that mean "the rail may have moved money for this payment without a RELEASED row".
+UNRECORDED_KINDS: tuple[str, ...] = ("RELEASE_UNRECORDED", "RAIL_PARTIAL")
+
+
+def _actor(capability: Capability | str, actor_id: object) -> str:
+    cap = capability.value if isinstance(capability, Capability) else str(capability)
+    return f"{cap}:{actor_id}"[:MAX_ACTOR_LEN]
 
 
 class PaymentRecord(BaseModel):
@@ -111,11 +119,19 @@ class Mutate:
 
 
 @dataclass(frozen=True)
+class Cancel:
+    payment_id: str
+    actor_id: str
+    capability: Capability
+    note: str | None = None
+
+
+@dataclass(frozen=True)
 class Tick:
     seconds: float
 
 
-Cmd = Create | Attest | IssueCert | Release | Mutate | Tick
+Cmd = Create | Attest | IssueCert | Release | Mutate | Cancel | Tick
 
 
 @dataclass(frozen=True)
@@ -154,6 +170,9 @@ class Kernel:
         self._conversations: dict[str, tuple[EvidenceItem, ...]] = {}
         self._signals: dict[str, tuple[Signal, ...]] = {}
         self._decisions: dict[str, Decision] = {}
+        # Payments where the rail may have moved money without a RELEASED row. Rebuilt from the
+        # audit table so a restart cannot forget them. Nothing on them may certify or mutate.
+        self._unrecorded: set[str] = self.audit.payment_ids_with_kind(UNRECORDED_KINDS)
 
     @property
     def policy_version(self) -> str:
@@ -205,7 +224,7 @@ class Kernel:
         capability: Capability,
         note: str | None = None,
     ) -> Payment:
-        actor = f"{capability.value}:{actor_id}"
+        actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
             self._refuse_if_terminal(payment, actor, "attest")
@@ -247,11 +266,12 @@ class Kernel:
     def issue_certificate(
         self, payment_id: str, actor_id: str, capability: Capability
     ) -> Certificate:
-        actor = f"{capability.value}:{actor_id}"
+        actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
             if payment.state is State.DENIED:
                 self._refuse(payment, actor, Invariant.I6_DENIED, "issue_certificate")
+            self._refuse_if_unrecorded(payment, actor, "issue_certificate")
             if payment.state is not State.ELIGIBLE_TO_SUBMIT:
                 self._refuse(
                     payment,
@@ -297,11 +317,12 @@ class Kernel:
         return cert
 
     def release(self, payment_id: str, certificate_id: str, nonce: str) -> Payment:
-        actor = f"release:{certificate_id}"
+        actor = _actor("release", certificate_id)
         with self._lock:
             payment = self._load(payment_id)
             if payment.state is State.DENIED:
                 self._refuse(payment, actor, Invariant.I6_DENIED, "release")
+            self._refuse_if_unrecorded(payment, actor, "release")
             cert = certs_mod.get(self.conn, certificate_id)
             if cert is None:
                 self._refuse(payment, actor, Invariant.I1_NO_CERT, "release", reason="NO_SUCH_CERT")
@@ -322,9 +343,17 @@ class Kernel:
                         {"payment_id": payment.id, "certificate_id": cert.id},
                     )
                     try:
-                        transfer_id = self.rail.submit(payment, cert)
+                        raw_id = self.rail.submit(payment, cert)
+                    except RailError:
+                        raise  # RailUnknownOutcome stays distinguishable
                     except Exception as e:  # noqa: BLE001  any rail failure rolls back
                         raise RailError(f"{type(e).__name__}: {e}") from e
+                    if not isinstance(raw_id, str) or not raw_id:
+                        # The rail returned but gave us nothing to reconcile with: unknown outcome.
+                        raise RailUnknownOutcome(
+                            f"rail returned {type(raw_id).__name__} instead of a transfer id"
+                        )
+                    transfer_id = raw_id
                     payment = transition(
                         payment,
                         Released(certificate_id=cert.id, transfer_id=transfer_id),
@@ -341,6 +370,16 @@ class Kernel:
             except Refusal as r:
                 # Transaction rolled back; record the refusal outside it.
                 self._refuse(payment, actor, r.invariant, "release", certificate_id=cert.id)
+            except RailUnknownOutcome as e:
+                self._record_unrecorded(
+                    payment,
+                    cert.id,
+                    actor,
+                    "RAIL_PARTIAL",
+                    e.partial_ref,
+                    f"{type(e).__name__}: {e}",
+                )
+                raise
             except RailError as e:
                 self.audit.append(
                     actor,
@@ -351,30 +390,13 @@ class Kernel:
                 raise
             except Exception as e:
                 if transfer_id is not None:
-                    # The rail moved money but the transaction rolled back. Record the transfer
-                    # id so it is never lost, and void every certificate so nothing on this
-                    # payment can release again without a human re-issuing one.
-                    with immediate(self.conn):
-                        voided = certs_mod.void_all_for_payment(self.conn, payment.id, now)
-                        self.audit.append(
-                            actor,
-                            "RELEASE_UNRECORDED",
-                            {
-                                "payment_id": payment.id,
-                                "certificate_id": cert.id,
-                                "transfer_id": transfer_id,
-                                "error": f"{type(e).__name__}: {e}",
-                                "certificates_voided": voided,
-                            },
-                        )
-                    log.critical(
-                        "release.unrecorded",
-                        extra={
-                            "payment_id": payment.id,
-                            "certificate_id": cert.id,
-                            "transfer_id": transfer_id,
-                            "error": str(e),
-                        },
+                    self._record_unrecorded(
+                        payment,
+                        cert.id,
+                        actor,
+                        "RELEASE_UNRECORDED",
+                        transfer_id,
+                        f"{type(e).__name__}: {e}",
                     )
                 raise
         log.info(
@@ -383,14 +405,31 @@ class Kernel:
         )
         return payment
 
-    def cancel(self, payment_id: str, actor_id: str, note: str | None = None) -> Payment:
-        """Operator cancel (the /ops Deny button). Pre-settlement states go to CANCELLED and
-        every attestation and certificate on the payment is voided in the same transaction.
-        DENIED and SUBMITTED are terminal and refuse (I6 / I1)."""
-        actor = f"{Capability.BANK_REVIEW.value}:{actor_id}"
+    def cancel(
+        self,
+        payment_id: str,
+        actor_id: str,
+        capability: Capability,
+        note: str | None = None,
+    ) -> Payment:
+        """Operator cancel (the /ops Deny button). BANK_REVIEW only. Pre-settlement states go
+        to CANCELLED and every attestation and certificate on the payment is voided in the same
+        transaction. DENIED and SUBMITTED are terminal and refuse (I6 / I1)."""
+        actor = _actor(capability, actor_id)
         with self._lock:
             payment = self._load(payment_id)
             self._refuse_if_terminal(payment, actor, "cancel")
+            if capability not in attest_mod.CAN_CANCEL:
+                self._refuse(
+                    payment,
+                    actor,
+                    Invariant.I1_NOT_ELIGIBLE,
+                    "cancel",
+                    reason="CANCEL_REFUSED_CAPABILITY",
+                )
+            conflict = attest_mod.conflict(payment, actor_id)
+            if conflict is not None:
+                self._refuse(payment, actor, conflict, "cancel", reason="ACTOR_IS_BENEFICIARY")
             now = self.clock.now()
             with immediate(self.conn):
                 voided_att = attest_mod.void_all_for_payment(self.conn, payment.id, now)
@@ -419,12 +458,20 @@ class Kernel:
         with self._lock:
             before = self._load(payment_id)
             self._refuse_if_terminal(before, actor, "mutate")
+            self._refuse_if_unrecorded(before, actor, "mutate")
             new_in = _apply_patch(before, patch)
-            conv = self._conversations.get(before.id, ())
-        extracted, extractor_ok = self._extract(conv, new_in)  # outside the lock
+            conv = self._conversations.get(before.id)
+        if conv is None:
+            # After a restart the transcript is gone. Re-deciding without it could turn a
+            # HELD-on-signals payment into ALLOW, so the extractor counts as failed (X-00).
+            log.warning("mutate.no_conversation", extra={"payment_id": before.id})
+            extracted, extractor_ok = ExtractorResult(), False
+        else:
+            extracted, extractor_ok = self._extract(conv, new_in)  # outside the lock
         with self._lock:
             payment = self._load(payment_id)
             self._refuse_if_terminal(payment, actor, "mutate")  # I6 first if denied meanwhile
+            self._refuse_if_unrecorded(payment, actor, "mutate")
             if payment != before:
                 self._refuse(
                     payment, actor, Invariant.I1_NOT_ELIGIBLE, "mutate", reason="STATE_CHANGED"
@@ -477,6 +524,11 @@ class Kernel:
                 history=self.audit.for_payment(payment_id),
             )
 
+    def list_payments(self, limit: int = 100) -> list[PaymentRecord]:
+        """Newest first. One consistent snapshot under the kernel lock."""
+        with self._lock:
+            return [self.get(pid) for pid in list_payment_ids(self.conn, limit)]
+
     def audit_verify(self) -> VerifyResult:
         with self._lock:
             return self.audit.verify()
@@ -499,6 +551,9 @@ class Kernel:
             if isinstance(cmd, Mutate):
                 p, d = self.mutate(cmd.payment_id, cmd.patch, cmd.ctx)
                 return CmdResult(ok=True, payment=p, decision=d)
+            if isinstance(cmd, Cancel):
+                p = self.cancel(cmd.payment_id, cmd.actor_id, cmd.capability, cmd.note)
+                return CmdResult(ok=True, payment=p)
             if isinstance(cmd, Tick):
                 advance = getattr(self.clock, "advance", None)
                 if advance is None:
@@ -540,6 +595,51 @@ class Kernel:
             extra={"payment_id": payment.id, "action": action, "invariant": invariant.value},
         )
         raise Refusal(invariant)
+
+    def _refuse_if_unrecorded(self, payment: Payment, actor: str, action: str) -> None:
+        if payment.id in self._unrecorded:
+            self._refuse(
+                payment, actor, Invariant.I1_NOT_ELIGIBLE, action, reason="RELEASE_UNRECORDED"
+            )
+
+    def _record_unrecorded(
+        self,
+        payment: Payment,
+        certificate_id: str,
+        actor: str,
+        kind: str,
+        transfer_ref: str | None,
+        error: str,
+    ) -> None:
+        """The rail may have moved money but no RELEASED row exists. Record the rail reference
+        so it is never lost, void every certificate, and freeze the payment for operators."""
+        now = self.clock.now()
+        with immediate(self.conn):
+            voided = certs_mod.void_all_for_payment(self.conn, payment.id, now)
+            self.audit.append(
+                actor,
+                kind,
+                {
+                    "payment_id": payment.id,
+                    "certificate_id": certificate_id,
+                    "transfer_id"
+                    if kind == "RELEASE_UNRECORDED"
+                    else "withdrawal_id": transfer_ref,
+                    "error": error,
+                    "certificates_voided": voided,
+                },
+            )
+        self._unrecorded.add(payment.id)
+        log.critical(
+            "release.unrecorded",
+            extra={
+                "payment_id": payment.id,
+                "certificate_id": certificate_id,
+                "kind": kind,
+                "transfer_ref": transfer_ref,
+                "error": error,
+            },
+        )
 
     def _refuse_if_terminal(self, payment: Payment, actor: str, action: str) -> None:
         if payment.state is State.DENIED:

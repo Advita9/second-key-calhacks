@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -22,8 +23,9 @@ from kernel.models import (
     Refusal,
     State,
 )
+from kernel.nessie import MOCK_KEY, MockNessieTransport, NessieClient, NessieRail
 from kernel.policy.engine import EXTRACTOR_FAIL_RULE_ID, V1_PATH, load_policy
-from kernel.rail import RailError
+from kernel.rail import RailError, RailUnknownOutcome
 from kernel.service import Kernel
 from kernel.state import IllegalTransition, Released
 from tests.factories import account_context, payment_in
@@ -263,7 +265,8 @@ def test_transition_failure_after_rail_success_is_audited(clock: FakeClock) -> N
     for c in (c1, c2):
         with pytest.raises(Refusal) as ei:
             kernel.release(p.id, c.id, c.nonce)
-        assert ei.value.invariant is Invariant.I2_FINGERPRINT
+        # Frozen (reason RELEASE_UNRECORDED) before the voided cert is even looked at.
+        assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
 
 
 def test_transition_failure_after_rail_success_via_monkeypatch(
@@ -388,3 +391,141 @@ def test_unknown_payment_is_key_error(kernel: Kernel) -> None:
         kernel.get("pay_nope")
     with pytest.raises(KeyError):
         kernel.attest("pay_nope", "x", Capability.BANK_REVIEW)
+
+
+class _CountingRail:
+    def __init__(self, breaker: list[Kernel]) -> None:
+        self.calls = 0
+        self.breaker = breaker
+
+    def submit(self, payment: Payment, certificate: Certificate) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            # Simulate the transition failing after money moved (A5 refuses a voided cert).
+            self.breaker[0].conn.execute(
+                "UPDATE certificate SET voided_at='2026-01-01T00:00:00+00:00' WHERE id=?",
+                (certificate.id,),
+            )
+        return f"tr_{self.calls}"
+
+
+def test_no_second_release_after_release_unrecorded(clock: FakeClock, tmp_path: Path) -> None:
+    """After RELEASE_UNRECORDED the payment is frozen: no fresh cert, no mutate, no release,
+    so the rail is never asked to move the money twice. Survives a restart."""
+    ref: list[Kernel] = []
+    rail = _CountingRail(ref)
+    db = str(tmp_path / "k.db")
+    kernel = Kernel(db, policy=load_policy(V1_PATH), clock=clock, rail=rail)
+    ref.append(kernel)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    kernel.attest(p.id, "priya", Capability.CO_APPROVER)
+    c1 = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(IllegalTransition):
+        kernel.release(p.id, c1.id, c1.nonce)
+    assert rail.calls == 1
+    assert kernel.get(p.id).history[-1].kind == "RELEASE_UNRECORDED"
+    actions: list[Callable[[Kernel], object]] = [
+        lambda k: k.issue_certificate(p.id, "ops_2", Capability.BANK_REVIEW),
+        lambda k: k.mutate(p.id, {"amount_cents": 1}, account_context()),
+        lambda k: k.release(p.id, c1.id, c1.nonce),
+    ]
+    for action in actions:
+        with pytest.raises(Refusal) as ei:
+            action(kernel)
+        assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
+        assert kernel.audit.tail(1)[0].payload["reason"] == "RELEASE_UNRECORDED"
+    # BANK_REVIEW can still look at it and cancel it; that is the operator's reconciliation path.
+    kernel.attest(p.id, "ops_1", Capability.BANK_REVIEW, "reconciling with the rail")
+    kernel.conn.close()
+    restarted = Kernel(db, policy=load_policy(V1_PATH), clock=clock, rail=rail)
+    with pytest.raises(Refusal) as ei:
+        restarted.issue_certificate(p.id, "ops_3", Capability.BANK_REVIEW)
+    assert ei.value.invariant is Invariant.I1_NOT_ELIGIBLE
+    assert rail.calls == 1
+    assert restarted.audit_verify().ok
+
+
+def _nessie_kernel(clock: FakeClock, transport: MockNessieTransport) -> Kernel:
+    rail = NessieRail(
+        NessieClient(key=MOCK_KEY, transport=transport),
+        payee_accounts={"acc_margaret": "acc_margaret"},
+    )
+    return Kernel(":memory:", policy=load_policy(V1_PATH), clock=clock, rail=rail)
+
+
+def test_rail_partial_failure_voids_certs(clock: FakeClock) -> None:
+    """Withdrawal succeeds, deposit fails: unknown outcome. Audit RAIL_PARTIAL with the
+    withdrawal id, void every certificate, refuse later ones."""
+    t = MockNessieTransport()
+    kernel = _nessie_kernel(clock, t)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    c1 = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    c2 = kernel.issue_certificate(p.id, "ops_2", Capability.BANK_REVIEW)
+    t.fail_with, t.fail_after_writes = 500, 1  # withdrawal passes, deposit fails
+    with pytest.raises(RailUnknownOutcome) as ei:
+        kernel.release(p.id, c1.id, c1.nonce)
+    withdrawal_ids = [row["_id"] for row in t.ledger if row["kind"] == "withdrawal"]
+    assert len(withdrawal_ids) == 1 and ei.value.partial_ref == withdrawal_ids[0]
+    assert not [row for row in t.ledger if row["kind"] == "deposit"]
+    rec = kernel.get(p.id)
+    assert rec.payment.state is State.ELIGIBLE_TO_SUBMIT and rec.payment.nessie_transfer_id is None
+    last = rec.history[-1]
+    assert last.kind == "RAIL_PARTIAL" and last.payload["withdrawal_id"] == withdrawal_ids[0]
+    assert all(c.voided_at is not None and c.consumed_at is None for c in rec.certificates)
+    for cert in (c1, c2):
+        with pytest.raises(Refusal):
+            kernel.release(p.id, cert.id, cert.nonce)
+    with pytest.raises(Refusal) as ri:
+        kernel.issue_certificate(p.id, "ops_3", Capability.BANK_REVIEW)
+    assert ri.value.invariant is Invariant.I1_NOT_ELIGIBLE
+    assert len([row for row in t.ledger if row["kind"] == "withdrawal"]) == 1
+    assert kernel.audit_verify().ok
+
+
+def test_rail_plain_failure_on_withdrawal_is_not_partial(clock: FakeClock) -> None:
+    t = MockNessieTransport()
+    kernel = _nessie_kernel(clock, t)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    c1 = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    t.fail_with = 500  # the withdrawal itself fails: nothing moved
+    with pytest.raises(RailError) as ei:
+        kernel.release(p.id, c1.id, c1.nonce)
+    assert not isinstance(ei.value, RailUnknownOutcome)
+    assert kernel.get(p.id).history[-1].kind == "RAIL_FAILED"
+    assert kernel.release(p.id, c1.id, c1.nonce).state is State.SUBMITTED  # cert still live
+
+
+class _WeirdRail:
+    def __init__(self, value: object) -> None:
+        self.value = value
+        self.calls = 0
+
+    def submit(self, payment: Payment, certificate: Certificate) -> str:
+        self.calls += 1
+        return self.value  # type: ignore[return-value]
+
+
+@pytest.mark.parametrize("value", [None, "", 123, b"tr_1", ["tr_1"]])
+def test_rail_returns_non_string_is_audited(clock: FakeClock, value: object) -> None:
+    rail = _WeirdRail(value)
+    kernel = Kernel(":memory:", policy=load_policy(V1_PATH), clock=clock, rail=rail)
+    p, _ = kernel.create_payment(payment_in(), account_context())
+    cert = kernel.issue_certificate(p.id, "ops_1", Capability.BANK_REVIEW)
+    with pytest.raises(RailUnknownOutcome):
+        kernel.release(p.id, cert.id, cert.nonce)
+    rec = kernel.get(p.id)
+    assert rec.payment.state is State.ELIGIBLE_TO_SUBMIT
+    assert (
+        rec.history[-1].kind == "RAIL_PARTIAL" and rec.history[-1].payload["withdrawal_id"] is None
+    )
+    assert rec.certificates[0].voided_at is not None
+    with pytest.raises(Refusal):
+        kernel.issue_certificate(p.id, "ops_2", Capability.BANK_REVIEW)
+    assert rail.calls == 1 and kernel.audit_verify().ok
+
+
+def test_actor_label_is_capped() -> None:
+    from kernel.service import MAX_ACTOR_LEN, _actor
+
+    assert len(_actor(Capability.BANK_REVIEW, "x" * 500)) == MAX_ACTOR_LEN
+    assert _actor(Capability.CO_APPROVER, "priya") == "CO_APPROVER:priya"

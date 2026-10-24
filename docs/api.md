@@ -22,6 +22,9 @@ body `{actor_id, capability}` → `{certificate: {id, fingerprint, policy_versio
 `POST /payments/{id}/release`
 body `{certificate_id, nonce}` → `{state: "SUBMITTED", nessie_transfer_id}` or 409 `{refused: true, invariant: I1_NO_CERT|I2_FINGERPRINT|I3_REPLAY|I3_EXPIRED|I6_DENIED}` with text `SETTLEMENT REFUSED · <INVARIANT>`.
 
+`POST /payments/{id}/deny` (operator, `X-Ops-Token` when set)
+body `{actor_id, note?}` → `{state: "CANCELLED", ...}`. The route binds capability BANK_REVIEW. Pre-settlement states (PENDING_REVIEW, HELD, ELIGIBLE_TO_SUBMIT) go to CANCELLED and every attestation and certificate on the payment is voided (audit `VOIDED` then `CANCELLED`). CANCELLED is terminal. DENIED → 409 `I6_DENIED`; SUBMITTED or CANCELLED → 409 `I1_NOT_ELIGIBLE`. An actor whose id equals the beneficiary ref → 409 `I5_CONFLICT`.
+
 `POST /payments/{id}/mutate` (demo + tests only, gated by `DEMO_MODE`)
 body partial payment → new fingerprint; all attestations and certificates voided; state back to PENDING_REVIEW.
 
@@ -93,7 +96,7 @@ Every rule is evaluated; the strongest outcome among the rules that fired wins (
 
 Environment identifiers (`kernel/policy/env.py`): `amount_cents, currency, rail, baseline_90d_cents, known_biller_cap_cents, beneficiary.is_new, beneficiary.is_known_biller, beneficiary.name_on_biller_list, beneficiary.on_mule_list, signals.<kind>, signals.count`. `is_new` is true when the caller says so OR the account_ref is not a prior payee. `is_known_biller` and `on_mule_list` match on account_ref only; display names are never trusted.
 
-Audit kinds on a payment: `CREATED, ENTERED_REVIEW, EXTRACTED | EXTRACTOR_FAILED, DECIDED, ATTESTED, HOLD_LIFTED, CERT_ISSUED, CERT_CONSUMED, RELEASED, SIBLING_CERTS_VOIDED, VOIDED, MUTATED, REFUSED, RAIL_FAILED, RELEASE_UNRECORDED`.
+Audit kinds on a payment: `CREATED, ENTERED_REVIEW, EXTRACTED | EXTRACTOR_FAILED, DECIDED, ATTESTED, HOLD_LIFTED, CERT_ISSUED, CERT_CONSUMED, RELEASED, SIBLING_CERTS_VOIDED, VOIDED, MUTATED, CANCELLED, REFUSED, RAIL_FAILED, RAIL_PARTIAL, RELEASE_UNRECORDED`. After `RAIL_PARTIAL` or `RELEASE_UNRECORDED` the payment is frozen: certificate, release and mutate refuse with `I1_NOT_ELIGIBLE` (reason `RELEASE_UNRECORDED`) until an operator reconciles the rail reference recorded in the event.
 
 `when` is a tiny safe expression language (no eval): comparisons, and/or/not, `in`. Parser has its own tests.
 

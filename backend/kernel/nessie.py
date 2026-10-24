@@ -29,7 +29,7 @@ from urllib.parse import parse_qs
 import httpx
 
 from kernel.models import Certificate, Payment
-from kernel.rail import RailError
+from kernel.rail import RailError, RailUnknownOutcome
 
 log = logging.getLogger("second_key.nessie")
 
@@ -149,11 +149,14 @@ class NessieClient:
         return created_id(body)
 
     def withdraw(self, account_id: str, amount_dollars: int, description: str) -> str:
-        return created_id(
-            self.request(
-                "POST", f"/accounts/{account_id}/withdrawals", _tx(amount_dollars, description)
-            )
+        body = self.request(
+            "POST", f"/accounts/{account_id}/withdrawals", _tx(amount_dollars, description)
         )
+        try:
+            return created_id(body)
+        except RailError as e:
+            # The sandbox accepted the withdrawal but we cannot name it: money may have moved.
+            raise RailUnknownOutcome(f"nessie: withdrawal accepted but {e}") from e
 
     def deposit(self, account_id: str, amount_dollars: int, description: str) -> str:
         """Spec body first; one live report says deposits need `type`, so retry with it on 400."""
@@ -214,6 +217,7 @@ class MockNessieTransport(httpx.BaseTransport):
         }
         self.ledger: list[dict[str, Any]] = []
         self.fail_with: int | None = None
+        self.fail_after_writes: int = 0  # let this many writes through before `fail_with` fires
         self._n = 0
         self._lock = threading.Lock()
 
@@ -282,8 +286,11 @@ class MockNessieTransport(httpx.BaseTransport):
             if parts[1] not in self.accounts:
                 return _err(404, "account not found")
             if self.fail_with is not None:
-                code, self.fail_with = self.fail_with, None
-                return _err(code, "simulated failure")
+                if self.fail_after_writes > 0:
+                    self.fail_after_writes -= 1
+                else:
+                    code, self.fail_with = self.fail_with, None
+                    return _err(code, "simulated failure")
             for k in ("medium", "transaction_date", "status", "amount", "description"):
                 if k not in body:
                     return _err(400, f"missing {k}")
@@ -397,11 +404,17 @@ class NessieRail:
             payer = self.account_for(payment.account_id)
             payee = self.account_for(payment.beneficiary.account_ref)
             withdrawal_id = self.client.withdraw(payer, amount, description)
-            deposit_id = self.client.deposit(payee, amount, description)
         except RailError:
-            raise
-        except Exception as e:  # noqa: BLE001  anything else is still a rail failure
+            raise  # includes RailUnknownOutcome from an unparseable withdrawal response
+        except Exception as e:  # noqa: BLE001  anything else before money moved is a plain failure
             raise RailError(f"nessie: {type(e).__name__}") from e
+        try:
+            deposit_id = self.client.deposit(payee, amount, description)
+        except Exception as e:  # noqa: BLE001  withdrawal happened; the outcome is now unknown
+            raise RailUnknownOutcome(
+                f"nessie: deposit failed after withdrawal {withdrawal_id}: {type(e).__name__}",
+                partial_ref=withdrawal_id,
+            ) from e
         log.info(
             "nessie.transfer",
             extra={

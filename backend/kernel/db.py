@@ -113,7 +113,16 @@ def immediate(conn: Connection) -> Iterator[Connection]:
             for hook in conn.rollback_hooks:
                 hook()
             raise
-        conn.execute("COMMIT")
+        try:
+            conn.execute("COMMIT")
+        except BaseException:
+            try:
+                conn.execute("ROLLBACK")
+            except sqlite3.Error:
+                pass  # nothing to roll back; the failed COMMIT already ended the transaction
+            for hook in conn.rollback_hooks:
+                hook()
+            raise
         for hook in conn.commit_hooks:
             hook()
 
@@ -146,14 +155,15 @@ def insert_payment(conn: Connection, p: Payment) -> None:
         )
 
 
-def load_payment(conn: sqlite3.Connection, payment_id: str) -> Payment:
-    row = conn.execute(
-        """SELECT id, account_id, amount_cents, currency, beneficiary_name,
-                  beneficiary_account_ref, beneficiary_is_new, rail, conversation_id, state,
-                  fingerprint, policy_version, created_at, nessie_transfer_id
-           FROM payment WHERE id=?""",
-        (payment_id,),
-    ).fetchone()
+def load_payment(conn: Connection, payment_id: str) -> Payment:
+    with conn.lock:
+        row = conn.execute(
+            """SELECT id, account_id, amount_cents, currency, beneficiary_name,
+                      beneficiary_account_ref, beneficiary_is_new, rail, conversation_id, state,
+                      fingerprint, policy_version, created_at, nessie_transfer_id
+               FROM payment WHERE id=?""",
+            (payment_id,),
+        ).fetchone()
     if row is None:
         raise KeyError(payment_id)
     return Payment(
@@ -170,3 +180,12 @@ def load_payment(conn: sqlite3.Connection, payment_id: str) -> Payment:
         created_at=datetime.fromisoformat(row[12]),
         nessie_transfer_id=row[13],
     )
+
+
+def list_payment_ids(conn: Connection, limit: int) -> list[str]:
+    """Newest first."""
+    with conn.lock:
+        rows = conn.execute(
+            "SELECT id FROM payment ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return [str(r[0]) for r in rows]

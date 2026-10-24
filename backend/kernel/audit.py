@@ -122,19 +122,23 @@ class AuditLog:
         )
 
     def verify(self) -> VerifyResult:
-        rows = self.conn.execute(
-            "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit ORDER BY seq"
-        ).fetchall()
+        with self.conn.lock:
+            rows = self.conn.execute(
+                "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit ORDER BY seq"
+            ).fetchall()
+            head_seq, head = self._expected_tail()
         prev = GENESIS_HASH
         expected_seq = 1
         for seq, ts, actor, kind, payload_json, prev_hash, h in rows:
-            if seq != expected_seq or prev_hash != prev:
+            if seq != expected_seq:
+                # A gap: name the missing row, not the one after it.
+                return VerifyResult(ok=False, length=len(rows), first_bad_seq=expected_seq)
+            if prev_hash != prev:
                 return VerifyResult(ok=False, length=len(rows), first_bad_seq=seq)
             if chain_hash(seq, ts, actor, kind, payload_json, prev_hash) != h:
                 return VerifyResult(ok=False, length=len(rows), first_bad_seq=seq)
             prev = h
             expected_seq += 1
-        head_seq, head = self._expected_tail()
         if len(rows) < head_seq:
             # Tail rows were deleted. The first missing seq is the bad one.
             return VerifyResult(ok=False, length=len(rows), first_bad_seq=len(rows) + 1)
@@ -158,17 +162,30 @@ class AuditLog:
         log.warning("audit.tamper", extra={"seq": seq})
 
     def tail(self, limit: int = 200) -> list[AuditEvent]:
-        rows = self.conn.execute(
-            "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
-            "ORDER BY seq DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        with self.conn.lock:
+            rows = self.conn.execute(
+                "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
+                "ORDER BY seq DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
         return [_event(r) for r in reversed(rows)]
 
     def for_payment(self, payment_id: str) -> list[AuditEvent]:
-        rows = self.conn.execute(
-            "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
-            "WHERE json_extract(payload, '$.payment_id') = ? ORDER BY seq",
-            (payment_id,),
-        ).fetchall()
+        with self.conn.lock:
+            rows = self.conn.execute(
+                "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit "
+                "WHERE json_extract(payload, '$.payment_id') = ? ORDER BY seq",
+                (payment_id,),
+            ).fetchall()
         return [_event(r) for r in rows]
+
+    def payment_ids_with_kind(self, kinds: tuple[str, ...]) -> set[str]:
+        """Payments that have at least one audit row of any of `kinds` (startup rebuilds)."""
+        marks = ",".join("?" for _ in kinds)
+        with self.conn.lock:
+            rows = self.conn.execute(
+                "SELECT DISTINCT json_extract(payload, '$.payment_id') FROM audit "
+                f"WHERE kind IN ({marks})",
+                kinds,
+            ).fetchall()
+        return {str(r[0]) for r in rows if r[0] is not None}

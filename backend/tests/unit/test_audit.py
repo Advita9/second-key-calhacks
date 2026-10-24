@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import threading
+from typing import Any
 
 import pytest
 
 from kernel.audit import GENESIS_HASH, AuditChainError, AuditLog, chain_hash
 from kernel.clock import FakeClock
-from kernel.db import connect, immediate
+from kernel.db import SCHEMA, Connection, connect, immediate
 
 
 @pytest.fixture
@@ -163,3 +165,39 @@ def test_concurrent_appends_without_kernel_lock_lose_nothing(clock: FakeClock) -
         t.join(10)
     r = log.verify()
     assert r.ok and r.length == n_threads * per_thread
+
+
+def test_deleted_middle_row_reports_the_gap_seq(log: AuditLog) -> None:
+    for i in range(4):
+        log.append("t", "K", {"n": i})
+    log.conn.execute("DELETE FROM audit WHERE seq=2")
+    r = log.verify()
+    assert not r.ok and r.first_bad_seq == 2 and r.length == 3
+
+
+class _CommitFails(Connection):
+    """A connection whose COMMIT raises once, to exercise the rollback path in immediate()."""
+
+    fail_next_commit = False
+
+    def execute(self, sql: str, parameters: Any = (), /) -> sqlite3.Cursor:
+        if sql == "COMMIT" and self.fail_next_commit:
+            self.fail_next_commit = False
+            raise sqlite3.OperationalError("disk I/O error (simulated)")
+        return super().execute(sql, parameters)
+
+
+def test_commit_failure_rolls_back_head(clock: FakeClock) -> None:
+    conn = sqlite3.connect(":memory:", isolation_level=None, factory=_CommitFails)
+    conn.executescript(SCHEMA)
+    log = AuditLog(conn, clock)
+    log.append("t", "K", {"n": 1})
+    conn.fail_next_commit = True
+    with pytest.raises(sqlite3.OperationalError):
+        log.append("t", "K", {"n": 2})
+    assert not conn.in_transaction
+    assert conn.execute("SELECT count(*) FROM audit").fetchone()[0] == 1
+    r = log.verify()
+    assert r.ok and r.length == 1
+    ev = log.append("t", "K", {"n": 3})
+    assert ev.seq == 2 and log.verify().ok

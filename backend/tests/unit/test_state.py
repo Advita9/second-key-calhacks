@@ -334,3 +334,18 @@ def test_state_py_is_the_only_writer() -> None:
     assert offenders == []
     state_src = Path(str(sm.__file__)).read_text()
     assert any(pat.search(state_src) for pat in _MUTATION_PATTERNS)
+
+
+def test_released_rejects_consumed_but_expired_row(log: AuditLog) -> None:
+    p = payment()
+    insert_payment(log.conn, p)
+    p = _walk(log, p, EnteredReview(), Decided(outcome=Outcome.ALLOW, rule_ids=()))
+    cert_id = _consumed_cert(log, p)
+    # Forge a row that was "consumed" after its expiry: the chokepoint must not accept it.
+    log.conn.execute(
+        "UPDATE certificate SET consumed_at=? WHERE id=?",
+        ("2099-01-01T00:00:00+00:00", cert_id),
+    )
+    with pytest.raises(IllegalTransition):
+        transition(p, Released(certificate_id=cert_id, transfer_id="t"), audit=log, actor="t")
+    assert load_payment(log.conn, p.id).state is State.ELIGIBLE_TO_SUBMIT

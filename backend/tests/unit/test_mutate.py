@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import pytest
 
@@ -225,3 +226,32 @@ def test_mutate_reports_i6_when_denied_during_extraction(clock: FakeClock) -> No
         kernel.mutate(p.id, {"amount_cents": 5}, account_context())
     assert ei.value.invariant is Invariant.I6_DENIED
     assert kernel.get(p.id).payment.state is State.DENIED
+
+
+def test_mutate_after_restart_fails_closed(clock: FakeClock, tmp_path: Path) -> None:
+    """A new process has no transcript for an old payment; re-deciding must count the
+    extractor as failed (X-00) so a HELD-on-signals payment cannot become ALLOW."""
+    db = str(tmp_path / "k.db")
+    first = Kernel(db, policy=load_policy(V1_PATH), clock=clock, extractor=_SecrecyOnce())
+    conv = [EvidenceItem(id="EV-0003", speaker="caller", text="Do not tell your bank")]
+    p, d = first.create_payment(payment_in(), account_context(), conv)
+    assert p.state is State.HELD and d.rule_ids == ("H-02", "A-01")
+    first.conn.close()
+    second = Kernel(db, policy=load_policy(V1_PATH), clock=clock)  # NullExtractor, no memory
+    p2, d2 = second.mutate(p.id, {"amount_cents": 800_001}, account_context())
+    assert p2.state is State.HELD
+    assert d2.outcome is Outcome.HOLD and d2.rule_ids == ("A-01", "X-00")
+    assert second.get(p.id).history[-2].kind == "EXTRACTOR_FAILED"
+    assert second.audit_verify().ok
+
+
+class _SecrecyOnce:
+    def extract(self, conversation: Sequence[EvidenceItem], payment: PaymentIn) -> ExtractorResult:
+        from kernel.llm.types import Signal
+
+        return ExtractorResult(
+            signals=(
+                Signal(kind="secrecy", score=0.9, source_id="EV-0003", evidence_span="Do not tell"),
+            ),
+            summary="secrecy",
+        )

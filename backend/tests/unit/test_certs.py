@@ -183,7 +183,7 @@ def test_consume_is_single_use_at_sql_level(kernel: Kernel, clock: FakeClock) ->
     cert = kernel.issue_certificate(pid, "ops_1", Capability.BANK_REVIEW)
     conn = kernel.conn
     now = clock.now()
-    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is False or True
+    assert certs.consume(conn, cert.id, pid, cert.fingerprint, now) is True
     # Reset to test each predicate in isolation.
     conn.execute("UPDATE certificate SET consumed_at=NULL WHERE id=?", (cert.id,))
     assert certs.consume(conn, cert.id, "pay_other", cert.fingerprint, now) is False

@@ -25,7 +25,7 @@ from api.schemas import (
     payment_summary,
 )
 from kernel.llm.types import EvidenceItem
-from kernel.models import AccountContext
+from kernel.models import AccountContext, Capability
 from kernel.service import Kernel
 
 log = logging.getLogger("second_key.api.payments")
@@ -70,12 +70,7 @@ def create_payment(body: PaymentCreate, bus: Bus) -> dict[str, Any]:
 @router.get("/payments")
 def list_payments(limit: Annotated[int, Query(ge=1, le=500)] = 100) -> dict[str, Any]:
     """Not in docs/api.md; the /ops queue reads it. Newest first."""
-    kernel = deps.get_kernel()
-    with _kernel_lock(kernel):
-        rows = kernel.conn.execute(
-            "SELECT id FROM payment ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
-        ).fetchall()
-        records = [kernel.get(r[0]) for r in rows]
+    records = deps.get_kernel().list_payments(limit)
     return {"payments": [payment_dict(r) for r in records]}
 
 
@@ -172,16 +167,11 @@ def deny(payment_id: str, body: DenyIn, bus: Bus, x_ops_token: OpsToken = None) 
     deps.check_ops(x_ops_token)
     kernel = deps.get_kernel()
     try:
-        kernel.cancel(payment_id, body.actor_id, body.note)
+        kernel.cancel(payment_id, body.actor_id, Capability.BANK_REVIEW, body.note)
     finally:
         _publish_if_exists(kernel, bus, payment_id)
     record = kernel.get(payment_id)
     return {"state": record.payment.state.value, **payment_dict(record)}
-
-
-def _kernel_lock(kernel: Kernel) -> Any:
-    # The facade's RLock, for a consistent read in the list route (no Kernel.list yet).
-    return kernel._lock  # noqa: SLF001
 
 
 def _publish_if_exists(kernel: Kernel, bus: EventBus, payment_id: str) -> None:

@@ -13,6 +13,7 @@ from kernel.models import Attestation, Capability, Invariant, Payment
 # Who may do what. CO_APPROVER and CUSTOMER_CHECKIN can only add evidence.
 CAN_LIFT_HOLD: frozenset[Capability] = frozenset({Capability.BANK_REVIEW})
 CAN_ISSUE_CERT: frozenset[Capability] = frozenset({Capability.BANK_REVIEW})
+CAN_CANCEL: frozenset[Capability] = frozenset({Capability.BANK_REVIEW})
 
 _COLS = "id, payment_id, actor_id, capability, fingerprint, note, created_at, voided_at"
 
@@ -76,11 +77,12 @@ def insert(
     return att
 
 
-def list_for_payment(conn: sqlite3.Connection, payment_id: str) -> list[Attestation]:
-    rows = conn.execute(
-        f"SELECT {_COLS} FROM attestation WHERE payment_id=? ORDER BY created_at, id",
-        (payment_id,),
-    ).fetchall()
+def list_for_payment(conn: Connection, payment_id: str) -> list[Attestation]:
+    with conn.lock:
+        rows = conn.execute(
+            f"SELECT {_COLS} FROM attestation WHERE payment_id=? ORDER BY created_at, id",
+            (payment_id,),
+        ).fetchall()
     return [_row(r) for r in rows]
 
 
