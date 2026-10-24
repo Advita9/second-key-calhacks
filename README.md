@@ -78,7 +78,7 @@ The only path to SUBMITTED runs through the policy engine and then the certifica
 
 ## The seven invariants and the tests that protect them
 
-Unit tests live in `backend/tests/unit/` (332 functions), API tests in `backend/tests/api/` (52), voice tests in `backend/tests/voice/` (51), property tests in `backend/tests/property/`, red-team tests in `backend/tests/redteam/` (48 collected). The property suite has 27 Hypothesis properties over random action traces (one module per invariant plus two "apply never raises" properties) and 5 pinned regressions the properties found; under `HYPOTHESIS_PROFILE=ci` each property runs 2,000 examples.
+Unit tests live in `backend/tests/unit/` (344 functions), API tests in `backend/tests/api/` (63), voice tests in `backend/tests/voice/` (51), property tests in `backend/tests/property/`, red-team tests in `backend/tests/redteam/` (85 attack tests, 9 of them FOUND-then-FIXED findings). The property suite has 27 Hypothesis properties over random action traces (one module per invariant plus two "apply never raises" properties) and 5 pinned regressions the properties found; under `HYPOTHESIS_PROFILE=ci` each property runs 2,000 examples.
 
 | # | Invariant | Tests |
 |---|---|---|
