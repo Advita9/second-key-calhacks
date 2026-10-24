@@ -45,7 +45,7 @@ export function Debrief({ outcomes, onClose }: { outcomes: OutcomeRow[]; onClose
     return LOCAL[id] ?? { label: id, line: "" };
   };
   return (
-    <section className="absolute inset-0 z-20 flex flex-col gap-8 bg-bg/95 p-12" data-testid="debrief" role="dialog" aria-label="Debrief">
+    <section className="absolute inset-0 z-20 flex flex-col gap-8 bg-bg p-12" data-testid="debrief" role="dialog" aria-label="Debrief">
       <header className="flex items-baseline justify-between">
         <div>
           <p className="text-sm uppercase tracking-[0.2em] text-muted">Debrief</p>
