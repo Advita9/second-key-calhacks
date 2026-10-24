@@ -1,0 +1,137 @@
+@import 'tailwindcss';
+
+/*
+  Layout: the big screen is a bank fraud control room (dark, dense, readable from
+  the back row). Margaret's app is the opposite: light, calm, large type.
+  The stage commits to one dark look on purpose.
+*/
+@theme {
+  --color-ink-0: #0a0f1c; /* room */
+  --color-ink-1: #111a2c; /* panel */
+  --color-ink-2: #1b2742; /* rule / raised */
+  --color-ink-3: #2a3a5e;
+  --color-steel: #8d99b3; /* secondary text */
+  --color-paper: #e9eef7; /* primary text */
+  --color-brass: #d9a441; /* the second key */
+  --color-hold: #f2554b;
+  --color-clear: #3ccb8f;
+
+  --color-sig-urgency: #f59e0b;
+  --color-sig-secrecy: #c084fc;
+  --color-sig-authority: #60a5fa;
+  --color-sig-payment: #f472b6;
+  --color-sig-stay: #2dd4bf;
+  --color-sig-family: #fb923c;
+
+  /* Margaret's bank app */
+  --color-m-bg: #f3f6fa;
+  --color-m-card: #ffffff;
+  --color-m-ink: #13203a;
+  --color-m-soft: #5b6b86;
+  --color-m-brand: #1d4f91;
+  --color-m-calm: #e7f0fb;
+  --color-m-line: #dbe3ee;
+
+  --font-display: 'Archivo', 'Arial Narrow', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-legible: 'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+html,
+body,
+#root {
+  min-height: 100%;
+}
+body {
+  background: var(--color-ink-0);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-steel);
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.panel {
+  background: var(--color-ink-1);
+  border: 1px solid var(--color-ink-2);
+  border-radius: 10px;
+}
+.gutter {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* money path beam */
+@keyframes flow {
+  to {
+    stroke-dashoffset: -40;
+  }
+}
+.beam {
+  stroke-dasharray: 10 10;
+  animation: flow 0.7s linear infinite;
+}
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulse-ring 1.4s ease-out infinite;
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20%,
+  60% {
+    transform: translateX(-6px);
+  }
+  40%,
+  80% {
+    transform: translateX(6px);
+  }
+}
+.ringing {
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beam,
+  .pulse-ring,
+  .ringing {
+    animation: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .dock {
+    right: max(16px, env(safe-area-inset-right, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+}
