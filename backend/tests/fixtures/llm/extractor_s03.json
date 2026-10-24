@@ -1,0 +1,54 @@
+{
+  "case_id": "S-03",
+  "recorded": "real call recorded 2026-10-24T05:44:58+00:00",
+  "model": "claude-sonnet-5-5",
+  "stop_reason": "end_turn",
+  "latency_ms": 4281,
+  "parsed": {
+    "signals": [
+      {
+        "evidence_span": "This is Agent Daniels with the IRS.",
+        "kind": "authority",
+        "score": 0.95,
+        "source_id": "EV-0001"
+      },
+      {
+        "evidence_span": "There is a warrant in your name for unpaid back taxes from 2019 through 2023.",
+        "kind": "threat",
+        "score": 0.9,
+        "source_id": "EV-0001"
+      },
+      {
+        "evidence_span": "Do not tell your bank or your daughter, they are part of the investigation.",
+        "kind": "secrecy",
+        "score": 0.97,
+        "source_id": "EV-0003"
+      },
+      {
+        "evidence_span": "Wire eighteen thousand five hundred today to the account I give you",
+        "kind": "payment_method",
+        "score": 0.9,
+        "source_id": "EV-0003"
+      },
+      {
+        "evidence_span": "the account I give you",
+        "kind": "new_relationship",
+        "score": 0.8,
+        "source_id": "EV-0003"
+      },
+      {
+        "evidence_span": "You must do it before the end of the business day",
+        "kind": "urgency",
+        "score": 0.9,
+        "source_id": "EV-0005"
+      },
+      {
+        "evidence_span": "local police will be dispatched",
+        "kind": "threat",
+        "score": 0.93,
+        "source_id": "EV-0005"
+      }
+    ],
+    "summary": "The caller, claiming to be an IRS agent, demanded a same-day wire of $18,500 to a new account to cancel a warrant, told Margaret not to tell her bank or daughter, and threatened police dispatch."
+  }
+}

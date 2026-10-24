@@ -38,6 +38,15 @@ class ExtractorResult(StrictModel):
     summary: str = ""
 
 
+class ExtractorError(Exception):
+    """Any failure between the model boundary and a validated ExtractorResult.
+
+    Raised by ClaudeExtractor on API errors, timeouts, refusals, truncation, missing or
+    ill-typed parsed output, foreign evidence ids, or a replay-only cache miss. The kernel
+    catches it and fails closed (rule X-00). Never carries prompt text or secrets.
+    """
+
+
 class Extractor(Protocol):
     def extract(self, conversation: Sequence[EvidenceItem], payment: PaymentIn) -> ExtractorResult:
         """Return validated signals citing evidence ids. Must never raise on bad model output;
