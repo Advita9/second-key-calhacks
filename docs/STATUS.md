@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-23 23:05 PDT
-Current task: 0-2 kernel scaffold+domain+policy (kernel-engineer building); fixtures (eval-engineer); plans for 9-11 (architect). Research done: SpacetimeDB, Cartesia, Nessie, Anthropic keys all verified live.
-Iteration: 2
+Last updated: 2026-10-23 23:30 PDT
+Current task: items 1-2 under invariant review; item 3 (certs/service) building; items 9, 10a, 11 building in parallel lanes. Fixtures (item 8 data) done: 60 cases validated.
+Iteration: 3
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [ ] G1 Kernel library
@@ -15,7 +15,7 @@ Iteration: 2
 - [ ] G8 Docs for the morning
 
 ## Build order (do in this order; each line is one commit)
-- [ ] 0. Repo scaffold: uv project, Next.js app, spacetime module, bridge, .env loading, `make dev` / `scripts/dev.sh` that starts everything.
+- [x] 0. Repo scaffold: uv project, Next.js app, spacetime module, bridge, .env loading, `make dev` / `scripts/dev.sh` that starts everything.
 - [ ] 1. Kernel domain: Payment, fingerprint (sha256 of account, amount, currency, beneficiary ref, rail, policy version), state machine, audit chain.
 - [ ] 2. Policy engine: YAML v1, safe expression parser, precedence, tests.
 - [ ] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
@@ -41,3 +41,9 @@ Iteration: 2
 
 ## Decisions made tonight
 (one line each, details in docs/DECISIONS.md)
+- SpacetimeDB CLI installed repo-local at .tools/spacetime; local server works without spacetimedb.com login.
+- Nessie base URL is https; transfers modelled as withdrawal + deposit; sandbox never moves balances.
+- Margaret voice: Cartesia stock voice Michelle, sonic-3.6, no cloning.
+- Known-biller ALLOW requires account_ref match; name match alone never allows (L-33 now HOLD).
+- S-03 expects DENY (mule list, D-01 wins precedence); API scenario A uses its own context for HOLD + H-01.
+- Scenario B baseline is 300000 cents so $8,000 Bay Roofing does not trip H-03.
