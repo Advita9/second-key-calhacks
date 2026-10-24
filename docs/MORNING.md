@@ -1,3 +1,17 @@
+# READ THIS FIRST (lead, 07:15 Saturday)
+
+The judge rehearsal at 04:00 (docs/QA_REPORT.md) found things the rest of this file does not yet reflect. These lines win over anything below.
+
+1. Start with `scripts/dev.sh start --fresh`. It deletes `backend/second_key.db` and its audit anchor sidecar. Without `--fresh`, an old database shows `anchor: mismatch` and refuses payments until you run `curl -s -X POST -H "X-Ops-Token: $OPS_TOKEN" http://127.0.0.1:8000/audit/acknowledge`. dev.sh prints the warning and both commands if it sees a mismatch.
+2. `.env` now has `DEMO_MODE=1` and `LLM_CACHE_WARM=1`. DEMO_MODE=1 turns on the mutate attack and the tamper button (the rehearsal had them off). LLM_CACHE_WARM=1 keeps the real Margaret live (cache first, then network); without it DEMO_MODE=1 would make her replay-only and she would answer with the safe line on every new sentence.
+3. Every attack curl needs the operator header: `-H "X-Ops-Token: $OPS_TOKEN"`. The board URL dev.sh prints carries `?token=` for the same reason. `scripts/demo.py --real` does not send the token yet (known gap, fix was in flight when the session rate limit hit); plain `DEMO_MODE=1 uv run python ../scripts/demo.py` passes.
+4. To kill the kernel for the fail-closed test use `kill $(cat .claude/kernel.pid)` (dev.sh now records uvicorn's own pid). Known blocker: in SpacetimeDB mode the phone still submits through the kernel WebSocket, so when the kernel dies the phone shows "Margaret is thinking" instead of a stage 10 fail-closed outcome. The fix (make /play use the SpacetimeDB client so the bridge's fail-closed path runs, plus a 35 s client timeout) was dispatched to the frontend lane and interrupted by the rate limit. Sohee's first task.
+5. Real Margaret resisted every single-tactic line in the rehearsal (that is the product working). For the 0:45 beat use the proven four-line script from `scripts/demo.py` (warmth + fear + a named amount drafts on turn 4 with the real persona, cached in `backend/cache/llm/`). An ops-gated `POST /rooms/{room}/scripted-attack` route and an /ops button were dispatched and interrupted; until then type the four lines from /play.
+6. Each click of "Replay old approval" makes a real $8,000 SUBMITTED payment and the bridge counted it as a legitimate completion. The fix (attack payments tagged `origin: attack`, excluded by bridge and board) was dispatched and interrupted. Click replay once at the table, or run the legit beat before the attack panel.
+7. One Margaret per room, shared by every player (by design). Tell judges before they type.
+8. Smoke test with the stack running fails 2 of 8 (it reuses the token-protected kernel on :8000). Run it with the stack stopped: `scripts/dev.sh stop && cd frontend && npx playwright test e2e/smoke.spec.ts` passes 8 of 8.
+9. Interrupted at 04:45 by the session rate limit (all six agents): frontend QA fixes (item 4 above, join-wipe bug, Next dev badge, board clipping), API scripted-attack route and payment origin, bridge legit filter, kernel Task F (persist decisions across restart so the holds queue keeps rule ids; demo.py token), red-team final pass on role scoping and tokens, docs refresh of DEVPOST and TABLE_SCRIPT (README was refreshed). All of it is described in the last messages of docs/STATUS.md "Blocked for Armaan".
+
 # MORNING (read this first)
 
 Written at the first docs pass, 2026-10-24 about 01:00 PDT. A refresh pass with final numbers comes at the end of the night. Numbers to re-check are listed at the bottom.
