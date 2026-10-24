@@ -14,6 +14,7 @@ Responsibilities, in order of importance:
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
 import threading
@@ -27,7 +28,17 @@ from kernel import attest as attest_mod
 from kernel import certs as certs_mod
 from kernel.audit import AuditEvent, AuditLog, VerifyResult, anchor_path_for
 from kernel.clock import Clock, SystemClock
-from kernel.db import connect, immediate, insert_payment, list_payment_ids, load_payment
+from kernel.db import (
+    connect,
+    immediate,
+    insert_conversation,
+    insert_decision,
+    insert_payment,
+    latest_decision,
+    list_payment_ids,
+    load_conversation,
+    load_payment,
+)
 from kernel.fingerprint import fingerprint
 from kernel.llm.types import EvidenceItem, Extractor, ExtractorResult, NullExtractor, Signal
 from kernel.models import (
@@ -37,6 +48,7 @@ from kernel.models import (
     Certificate,
     Decision,
     Invariant,
+    Outcome,
     Payment,
     PaymentIn,
     Refusal,
@@ -167,10 +179,8 @@ class Kernel:
         self.conn = connect(db_path)
         self.audit = AuditLog(self.conn, self.clock, anchor_path=anchor_path_for(db_path))
         self._lock = threading.RLock()
-        # Per-payment data that is not part of the money-moving record.
-        self._conversations: dict[str, tuple[EvidenceItem, ...]] = {}
-        self._signals: dict[str, tuple[Signal, ...]] = {}
-        self._decisions: dict[str, Decision] = {}
+        # Decisions, signals and transcripts live in the `decision` and `conversation` tables
+        # (written in the same transactions as DECIDED / CREATED), never only in memory.
         # Payments where the rail may have moved money without a RELEASED row. Rebuilt from the
         # audit table so a restart cannot forget them. Nothing on them may certify or mutate.
         self._unrecorded: set[str] = self.audit.payment_ids_with_kind(UNRECORDED_KINDS)
@@ -199,7 +209,7 @@ class Kernel:
                 created_at=self.clock.now(),
             )
             insert_payment(self.conn, payment)
-            self._conversations[payment.id] = conv
+            insert_conversation(self.conn, payment.id, _evidence_json(conv))
             self.audit.append(
                 SYSTEM_ACTOR,
                 "CREATED",
@@ -464,10 +474,10 @@ class Kernel:
             self._refuse_if_terminal(before, actor, "mutate")
             self._refuse_if_unrecorded(before, actor, "mutate")
             new_in = _apply_patch(before, patch)
-            conv = self._conversations.get(before.id)
+            conv = _parse_evidence(load_conversation(self.conn, before.id))
         if conv is None:
-            # After a restart the transcript is gone. Re-deciding without it could turn a
-            # HELD-on-signals payment into ALLOW, so the extractor counts as failed (X-00).
+            # No transcript on disk (legacy row or deleted). Re-deciding without it could turn
+            # a HELD-on-signals payment into ALLOW, so the extractor counts as failed (X-00).
             log.warning("mutate.no_conversation", extra={"payment_id": before.id})
             extracted, extractor_ok = ExtractorResult(), False
         else:
@@ -517,10 +527,11 @@ class Kernel:
     def get(self, payment_id: str) -> PaymentRecord:
         with self._lock:
             payment = self._load(payment_id)
+            decision, signals = self._latest_decision(payment_id)
             return PaymentRecord(
                 payment=payment,
-                decision=self._decisions.get(payment_id),
-                signals=self._signals.get(payment_id, ()),
+                decision=decision,
+                signals=signals,
                 attestations=attest_mod.list_for_payment(self.conn, payment_id),
                 certificates=[
                     certs_mod.redact(c) for c in certs_mod.list_for_payment(self.conn, payment_id)
@@ -607,6 +618,17 @@ class Kernel:
             extra={"payment_id": payment.id, "action": action, "invariant": invariant.value},
         )
         raise Refusal(invariant)
+
+    def _latest_decision(self, payment_id: str) -> tuple[Decision | None, tuple[Signal, ...]]:
+        row = latest_decision(self.conn, payment_id)
+        if row is None:
+            return None, ()
+        outcome, rule_ids, signals_json, policy_version = row
+        decision = Decision(
+            outcome=Outcome(outcome), rule_ids=tuple(rule_ids), policy_version=policy_version
+        )
+        signals = tuple(Signal.model_validate(d) for d in json.loads(signals_json))
+        return decision, signals
 
     def _refuse_if_unrecorded(self, payment: Payment, actor: str, action: str) -> None:
         if payment.id in self._unrecorded:
@@ -719,8 +741,15 @@ class Kernel:
         decision = decide(p_in, extracted.signals, ctx, self.policy)
         if not extractor_ok:
             decision = fail_closed(decision, EXTRACTOR_FAIL_RULE_ID)
-        self._signals[payment.id] = extracted.signals
-        self._decisions[payment.id] = decision
+        insert_decision(
+            self.conn,
+            payment_id=payment.id,
+            outcome=decision.outcome.value,
+            rule_ids=list(decision.rule_ids),
+            signals_json=json.dumps([s.model_dump(mode="json") for s in extracted.signals]),
+            policy_version=decision.policy_version,
+            created_at=self.clock.now(),
+        )
         payment = transition(
             payment,
             Decided(outcome=decision.outcome, rule_ids=decision.rule_ids),
@@ -748,3 +777,17 @@ def _apply_patch(payment: Payment, patch: Mapping[str, Any]) -> PaymentIn:
         return PaymentIn.model_validate(base, strict=False)
     except ValidationError as e:
         raise ValueError(f"mutate: invalid patch: {e.errors()[0]['msg']}") from None
+
+
+def _evidence_json(conversation: tuple[EvidenceItem, ...]) -> str:
+    return json.dumps([e.model_dump(mode="json") for e in conversation])
+
+
+def _parse_evidence(raw: str | None) -> tuple[EvidenceItem, ...] | None:
+    if raw is None:
+        return None
+    try:
+        return tuple(EvidenceItem.model_validate(d) for d in json.loads(raw))
+    except (ValueError, TypeError):
+        log.error("conversation.unreadable")
+        return None

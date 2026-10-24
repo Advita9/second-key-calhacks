@@ -31,6 +31,9 @@ log = logging.getLogger("second_key.audit")
 GENESIS_HASH = "0" * 64
 
 
+ANCHOR_HINT = "scripts/dev.sh start --fresh, or POST /audit/acknowledge with the ops token"
+
+
 class AuditChainError(RuntimeError):
     """The table tail no longer matches what this process last wrote. Refuse to append."""
 
@@ -55,6 +58,7 @@ class VerifyResult(BaseModel):
     length: int
     first_bad_seq: int | None = None
     anchor: AnchorStatus = "none"
+    hint: str | None = None  # set when the anchor mismatches: what an operator should do
 
 
 def anchor_path_for(db_path: str) -> Path | None:
@@ -99,7 +103,11 @@ class AuditLog:
         if self._anchor_mismatch is not None:
             log.critical(
                 "audit.anchor_mismatch",
-                extra={"first_bad_seq": self._anchor_mismatch, "table_seq": self._head_seq},
+                extra={
+                    "first_bad_seq": self._anchor_mismatch,
+                    "table_seq": self._head_seq,
+                    "hint": ANCHOR_HINT,
+                },
             )
         conn.commit_hooks.append(self._on_commit)
         conn.rollback_hooks.append(self._on_rollback)
@@ -203,8 +211,8 @@ class AuditLog:
     def append(self, actor: str, kind: str, payload: Mapping[str, object]) -> AuditEvent:
         if self._anchor_mismatch is not None:
             raise AuditChainError(
-                "audit anchor mismatch: history was altered while the kernel was down; "
-                "an operator must acknowledge before new rows can be written"
+                "audit anchor mismatch: history was altered while the kernel was down "
+                f"(or this database predates the sidecar anchor). hint: {ANCHOR_HINT}"
             )
         payload_json = canonical_json(dict(payload))
         ts = self._clock.now().isoformat()
@@ -247,7 +255,11 @@ class AuditLog:
         if anchor == "mismatch":
             assert self._anchor_mismatch is not None
             return VerifyResult(
-                ok=False, length=len(rows), first_bad_seq=self._anchor_mismatch, anchor=anchor
+                ok=False,
+                length=len(rows),
+                first_bad_seq=self._anchor_mismatch,
+                anchor=anchor,
+                hint=ANCHOR_HINT,
             )
         prev = GENESIS_HASH
         expected_seq = 1

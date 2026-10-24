@@ -47,8 +47,18 @@ def test_mock_demo_scoreboard(demo: ModuleType) -> None:
     # One line per step, the attack refusals and the scoreboard are all printed.
     for marker in ("[1] ok", "[2] ok", "[3] ok", "[4] ok", "[5] ok", "[6] ok", "SCOREBOARD"):
         assert marker in text, marker
+    # Each attack line carries the kernel's own text plus the expected invariant; the
+    # self-approve attack's own text is ATTESTATION REFUSED, never a second prefix.
     for inv in ("POLICY_HOLD", "I2_FINGERPRINT", "I3_REPLAY", "I5_CONFLICT"):
-        assert f"SETTLEMENT REFUSED · {inv}" in text
+        assert inv in text
+    for kernel_text in (
+        "SETTLEMENT REFUSED · I2_FINGERPRINT",
+        "SETTLEMENT REFUSED · I3_REPLAY",
+        "ATTESTATION REFUSED · I5_CONFLICT",
+    ):
+        assert kernel_text in text
+    attack_line = next(line for line in text.splitlines() if "/attack/self-approve" in line)
+    assert "ATTESTATION REFUSED" in attack_line and "SETTLEMENT REFUSED" not in attack_line
     assert "unauthorized releases : 0" in text and "result                : PASS" in text
     assert set(board["health_cache"]) == {"llm_entries", "audio_entries"}
 

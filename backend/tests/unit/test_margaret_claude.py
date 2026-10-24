@@ -283,10 +283,19 @@ def test_factory_selection(tmp_path: Path) -> None:
     m, mode = build_margaret({"ANTHROPIC_API_KEY": ""})
     assert mode == "mock" and isinstance(m, MockMargaret)
     m, mode = build_margaret(
-        {"ANTHROPIC_API_KEY": "sk", "DEMO_MODE": "1", "LLM_CACHE_DIR": str(tmp_path / "c")}
+        {
+            "ANTHROPIC_API_KEY": "sk",
+            "LLM_CACHE_MODE": "replay",
+            "LLM_CACHE_DIR": str(tmp_path / "c"),
+        }
     )
     assert mode == "real" and isinstance(m, ClaudeMargaret)
     assert m.is_mock is False and m._cache.replay_only is True
+    # DEMO_MODE alone no longer implies replay (LLM_CACHE_MODE decides; default auto).
+    m, mode = build_margaret(
+        {"ANTHROPIC_API_KEY": "sk", "DEMO_MODE": "1", "LLM_CACHE_DIR": str(tmp_path / "c")}
+    )
+    assert isinstance(m, ClaudeMargaret) and m._cache.replay_only is False
 
 
 def test_build_messages_truncates_player_text() -> None:

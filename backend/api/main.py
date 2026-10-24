@@ -82,7 +82,13 @@ def audit_status() -> dict[str, Any]:
         v = deps.get_kernel().audit_verify()
     except Exception as e:  # noqa: BLE001  health must answer even when the log is broken
         return {"ok": False, "anchor": "error", "error": type(e).__name__}
-    return {"ok": v.ok, "length": v.length, "anchor": v.anchor, "first_bad_seq": v.first_bad_seq}
+    return {
+        "ok": v.ok,
+        "length": v.length,
+        "anchor": v.anchor,
+        "first_bad_seq": v.first_bad_seq,
+        "hint": v.hint,
+    }
 
 
 def _authorize_room_role(role: str, token: str | None) -> bool:

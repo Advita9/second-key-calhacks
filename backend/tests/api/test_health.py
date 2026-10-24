@@ -24,6 +24,7 @@ def test_health_shape(client: TestClient) -> None:
         "tts": "mock",
         "stt": "mock",
         "room": "memory",
+        "llm_cache": "auto",
     }
 
 

@@ -8,6 +8,7 @@ head only when the transaction actually commits.
 
 from __future__ import annotations
 
+import json
 import sqlite3
 import threading
 from collections.abc import Callable, Iterator
@@ -56,6 +57,19 @@ CREATE TABLE IF NOT EXISTS certificate (
     consumed_at TEXT,
     voided_at TEXT
 );
+CREATE TABLE IF NOT EXISTS decision (
+    seq INTEGER PRIMARY KEY AUTOINCREMENT,
+    payment_id TEXT NOT NULL REFERENCES payment(id),
+    outcome TEXT NOT NULL,
+    rule_ids TEXT NOT NULL,
+    signals TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS conversation (
+    payment_id TEXT PRIMARY KEY REFERENCES payment(id),
+    evidence TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit (
     seq INTEGER PRIMARY KEY,
     ts TEXT NOT NULL,
@@ -67,6 +81,7 @@ CREATE TABLE IF NOT EXISTS audit (
 );
 CREATE INDEX IF NOT EXISTS attestation_payment ON attestation(payment_id);
 CREATE INDEX IF NOT EXISTS certificate_payment ON certificate(payment_id);
+CREATE INDEX IF NOT EXISTS decision_payment ON decision(payment_id, seq);
 """
 
 
@@ -189,3 +204,66 @@ def list_payment_ids(conn: Connection, limit: int) -> list[str]:
             "SELECT id FROM payment ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,)
         ).fetchall()
     return [str(r[0]) for r in rows]
+
+
+# ---------------------------------------------------------------- decisions and transcripts
+# Written inside the DECIDED / CREATED transactions so a restart keeps rule ids, signals and
+# the transcript a payment was judged on. Values are JSON strings; the service parses them.
+
+
+def insert_decision(
+    conn: Connection,
+    *,
+    payment_id: str,
+    outcome: str,
+    rule_ids: list[str],
+    signals_json: str,
+    policy_version: str,
+    created_at: datetime,
+) -> int:
+    with immediate(conn):
+        cur = conn.execute(
+            "INSERT INTO decision (payment_id, outcome, rule_ids, signals, policy_version, "
+            "created_at) VALUES (?,?,?,?,?,?)",
+            (
+                payment_id,
+                outcome,
+                json.dumps(rule_ids),
+                signals_json,
+                policy_version,
+                created_at.isoformat(),
+            ),
+        )
+        return int(cur.lastrowid or 0)
+
+
+def latest_decision(conn: Connection, payment_id: str) -> tuple[str, list[str], str, str] | None:
+    """(outcome, rule_ids, signals_json, policy_version) of the newest decision, or None."""
+    with conn.lock:
+        row = conn.execute(
+            "SELECT outcome, rule_ids, signals, policy_version FROM decision "
+            "WHERE payment_id=? ORDER BY seq DESC LIMIT 1",
+            (payment_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    rule_ids = json.loads(str(row[1]))
+    return str(row[0]), [str(r) for r in rule_ids], str(row[2]), str(row[3])
+
+
+def insert_conversation(conn: Connection, payment_id: str, evidence_json: str) -> None:
+    with immediate(conn):
+        conn.execute(
+            "INSERT OR REPLACE INTO conversation (payment_id, evidence) VALUES (?,?)",
+            (payment_id, evidence_json),
+        )
+
+
+def load_conversation(conn: Connection, payment_id: str) -> str | None:
+    """The transcript JSON the payment was created with, or None when truly absent
+    (legacy row, or deleted): the caller must then fail closed."""
+    with conn.lock:
+        row = conn.execute(
+            "SELECT evidence FROM conversation WHERE payment_id=?", (payment_id,)
+        ).fetchone()
+    return str(row[0]) if row is not None else None

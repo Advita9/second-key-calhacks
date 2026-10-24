@@ -229,15 +229,16 @@ def test_mutate_reports_i6_when_denied_during_extraction(clock: FakeClock) -> No
 
 
 def test_mutate_after_restart_fails_closed(clock: FakeClock, tmp_path: Path) -> None:
-    """A new process has no transcript for an old payment; re-deciding must count the
-    extractor as failed (X-00) so a HELD-on-signals payment cannot become ALLOW."""
+    """A payment whose transcript is truly absent (legacy row, deleted) must count the
+    extractor as failed (X-00) on mutate, so a HELD-on-signals payment cannot become ALLOW."""
     db = str(tmp_path / "k.db")
     first = Kernel(db, policy=load_policy(V1_PATH), clock=clock, extractor=_SecrecyOnce())
     conv = [EvidenceItem(id="EV-0003", speaker="caller", text="Do not tell your bank")]
     p, d = first.create_payment(payment_in(), account_context(), conv)
     assert p.state is State.HELD and d.rule_ids == ("H-02", "A-01")
+    first.conn.execute("DELETE FROM conversation WHERE payment_id=?", (p.id,))  # legacy row
     first.conn.close()
-    second = Kernel(db, policy=load_policy(V1_PATH), clock=clock)  # NullExtractor, no memory
+    second = Kernel(db, policy=load_policy(V1_PATH), clock=clock, extractor=_SecrecyOnce())
     p2, d2 = second.mutate(p.id, {"amount_cents": 800_001}, account_context())
     assert p2.state is State.HELD
     assert d2.outcome is Outcome.HOLD and d2.rule_ids == ("A-01", "X-00")

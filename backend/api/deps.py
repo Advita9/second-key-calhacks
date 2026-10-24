@@ -17,7 +17,7 @@ from fastapi import Header, Request
 
 from api.hub import EventBus
 from api.settings import Settings, load_settings
-from kernel.llm.factory import build_extractor
+from kernel.llm.factory import build_extractor, cache_mode
 from kernel.margaret.factory import build_margaret
 from kernel.margaret.types import Margaret
 from kernel.models import AccountContext, Capability
@@ -136,6 +136,7 @@ def modes() -> dict[str, str]:
         "nessie": _state.modes.get("nessie", "mock"),
         **voice_mode(s.env),
         "room": s.room_backend,
+        "llm_cache": cache_mode(s.env),
     }
     return out
 

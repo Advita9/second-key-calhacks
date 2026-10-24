@@ -69,7 +69,7 @@ Each returns `{steps[], refused: true, invariant, text}`, broadcasts an `attack`
 ## Eval
 
 `GET /eval/results` → latest `scripts/eval.py` output: `{unauthorized_releases, legit_completed, legit_total, scam_total, avg_friction_steps, cases[]}`
-`GET /health` → `{ok, mode: {extractor, margaret, nessie, tts, stt: real|mock, room: spacetime|memory}, policy_version, demo_mode, ops_token: set|unset, audit: {ok, length, anchor, first_bad_seq}}`. While `anchor` is `mismatch`, every audited write answers 503 `{refused: true, invariant: "AUDIT_ANCHOR_MISMATCH"}` until `POST /audit/acknowledge`.
+`GET /health` → `{ok, mode: {extractor, margaret, nessie, tts, stt: real|mock, room: spacetime|memory, llm_cache: auto|replay|live}, policy_version, demo_mode, ops_token: set|unset, audit: {ok, length, anchor, first_bad_seq, hint}}`. `mode.llm_cache` follows `LLM_CACHE_MODE` (see docs/DEMO_MODE.md); `audit.hint` is set while `anchor` is `mismatch`: `scripts/dev.sh start --fresh, or POST /audit/acknowledge with the ops token`. While `anchor` is `mismatch`, every audited write answers 503 `{refused: true, invariant: "AUDIT_ANCHOR_MISMATCH"}` until `POST /audit/acknowledge`.
 
 ## WebSocket `/ws`
 

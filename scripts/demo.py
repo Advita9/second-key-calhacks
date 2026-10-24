@@ -21,9 +21,11 @@ Flags:
 
 Env defaults set when absent: KERNEL_DB=:memory:, ROOM_BACKEND=memory, TTS_PROVIDER=mock,
 STT_PROVIDER=mock, NESSIE_API_KEY="" (mock rail), KERNEL_LOAD_DOTENV=0 unless --real/--warm.
-DEMO_MODE is always on inside the app (the audit tamper and mutate routes need it); whether the
-LLM cache is replay-only follows the caller's DEMO_MODE and --warm. MOCK_EXTRACTOR and
-MOCK_MARGARET are honoured as set by the caller.
+DEMO_MODE is always on inside the app (the audit tamper and mutate routes need it). Whether the
+LLM cache is replay-only is decided here: `--real` with DEMO_MODE=1 in the caller's env and no
+`--warm` sets LLM_CACHE_MODE=replay; otherwise auto. MOCK_EXTRACTOR and MOCK_MARGARET are
+honoured as set by the caller. X-Ops-Token (OPS_TOKEN from .env or the process env) is sent on
+every request.
 """
 
 from __future__ import annotations
@@ -121,7 +123,10 @@ def demo_env(*, real: bool, warm: bool) -> Iterator[dict[str, str]]:
         wanted.setdefault("MOCK_MARGARET", "0")
     forced: dict[str, str] = {
         "DEMO_MODE": "1",  # tamper and mutate routes
-        "LLM_CACHE_WARM": "0" if replay_only else "1",
+        # The offline guarantee lives here, not in DEMO_MODE: --real without --warm replays
+        # the disk cache only; --warm (or no DEMO_MODE) may call the network and fill it.
+        "LLM_CACHE_MODE": "replay" if replay_only else "auto",
+        "LLM_CACHE_WARM": "0" if replay_only else "1",  # legacy alias, kept in step
     }
     saved = {k: os.environ.get(k) for k in [*wanted, *forced]}
     try:
@@ -146,6 +151,11 @@ class Demo:
         self.out = out
         self.real = real
         self.ops_headers = {"X-Ops-Token": ops_token} if ops_token else {}
+        # Every route that can need the operator token gets it (attest as BANK_REVIEW,
+        # certificate, release, mutate, deny, attack/*, audit/tamper, rooms reset, and
+        # POST /payments with a caller-supplied context). Routes that do not need it ignore it.
+        if ops_token:
+            self.client.headers.update(self.ops_headers)
         self.failures: list[str] = []
         self.facts: dict[str, Any] = {
             "scenario_a_payment_id": None,
@@ -321,10 +331,11 @@ class Demo:
             ok = r.status_code == 200 and body.get("refused") is True and inv == want
             if ok:
                 refused += 1
-            self.say(
-                f"    /attack/{name:<13} SETTLEMENT REFUSED · {inv or 'NONE'}  "
-                f"({len(body.get('steps') or [])} steps; {body.get('text')})"
-            )
+            # Print the kernel's own refusal text only (the self-approve attack says
+            # ATTESTATION REFUSED, the others SETTLEMENT REFUSED); never a second prefix.
+            text = body.get("text") or f"HTTP {r.status_code}"
+            n_steps = len(body.get("steps") or [])
+            self.say(f"    /attack/{name:<13} {text}  ({n_steps} steps; {inv or 'NOT REFUSED'})")
             parts.append(f"{name}={'refused' if ok else 'NOT REFUSED'}")
             if not ok:
                 self.failures.append(
