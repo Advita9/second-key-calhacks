@@ -17,8 +17,8 @@
               "beneficiary": {"name": "Agent Daniels", "account_ref": "ext_9f31", "is_new": true}, "rail": "WIRE"},
   "account_context": {"baseline_90d_cents": 240000, "known_billers": ["PG&E", "Comcast", "Bay Roofing"],
                       "prior_payees": ["ext_bay_roofing", "ext_pge"], "mule_list": ["ext_9f31"]},
-  "expected": {"outcome": "HOLD", "allowed_rule_ids": ["H-01", "H-02", "H-03", "D-01"], "max_friction_steps": 99},
-  "review_note": "Classic IRS script with secrecy and a new irreversible payee. Rules alone catch it; signals should also fire secrecy and authority."
+  "expected": {"outcome": "DENY", "allowed_rule_ids": ["H-01", "H-02", "H-03", "D-01"], "max_friction_steps": 99},
+  "review_note": "Classic IRS script with secrecy and a new irreversible payee on the mule list. D-01 fires so precedence gives DENY; signals should also fire secrecy and authority."
 }
 ```
 

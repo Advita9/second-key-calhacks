@@ -75,11 +75,9 @@
     "known_biller_cap_cents": 1500000
   },
   "expected": {
-    "outcome": "ALLOW",
-    "allowed_rule_ids": [
-      "A-01"
-    ],
-    "max_friction_steps": 0
+    "outcome": "HOLD",
+    "allowed_rule_ids": [],
+    "max_friction_steps": 2
   },
-  "review_note": "is_new is true but the name is on known_billers, so is_known_biller is true and A-01 applies. ACH so H-01 does not fire. ALLOW."
+  "review_note": "is_new is true and the account_ref is not in prior_payees. The name matches known_billers, but a name match alone never grants ALLOW because names can be spoofed (see S-07). Default HOLD, completes in 2 steps. Lead decision 2026-10-23 23:20."
 }

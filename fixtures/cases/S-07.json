@@ -100,5 +100,5 @@
     ],
     "max_friction_steps": 99
   },
-  "review_note": "signals_required. Beneficiary name exactly matches a known biller, so A-01 would ALLOW even though the account_ref is new. Only urgency plus new payee (H-04) or shutoff threat (H-06) holds it. Name-match alone should not confer known-biller status."
+  "review_note": "signals_required. Beneficiary name exactly matches a known biller, so A-01 would ALLOW even though the account_ref is new. Only urgency plus new payee (H-04) or shutoff threat (H-06) holds it. Name-match alone should not confer known-biller status. With ref-only known-biller matching, A-01 cannot fire for a new ref even though the name is PG&E; default HOLD applies even with zero signals."
 }
