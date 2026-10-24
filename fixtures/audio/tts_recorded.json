@@ -1,0 +1,39 @@
+{
+  "_note": "RECORDED from one live Cartesia POST /tts/bytes call on 2026-10-23. Body of the request below; response was the raw WAV bytes saved as tts_bytes.wav.",
+  "request": {
+    "url": "https://api.cartesia.ai/tts/bytes",
+    "headers": {
+      "Authorization": "Bearer <redacted>",
+      "Cartesia-Version": "2026-08-14"
+    },
+    "json": {
+      "model_id": "sonic-3.6",
+      "transcript": "Hello, dear. Who did you say you were with?",
+      "voice": {
+        "id": "d7bf7d75-64b7-4c1e-86c0-79d647366587"
+      },
+      "language": "en",
+      "output_format": {
+        "container": "wav",
+        "encoding": "pcm_s16le",
+        "sample_rate": 24000
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "audio/wav",
+      "x-request-id": "b1f05d11-76a0-43b6-8e1e-6e7c4736f674"
+    }
+  },
+  "response_bytes": 134478,
+  "elapsed_ms": 738,
+  "cache_key": "6882bec1125d189ae0b14ca241546f75859b5b0267def44e13d4bd6f5ad6c864",
+  "voice": {
+    "id": "d7bf7d75-64b7-4c1e-86c0-79d647366587",
+    "name": "Michelle",
+    "kind": "stock",
+    "cloning": false
+  }
+}
