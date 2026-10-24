@@ -51,7 +51,8 @@ def build_margaret(
         log.info("margaret.build mode=mock reason=%s", "flag" if key else "no_key")
         return MockMargaret(path), "mock"
     model = env.get("ANTHROPIC_MODEL", "").strip() or DEFAULT_MODEL
-    cache = ResponseCache(default_cache_root(env), replay_only=_truthy(env.get("DEMO_MODE")))
+    replay_only = _truthy(env.get("DEMO_MODE")) and not _truthy(env.get("LLM_CACHE_WARM"))
+    cache = ResponseCache(default_cache_root(env), replay_only=replay_only)
     t = timeout_s if timeout_s is not None else timeout_s_from_env(env)
     log.info(
         "margaret.build mode=real model=%s replay_only=%s timeout_s=%.1f",

@@ -29,7 +29,9 @@ def build_extractor(env: Mapping[str, str]) -> tuple[Extractor, str]:
         )
         return MockExtractor(), "mock"
     model = env.get("ANTHROPIC_MODEL", "").strip() or DEFAULT_MODEL
-    replay_only = truthy(env.get("DEMO_MODE"))
+    # DEMO_MODE replays the disk cache and never calls the network. LLM_CACHE_WARM=1 (set by
+    # `scripts/demo.py --warm`) keeps DEMO_MODE's demo routes but lets misses fill the cache.
+    replay_only = truthy(env.get("DEMO_MODE")) and not truthy(env.get("LLM_CACHE_WARM"))
     effort = env.get("ANTHROPIC_EFFORT", "").strip() or None
     cache = ResponseCache(default_cache_root(env), replay_only=replay_only)
     log.info(

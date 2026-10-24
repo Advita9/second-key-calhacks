@@ -11,6 +11,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -23,9 +24,11 @@ from api.room_ws import RoomHub, make_router
 from api.routes import attack, audit, evalres, payments, rooms
 from api.voice_routes import router as voice_router
 from api.voice_routes import set_stt
+from kernel.llm.cache import default_cache_root as llm_cache_root
 from kernel.models import Refusal
 from kernel.rail import RailError
 from kernel.state import IllegalTransition
+from kernel.voice.cache import default_cache_root as audio_cache_root
 from kernel.voice.factory import make_stt
 
 log = logging.getLogger("second_key.api")
@@ -55,6 +58,21 @@ class KernelAuditTail:
 
     def recent(self, limit: int) -> list[Mapping[str, Any]]:
         return [e.model_dump(mode="json") for e in deps.get_kernel().audit.tail(limit)]
+
+
+def cache_counts(env: Mapping[str, str]) -> dict[str, int]:
+    """`/health.cache`: entries on disk in the LLM and audio caches. One listing each."""
+
+    def n(root: Path, pattern: str) -> int:
+        try:
+            return sum(1 for _ in root.glob(pattern))
+        except OSError:
+            return 0
+
+    return {
+        "llm_entries": n(llm_cache_root(env), "*.json"),
+        "audio_entries": n(audio_cache_root(dict(env)), "*.wav"),
+    }
 
 
 def create_app() -> FastAPI:
@@ -156,6 +174,7 @@ def create_app() -> FastAPI:
             "policy_version": deps.get_kernel().policy_version,
             "demo_mode": settings.demo_mode,
             "ops_token": "set" if settings.ops_token_set else "unset",
+            "cache": cache_counts(settings.env),
         }
 
     return app

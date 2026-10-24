@@ -33,6 +33,10 @@ log = logging.getLogger("second_key.margaret")
 _LONG_DIGITS = re.compile(r"\d{8,}")
 MAX_HISTORY_ITEMS = 40
 MAX_PLAYER_CHARS = 2000
+# Structured output on current Sonnet models spends several hundred output tokens before the
+# JSON text appears; 400 truncated 2 of 8 demo turns (stop_reason max_tokens, 38 chars of JSON).
+# Not part of the cache key, so raising it keeps existing entries valid.
+MAX_TOKENS = 1600
 
 
 RailName = Literal["WIRE", "ACH", "ZELLE", "CARD"]
@@ -131,7 +135,7 @@ class ClaudeMargaret:
         model: str,
         cache: ResponseCache,
         persona_system: str,
-        max_tokens: int = 400,
+        max_tokens: int = MAX_TOKENS,
     ) -> None:
         self._client = client
         self._model = model
@@ -146,6 +150,11 @@ class ClaudeMargaret:
         safe = MargaretTurn(reply=SAFE_REPLY, persuasion=persuasion, draft_payment=None)
         try:
             return self._reply(history, player_text, persuasion) or safe
+        except ValidationError as exc:
+            # Field names and error types only; never the model's values or the prompt.
+            where = [(e["type"], ".".join(str(x) for x in e["loc"])) for e in exc.errors()]
+            log.warning("margaret.turn mode=claude failed error=ValidationError where=%s", where)
+            return safe
         except Exception as exc:  # fail closed on anything
             log.warning("margaret.turn mode=claude failed error=%s", type(exc).__name__)
             return safe
