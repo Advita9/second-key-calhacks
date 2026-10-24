@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AttackPanel, ATTACKS } from "./AttackPanel";
 import { BoardFooter } from "./BoardFooter";
@@ -11,7 +11,8 @@ import { Scoreboard } from "./Scoreboard";
 import { useHealth } from "@/components/shared/Health";
 import { refusalText } from "@/components/shared/Refusal";
 import { MARGARET, roomFromSearch } from "@/lib/config";
-import { isMockFlag, kernel } from "@/lib/kernel/rest";
+import { adoptTokenFromUrl, isMockFlag, kernel, setOpsToken, useOpsToken } from "@/lib/kernel/rest";
+import { Input } from "@/components/ui/input";
 import { useAsync } from "@/lib/useAsync";
 import type { AttackName, AttackResult, WsMessage } from "@/lib/kernel/types";
 import { useKernelSocket } from "@/lib/kernel/ws";
@@ -22,6 +23,9 @@ const STAGE_METER: Record<number, number> = { 0: 0, 10: 15, 40: 55, 60: 75, 70: 
 export function BoardView() {
   const sp = useSearchParams();
   const roomCode = roomFromSearch(sp);
+  useEffect(() => adoptTokenFromUrl(sp), [sp]);
+  const opsToken = useOpsToken();
+  const [needToken, setNeedToken] = useState(false);
   const health = useHealth();
   const room = useRoom(roomCode, "board");
 
@@ -94,9 +98,11 @@ export function BoardView() {
     const def = ATTACKS.find((x) => x.name === name);
     setRefusal({ title: def?.label ?? name, invariant: r.invariant, text: refusalText(r.invariant, r.text), steps: r.steps, ruleIds: r.rule_ids, seq: next() });
   };
-  const onAttackError = (name: AttackName, msg: string, notFound: boolean) => {
+  const onAttackError = (name: AttackName, msg: string, status: number) => {
     const def = ATTACKS.find((x) => x.name === name);
-    setRefusal({ title: def?.label ?? name, invariant: "", text: notFound ? "ATTACK ROUTE NOT LIVE YET" : `KERNEL ERROR · ${msg}`, steps: [], ruleIds: [], seq: next() });
+    if (status === 401) setNeedToken(true);
+    const text = status === 401 ? "OPERATOR TOKEN REQUIRED" : status === 404 ? "ATTACK ROUTE NOT LIVE YET" : `KERNEL ERROR · ${msg}`;
+    setRefusal({ title: def?.label ?? name, invariant: "", text, steps: [], ruleIds: [], seq: next() });
   };
 
   // Legitimate completed: the room scoreboard (bridge `record_legit_completed`) or, when that is
@@ -126,6 +132,29 @@ export function BoardView() {
           <Scoreboard unauthorized={unauthorized} legit={legit} />
         </div>
       </section>
+      {needToken || room.status === "closed" ? (
+        <div className="flex items-center gap-3 rounded-lg border border-accent/60 bg-panel px-4 py-2 text-sm" role="alert" data-testid="token-notice">
+          <span>Operator token missing or wrong. This kernel runs with OPS_TOKEN set. Paste it here or open the board with ?token=.</span>
+          <Input
+            type="password"
+            defaultValue={opsToken}
+            placeholder="OPS_TOKEN"
+            className="h-8 w-56 text-xs"
+            autoComplete="off"
+            data-testid="board-token"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setOpsToken((e.target as HTMLInputElement).value);
+                setNeedToken(false);
+              }
+            }}
+            onBlur={(e) => {
+              setOpsToken(e.target.value);
+              if (e.target.value.trim()) setNeedToken(false);
+            }}
+          />
+        </div>
+      ) : null}
       <AttackPanel onResult={onAttack} onError={onAttackError} />
       <BoardFooter roomCode={roomCode} health={health.data} healthError={health.error} roomStatus={room.status} roomBackend={room.client.backend} />
     </main>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useOpsToken } from "./kernel/rest";
 import { EMPTY_SNAPSHOT, makeRoomClient, type ConnStatus, type RoomClient, type RoomRole, type RoomSnapshot } from "./room";
 
 export function useRoom(roomCode: string, role: RoomRole) {
@@ -10,6 +11,7 @@ export function useRoom(roomCode: string, role: RoomRole) {
   const [error, setError] = useState<string | null>(null);
   const ref = useRef(client);
   ref.current = client;
+  const token = useOpsToken();
 
   useEffect(() => {
     const c = ref.current;
@@ -20,7 +22,8 @@ export function useRoom(roomCode: string, role: RoomRole) {
       unSnap();
       unStatus();
     };
-  }, [roomCode, role]);
+    // Board and ops sockets carry the operator token; reconnect when it changes.
+  }, [roomCode, role, token]);
 
   useEffect(() => () => ref.current.close(), []);
 

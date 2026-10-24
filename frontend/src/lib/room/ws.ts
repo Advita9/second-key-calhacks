@@ -3,7 +3,7 @@
 // GET /rooms/{room}/snapshot?role=&player_id=, WS /ws?room=&role=&player_id=.
 // `/rooms/{room}/turns` is bridge-only and never called from the browser.
 
-import { KERNEL_URL, KernelError, kernelFetch } from "../kernel/rest";
+import { KERNEL_URL, KernelError, isOpsRole, kernelFetch, opsHeaders } from "../kernel/rest";
 import { openKernelSocket, type KernelSocket } from "../kernel/ws";
 import { parseSnapshot, parseTurn } from "./parse";
 import {
@@ -85,9 +85,18 @@ export class WsRoomClient implements RoomClient {
     const q = new URLSearchParams({ role: this.role });
     if (this.playerId) q.set("player_id", this.playerId);
     try {
-      const v = await kernelFetch<unknown>(`/rooms/${encodeURIComponent(this.roomCode)}/snapshot?${q}`, { timeoutMs: 6000 });
+      const v = await kernelFetch<unknown>(`/rooms/${encodeURIComponent(this.roomCode)}/snapshot?${q}`, {
+        timeoutMs: 6000,
+        headers: isOpsRole(this.role) ? opsHeaders() : {},
+      });
       this.push(parseSnapshot(v));
     } catch (e) {
+      if (e instanceof KernelError && e.status === 401) {
+        // Operator token missing or wrong; the WS carries the same token, so stop hammering the route.
+        this.snapshotMissing = true;
+        this.setStatus("closed");
+        return;
+      }
       if (e instanceof KernelError && e.notFound) {
         // Route not available on this kernel yet (or room unknown); stop polling and rely on WS.
         this.snapshotMissing = true;

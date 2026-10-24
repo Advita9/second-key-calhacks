@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { kernel } from "@/lib/kernel/rest";
+import { kernel, KernelError } from "@/lib/kernel/rest";
 import type { AttackName, AttackResult } from "@/lib/kernel/types";
 import { errorText } from "@/lib/useAsync";
 
@@ -14,7 +14,7 @@ export const ATTACKS: { name: AttackName; label: string; invariant: string }[] =
   { name: "self-approve", label: "Daughter releases to herself", invariant: "I5_CONFLICT" },
 ];
 
-export function AttackPanel({ onResult, onError }: { onResult: (a: AttackName, r: AttackResult) => void; onError: (a: AttackName, msg: string, notFound: boolean) => void }) {
+export function AttackPanel({ onResult, onError }: { onResult: (a: AttackName, r: AttackResult) => void; onError: (a: AttackName, msg: string, status: number) => void }) {
   const [busy, setBusy] = useState<AttackName | null>(null);
   const [shaking, setShaking] = useState<AttackName | null>(null);
 
@@ -26,8 +26,7 @@ export function AttackPanel({ onResult, onError }: { onResult: (a: AttackName, r
       setShaking(name);
       setTimeout(() => setShaking(null), 500);
     } catch (e) {
-      const nf = !!(e && typeof e === "object" && "notFound" in e && (e as { notFound: boolean }).notFound);
-      onError(name, errorText(e), nf);
+      onError(name, errorText(e), e instanceof KernelError ? e.status : 0);
     } finally {
       setBusy(null);
     }

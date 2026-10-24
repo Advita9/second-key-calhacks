@@ -66,6 +66,31 @@ test.describe("board", () => {
   });
 });
 
+test.describe("board with operator token", () => {
+  test.use({ viewport: { width: 1920, height: 1080 } });
+
+  test("?token= is stored and sent as X-Ops-Token on attacks and ?token= on the WS", async ({ page }) => {
+    let seenHeader: string | undefined;
+    await page.route("**/attack/mutate", async (route) => {
+      seenHeader = route.request().headers()["x-ops-token"];
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ name: "mutate", steps: [], refused: true, invariant: "I2_FINGERPRINT", text: "SETTLEMENT REFUSED · I2_FINGERPRINT" }) });
+    });
+    const wsPromise = page.waitForEvent("websocket", (ws) => ws.url().includes("role=board"));
+    await page.goto("/board?room=DEMO&token=x");
+    const ws = await wsPromise;
+    expect(ws.url()).toContain("token=x");
+    expect(await page.evaluate(() => window.localStorage.getItem("sk:ops:token"))).toBe("x");
+    await page.getByTestId("attack-mutate").click();
+    await expect(page.getByTestId("refusal")).toContainText("I2_FINGERPRINT");
+    expect(seenHeader).toBe("x");
+    // A 401 from an attack shows the token notice with the paste field.
+    await page.route("**/attack/replay", (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ refused: true, reason: "ops token required" }) }));
+    await page.getByTestId("attack-replay").click();
+    await expect(page.getByTestId("token-notice")).toBeVisible();
+    await expect(page.getByTestId("refusal")).toContainText("OPERATOR TOKEN REQUIRED");
+  });
+});
+
 test.describe("play", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 

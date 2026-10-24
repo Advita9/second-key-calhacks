@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { KernelStatus, MockBadges, useHealth } from "@/components/shared/Health";
 import { roomFromSearch } from "@/lib/config";
-import { getOpsToken, isDemoMode, kernel, setOpsToken } from "@/lib/kernel/rest";
+import { adoptTokenFromUrl, isDemoMode, kernel, setOpsToken, useOpsToken } from "@/lib/kernel/rest";
 import type { Payment, WsMessage } from "@/lib/kernel/types";
 import { useKernelSocket } from "@/lib/kernel/ws";
 import { useAsync } from "@/lib/useAsync";
@@ -25,11 +25,13 @@ export function OpsView() {
   const [livePayments, setLivePayments] = useState<Record<string, Payment>>({});
   const [liveHits, setLiveHits] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => adoptTokenFromUrl(sp), [sp]);
+  const storedToken = useOpsToken();
   const [opsToken, setToken] = useState("");
-  useEffect(() => setToken(getOpsToken()), []);
+  useEffect(() => setToken(storedToken), [storedToken]);
   const onToken = (t: string) => {
     setToken(t);
-    setOpsToken(t.trim());
+    setOpsToken(t);
   };
 
   // Live payment pushes fill the queue even when GET /payments is not available.

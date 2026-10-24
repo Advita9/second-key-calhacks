@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { kernelWsUrl } from "./rest";
+import { kernelWsUrl, useOpsToken } from "./rest";
 import type { WsMessage } from "./types";
 
 export type WsStatus = "connecting" | "open" | "reconnecting" | "closed";
@@ -77,6 +77,7 @@ export function useKernelSocket(params: Record<string, string>, onMessage: (m: W
   const [attempt, setAttempt] = useState(0);
   const cb = useRef(onMessage);
   cb.current = onMessage;
+  const token = useOpsToken();
   const key = JSON.stringify(params);
   useEffect(() => {
     const p = JSON.parse(key) as Record<string, string>;
@@ -89,6 +90,6 @@ export function useKernelSocket(params: Record<string, string>, onMessage: (m: W
       },
     );
     return () => sock.close();
-  }, [key]);
+  }, [key, token]);
   return { status, attempt };
 }

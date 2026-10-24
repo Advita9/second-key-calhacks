@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type {
   AttackName,
   AttackResult,
@@ -16,10 +17,18 @@ export const KERNEL_URL = (process.env.NEXT_PUBLIC_KERNEL_URL ?? "http://localho
  *  Set NEXT_PUBLIC_KERNEL_API to the kernel origin to call it directly once it sends CORS headers. */
 export const KERNEL_API = (process.env.NEXT_PUBLIC_KERNEL_API ?? (typeof window === "undefined" ? KERNEL_URL : "/kernel")).replace(/\/$/, "");
 
+/** WS URL. Board and ops sockets carry the operator token as `?token=` when one is stored. */
 export function kernelWsUrl(params: Record<string, string>): string {
   const base = KERNEL_URL.replace(/^http/, "ws");
-  const q = new URLSearchParams(params).toString();
+  const p = new URLSearchParams(params);
+  const token = getOpsToken();
+  if (token && isOpsRole(params.role) && !p.has("token")) p.set("token", token);
+  const q = p.toString();
   return `${base}/ws${q ? `?${q}` : ""}`;
+}
+
+export function isOpsRole(role: string | undefined): boolean {
+  return role === "board" || role === "ops";
 }
 
 export class KernelError extends Error {
@@ -216,17 +225,37 @@ export function getOpsToken(): string {
     return "";
   }
 }
+export const OPS_TOKEN_EVENT = "sk:ops-token";
 export function setOpsToken(t: string) {
+  const next = t.trim();
+  if (next === getOpsToken()) return;
   try {
-    if (t) window.localStorage.setItem(OPS_KEY, t);
+    if (next) window.localStorage.setItem(OPS_KEY, next);
     else window.localStorage.removeItem(OPS_KEY);
   } catch {
     // ignore
   }
+  window.dispatchEvent(new Event(OPS_TOKEN_EVENT));
 }
-function opsHeaders(): Record<string, string> {
+/** Reads `?token=` once from the page URL into storage (dev.sh opens the projector that way). */
+export function adoptTokenFromUrl(sp: URLSearchParams | null | undefined) {
+  const t = sp?.get("token");
+  if (t) setOpsToken(t);
+}
+export function opsHeaders(): Record<string, string> {
   const t = getOpsToken();
   return t ? { "X-Ops-Token": t } : {};
+}
+/** React hook: the current operator token, re-rendering when it changes. */
+export function useOpsToken(): string {
+  const [t, setT] = useState("");
+  useEffect(() => {
+    setT(getOpsToken());
+    const on = () => setT(getOpsToken());
+    window.addEventListener(OPS_TOKEN_EVENT, on);
+    return () => window.removeEventListener(OPS_TOKEN_EVENT, on);
+  }, []);
+  return t;
 }
 
 export function parseEval(v: unknown): EvalResults {
@@ -275,7 +304,7 @@ export const kernel = {
   /** Operator cancel: `POST /payments/{id}/deny` moves the payment to CANCELLED and voids attestations and certificates. */
   cancel: async (id: string, body: { actor_id: string; note?: string }) =>
     parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/deny`, json(body, true))),
-  attack: async (name: AttackName) => parseAttack(await kernelFetch<unknown>(`/attack/${name}`, { method: "POST", timeoutMs: 20000 })),
+  attack: async (name: AttackName) => parseAttack(await kernelFetch<unknown>(`/attack/${name}`, { method: "POST", headers: opsHeaders(), timeoutMs: 20000 })),
   audit: async (limit = 200) => parseAudit(await kernelFetch<unknown>(`/audit?limit=${limit}`)),
   verify: async () => parseVerify(await kernelFetch<unknown>("/audit/verify")),
   tamper: async () => kernelFetch<unknown>("/audit/tamper", { method: "POST", headers: opsHeaders() }),
