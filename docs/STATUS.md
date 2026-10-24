@@ -18,7 +18,7 @@ Iteration: 3
 - [x] 0. Repo scaffold: uv project, Next.js app, spacetime module, bridge, .env loading, `make dev` / `scripts/dev.sh` that starts everything.
 - [ ] 1. Kernel domain: Payment, fingerprint (sha256 of account, amount, currency, beneficiary ref, rail, policy version), state machine, audit chain.
 - [ ] 2. Policy engine: YAML v1, safe expression parser, precedence, tests.
-- [ ] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
+- [~] 3. Certificates and release verifier. Invariants I1, I2, I3, I5, I6 as unit tests.
 - [ ] 4. Hypothesis property tests over random action traces for I1 to I7. Review by invariant-reviewer, attack by red-team.
 - [ ] 5. Extractor interface + MockExtractor + real Claude extractor with closed-world source_id enum and span check. Recorded-response tests.
 - [ ] 6. Margaret persona: MockMargaret (fixture-scripted) + real Claude persona. Persuasion state. Fail closed.
@@ -26,7 +26,7 @@ Iteration: 3
 - [ ] 8. Fixtures: 60 cases (Diya's spec: 40 legit incl. 10 hard, 20 scams), evidence.json, mule list, known billers, baselines. eval.py. Hit G3.
 - [ ] 9. SpacetimeDB module + bridge. Fallback RoomStore if blocked. Hit G4.
 - [ ] 10. Frontend /board, /play, /ops. Playwright smoke. Hit G5.
-- [ ] 11. Voice: MockTTS via `say`, Cartesia clients, push-to-talk. Hit G6.
+- [x] 11. Voice: MockTTS via `say`, Cartesia clients, push-to-talk. Hit G6.
 - [ ] 12. Demo mode, LLM cache, demo.py. Hit G7.
 - [ ] 13. README, MORNING.md, DEVPOST_DRAFT.md, DECISIONS.md. Hit G8.
 - [ ] 14. Final: full acceptance green, `git log` clean, tag `overnight-1`.
