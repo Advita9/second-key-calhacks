@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-24 07:16 PDT
-Current task: final acceptance run, tag overnight-1. Session rate limit at 04:45 interrupted six follow-up agents (see Blocked for Armaan).
-Iteration: 8
+Last updated: 2026-10-24 07:25 PDT
+Current task: rate limit cleared at 07:20; the six interrupted agents are RUNNING AGAIN (frontend fail-closed path, API scripted attack + origin, bridge legit filter, kernel Task F, red-team final pass, docs refresh). If you start editing, avoid frontend/, backend/api, backend/kernel, bridge/, docs/{DEVPOST_DRAFT,MORNING,TABLE_SCRIPT}.md until their commits land; `git log` shows them.
+Iteration: 9
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [x] G1 Kernel library
