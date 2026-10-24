@@ -29,7 +29,7 @@ Iteration: 8
 - [x] 11. Voice: MockTTS via `say`, Cartesia clients, push-to-talk. Hit G6.
 - [x] 12. Demo mode, LLM cache, demo.py. Hit G7.
 - [x] 13. README, MORNING.md, DEVPOST_DRAFT.md, DECISIONS.md. Hit G8.
-- [ ] 14. Final: full acceptance green, `git log` clean, tag `overnight-1`.
+- [x] 14. Final: full acceptance green, `git log` clean, tag `overnight-1`.
 
 ## Blocked for Armaan
 (agent lists anything only a human can do: keys, logins, decisions)
