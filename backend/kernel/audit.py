@@ -93,6 +93,7 @@ class AuditLog:
         self.conn = conn
         self._clock = clock
         self._anchor_path = anchor_path
+        self._anchor_updated_at = ""
         row = conn.execute("SELECT seq, hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
         self._head_seq: int = row[0] if row else 0
         self._head: str = row[1] if row else GENESIS_HASH
@@ -120,7 +121,8 @@ class AuditLog:
         try:
             raw = json.loads(self._anchor_path.read_text("utf-8"))
             seq, h = int(raw["seq"]), str(raw["hash"])
-        except (OSError, ValueError, KeyError, TypeError):
+            self._anchor_updated_at = str(raw.get("updated_at", ""))
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
             log.error("audit.anchor_unreadable", extra={"path": str(self._anchor_path)})
             return (0, "")  # unreadable sidecar counts as a mismatch, never as absence
         return (seq, h)
@@ -147,10 +149,20 @@ class AuditLog:
         self._anchor = (seq, h)
 
     def _check_anchor(self) -> int | None:
-        """Seq of the first row the table disagrees with the sidecar on, or None when fine."""
+        """Seq of the first row the table disagrees with the sidecar on, or None when fine.
+
+        Shorter table, a different hash at the anchored seq, or a missing/corrupt sidecar next
+        to history: mismatch. A LONGER table is a mismatch too (rows appended while the kernel
+        was down), with one exception: exactly one extra row that chains correctly from the
+        anchored hash and is newer than the sidecar, which is the documented crash window
+        between COMMIT and the sidecar write. Residual: a forger who both chains the row and
+        post-dates it past the sidecar's `updated_at` fits that window; two rows never do.
+        """
         if self._anchor_path is None:
             return None
-        rows = self.conn.execute("SELECT seq, hash FROM audit ORDER BY seq").fetchall()
+        rows = self.conn.execute(
+            "SELECT seq, ts, actor, kind, payload, prev_hash, hash FROM audit ORDER BY seq"
+        ).fetchall()
         if self._anchor is None:
             # File database with history but no sidecar: the anchor itself was erased.
             return 1 if rows else None
@@ -162,9 +174,24 @@ class AuditLog:
         if seq == 0:
             return None
         row = rows[seq - 1]
-        if row[0] != seq or row[1] != h:
+        if row[0] != seq or row[6] != h:
             return seq
-        return None
+        extra = rows[seq:]
+        if not extra:
+            return None
+        if len(extra) > 1:
+            return seq + 1
+        (r_seq, ts, actor, kind, payload_json, prev_hash, r_hash) = extra[0]
+        chains = (
+            r_seq == seq + 1
+            and prev_hash == h
+            and chain_hash(r_seq, ts, actor, kind, payload_json, prev_hash) == r_hash
+        )
+        newer_than_sidecar = bool(self._anchor_updated_at) and str(ts) > self._anchor_updated_at
+        if chains and newer_than_sidecar:
+            log.warning("audit.anchor_crash_window", extra={"adopted_seq": r_seq})
+            return None
+        return seq + 1
 
     def anchor_status(self) -> AnchorStatus:
         if self._anchor_path is None:

@@ -326,8 +326,53 @@ def test_crash_between_commit_and_sidecar_write_is_tolerated(
         log.append("t", "K", {"n": i})
     side = tmp_path / "a.db.head.json"
     saved = side.read_text()
+    clock.advance(1)  # the orphan row is newer than the sidecar, as in a real crash
     log.append("t", "K", {"n": 3})
     side.write_text(saved)  # roll the sidecar back one row
     log.conn.close()
     r = _file_log(db, clock).verify()
     assert r.ok and r.anchor == "ok" and r.length == 4
+
+
+def test_rows_appended_while_down_are_a_mismatch(tmp_path: Path, clock: FakeClock) -> None:
+    """A longer table is not 'ok': a correctly chained row with the sidecar's own timestamp,
+    or any two extra rows, are rows this process never wrote."""
+    db = tmp_path / "a.db"
+    log = _file_log(db, clock)
+    for i in range(3):
+        log.append("t", "K", {"n": i})
+    log.conn.close()
+    raw = sqlite3.connect(str(db))
+    seq, prev = raw.execute("SELECT seq, hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
+    ts = clock.now().isoformat()  # same instant as the sidecar: not a crash window
+    payload = json.dumps({"forged": True}, sort_keys=True, separators=(",", ":"))
+    h = chain_hash(seq + 1, ts, "x", "RELEASED", payload, prev)
+    raw.execute(
+        "INSERT INTO audit (seq, ts, actor, kind, payload, prev_hash, hash) VALUES (?,?,?,?,?,?,?)",
+        (seq + 1, ts, "x", "RELEASED", payload, prev, h),
+    )
+    raw.commit()
+    raw.close()
+    again = _file_log(db, clock)
+    r = again.verify()
+    assert not r.ok and r.anchor == "mismatch" and r.first_bad_seq == 4
+    with pytest.raises(AuditChainError):
+        again.append("t", "K", {})
+    assert json.loads((tmp_path / "a.db.head.json").read_text())["seq"] == 3
+    again.conn.close()
+    # Two extra rows are never tolerated, even when post-dated and chained.
+    raw = sqlite3.connect(str(db))
+    later = "2099-01-01T00:00:00+00:00"
+    seq, prev = raw.execute("SELECT seq, hash FROM audit ORDER BY seq DESC LIMIT 1").fetchone()
+    for k in range(2):
+        h = chain_hash(seq + 1 + k, later, "x", "K", payload, prev)
+        raw.execute(
+            "INSERT INTO audit (seq, ts, actor, kind, payload, prev_hash, hash) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (seq + 1 + k, later, "x", "K", payload, prev, h),
+        )
+        prev = h
+    raw.commit()
+    raw.close()
+    r = _file_log(db, clock).verify()
+    assert not r.ok and r.anchor == "mismatch" and r.first_bad_seq == 4

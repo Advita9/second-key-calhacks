@@ -126,9 +126,11 @@ def test_no_allow_rule_reads_name_on_biller_list(v1: Policy) -> None:
             assert "beneficiary.name_on_biller_list" not in free_identifiers(v1.compiled[rule.id])
 
 
-def test_h07_p2p_on_irreversible_rail_over_1000_holds(v1: Policy) -> None:
-    """S-05 shape: prior payee, ZELLE, $1,500, not a biller, zero signals."""
-    ctx = account_context(prior_payees=["ext_robert_hale"], baseline_90d_cents=240_000)
+def test_h07_irreversible_rail_over_1000_holds(v1: Policy) -> None:
+    """S-05 shape: prior payee, ZELLE, $1,500, zero signals. The display name changes nothing."""
+    ctx = account_context(
+        prior_payees=["ext_robert_hale"], known_billers=["PG&E"], baseline_90d_cents=240_000
+    )
     p = payment_in(
         amount_cents=150_000,
         beneficiary=Beneficiary(name="Robert Hale", account_ref="ext_robert_hale", is_new=False),
@@ -136,20 +138,29 @@ def test_h07_p2p_on_irreversible_rail_over_1000_holds(v1: Policy) -> None:
     )
     d = decide(p, [], ctx, v1)
     assert d.outcome is Outcome.HOLD and d.rule_ids == ("H-07", "A-01")
+    spoofed = payment_in_like(p, beneficiary={**p.beneficiary.model_dump(), "name": "PG&E"})
+    assert decide(spoofed, [], ctx, v1).rule_ids == ("H-07", "A-01")
     # Under $1,000 on ZELLE to the same payee: no H-07.
     d = decide(payment_in_like(p, amount_cents=100_000), [], ctx, v1)
     assert d.outcome is Outcome.ALLOW and d.rule_ids == ("A-01",)
     # Same amount on ACH: no H-07.
     d = decide(payment_in_like(p, rail=Rail.ACH), [], ctx, v1)
     assert d.outcome is Outcome.ALLOW
-    # A biller by name on WIRE is exempt from H-07.
+    # A biller by name on WIRE is NOT exempt: names are not facts.
     biller = payment_in(
         amount_cents=800_000,
         beneficiary=Beneficiary(name="Bay Roofing", account_ref="ext_bay_roofing", is_new=False),
         rail=Rail.WIRE,
     )
     d = decide(biller, [], account_context(), v1)
-    assert d.outcome is Outcome.ALLOW and d.rule_ids == ("A-01",)
+    assert d.outcome is Outcome.HOLD and d.rule_ids == ("H-07", "A-01")
+
+
+def test_no_v1_rule_reads_the_display_name(v1: Policy) -> None:
+    from kernel.policy.expr import free_identifiers
+
+    used = frozenset().union(*(free_identifiers(n) for n in v1.compiled.values()))
+    assert "beneficiary.name_on_biller_list" not in used
 
 
 def payment_in_like(p: PaymentIn, **over: object) -> PaymentIn:

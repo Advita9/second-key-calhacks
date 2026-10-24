@@ -358,9 +358,11 @@ def eligible_creates(draw: st.DrawFn) -> SCreate:
     """A Create the v1 policy ALLOWs with no signals: known payee, under both caps, off mule."""
     p = draw(payment_ins())
     ref = p.beneficiary.account_ref
-    if p.beneficiary.is_new and p.rail in (Rail.WIRE, Rail.ZELLE, Rail.CRYPTO):
+    # H-01 (new payee) and H-07 (> $1,000, any name) both hold on WIRE/ZELLE/CRYPTO: use ACH.
+    if p.rail in (Rail.WIRE, Rail.ZELLE, Rail.CRYPTO) and (
+        p.beneficiary.is_new or p.amount_cents > 100_000
+    ):
         p = p.model_copy(update={"rail": Rail.ACH})
-    # Name on the biller list so H-07 (P2P rail, > $1,000, name not on list) cannot fire.
     ctx = AccountContext(
         baseline_90d_cents=max(p.amount_cents, 1),
         known_billers=[p.beneficiary.name, *draw(st.sampled_from(NAME_SUBSETS))],

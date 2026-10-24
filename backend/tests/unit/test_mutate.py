@@ -131,7 +131,14 @@ def test_mutate_from_held_voids_and_redecides(kernel: Kernel) -> None:
     kernel.attest(p.id, "priya", Capability.CO_APPROVER)
     p2, d2 = kernel.mutate(
         p.id,
-        {"beneficiary": {"name": "Bay Roofing", "account_ref": "ext_bay_roofing", "is_new": False}},
+        {
+            "beneficiary": {
+                "name": "Bay Roofing",
+                "account_ref": "ext_bay_roofing",
+                "is_new": False,
+            },
+            "rail": "ACH",  # H-07 holds any WIRE/ZELLE/CRYPTO transfer above $1,000
+        },
         account_context(),
     )
     assert p2.state is State.ELIGIBLE_TO_SUBMIT and d2.outcome is Outcome.ALLOW

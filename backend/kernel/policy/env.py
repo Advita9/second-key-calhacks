@@ -31,8 +31,8 @@ def build_env(p: PaymentIn, signals: Sequence[Signal], ctx: AccountContext) -> d
       trusted to say a payee is old.
     - is_known_biller: account_ref in prior_payees. ONLY by ref: a display name is attacker
       controlled ("PG&E" with a fresh account_ref must not be trusted).
-    - name_on_biller_list: exact display-name match against known_billers. No ALLOW rule may
-      read it; H-07 uses its absence to demand a check-in on person-to-person rails.
+    - name_on_biller_list: exact display-name match against known_billers. Display only (the
+      ops queue shows it); no v1 rule reads it, because the name is attacker controlled.
     - on_mule_list: account_ref in mule_list. Never by name; names can be spoofed.
     - signals.<kind>: max score among signals of that kind, 0.0 if none.
     """
