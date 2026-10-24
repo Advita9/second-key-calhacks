@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Refusal } from "@/components/shared/Refusal";
+import { Refusal, refusalText } from "@/components/shared/Refusal";
 import { StatePill } from "@/components/shared/StatePill";
 import { cents, shortHash } from "@/lib/utils";
 
@@ -28,7 +28,10 @@ export interface LiveRefusal {
 }
 
 export function LivePaymentCard({ payment, refusal }: { payment: LivePayment | null; refusal: LiveRefusal | null }) {
-  const showRefusal = refusal && (!payment || refusal.seq >= payment.seq);
+  // An attack result stays on screen until the next attack or a newer payment that carries its own
+  // refusal. A payment push without a refusal (state change only) never displaces it; on a cold
+  // kernel that push lands after the REST attack response.
+  const showRefusal = refusal && (!payment?.refusal || refusal.seq >= payment.seq);
   return (
     <Card className="flex h-full min-h-0 flex-col overflow-hidden" data-testid="live-payment">
       <CardHeader>
@@ -86,7 +89,7 @@ export function LivePaymentCard({ payment, refusal }: { payment: LivePayment | n
               )}
             </div>
           ) : payment?.refusal ? (
-            <Refusal text={payment.refusal} size="xl" animate />
+            <Refusal text={refusalText(payment.refusal)} size="xl" animate />
           ) : (
             <p className="refusal text-2xl text-muted">The model proposes. The kernel disposes.</p>
           )}

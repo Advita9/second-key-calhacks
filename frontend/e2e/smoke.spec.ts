@@ -63,6 +63,10 @@ test.describe("board", () => {
 
   test("attack panel: all four buttons show the refusal and invariant", async ({ page }) => {
     await page.goto(`/board?token=${OPS}`);
+    // Settle before the first click: token adopted from ?token=, room client up, kernel WS open.
+    await expect.poll(() => page.evaluate(() => window.localStorage.getItem("sk:ops:token")), { timeout: 15_000 }).toBe(OPS);
+    await expect(page.getByTestId("room-backend")).toContainText(/room: (memory|spacetime) \(open\)/, { timeout: 30_000 });
+    await expect(page.getByText(/Kernel WS: open/)).toBeVisible({ timeout: 30_000 });
     const cases: [string, RegExp][] = [
       ["mutate", /SETTLEMENT REFUSED · I2_FINGERPRINT/],
       ["replay", /SETTLEMENT REFUSED · I3_REPLAY/],
@@ -70,8 +74,13 @@ test.describe("board", () => {
       ["inject", /HELD · H-\d{2}/],
     ];
     for (const [name, re] of cases) {
-      await page.getByTestId(`attack-${name}`).click();
-      await expect(page.getByTestId("refusal")).toContainText(re, { timeout: 20_000 });
+      // Sequential: click, then wait for this attack's own refusal (the first attack on a cold
+      // kernel can take several seconds) before the next click.
+      const button = page.getByTestId(`attack-${name}`);
+      await expect(button).toBeEnabled({ timeout: 30_000 });
+      await button.click();
+      await expect.poll(() => page.getByTestId("refusal").textContent(), { timeout: 30_000, message: `${name} refusal` }).toMatch(re);
+      await expect(button).toBeEnabled({ timeout: 30_000 });
       if (name === "mutate") {
         await page.waitForTimeout(600); // let the refusal animation settle before the screenshot
         await shot(page, "board-attack");
