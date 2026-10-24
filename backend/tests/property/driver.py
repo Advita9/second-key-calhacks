@@ -12,7 +12,7 @@ from typing import Any
 
 from kernel.clock import FakeClock
 from kernel.db import load_payment
-from kernel.models import Invariant, Payment, State
+from kernel.models import Invariant, Payment, Refusal, State
 from kernel.service import (
     Attest,
     Cmd,
@@ -28,6 +28,7 @@ from kernel.service import (
 from tests.property.strategies import (
     BeneficiaryActor,
     SAttest,
+    SCancel,
     SCreate,
     SIssueCert,
     SMutate,
@@ -37,6 +38,19 @@ from tests.property.strategies import (
 )
 
 NO_SUCH_PAYMENT = "pay_nope"
+
+
+@dataclass(frozen=True)
+class Cancel:
+    """Not in `kernel.service.Cmd` yet; the driver calls `Kernel.cancel` behind `apply`'s
+    never-raises contract."""
+
+    payment_id: str
+    actor_id: str
+    note: str | None = None
+
+
+TraceCmd = Cmd | Cancel
 TERMINAL: frozenset[State] = frozenset({State.SUBMITTED, State.DENIED, State.CANCELLED})
 
 
@@ -54,7 +68,7 @@ class CertInfo:
 @dataclass
 class Step:
     sym: SymCmd
-    cmd: Cmd
+    cmd: TraceCmd
     result: CmdResult
     payment_id: str | None
     payment_before: Payment | None
@@ -82,6 +96,7 @@ class Driver:
         self.cert_by_id: dict[str, CertInfo] = {}
         self.consumed: list[CertInfo] = []
         self.released: dict[str, str] = {}  # cert id -> nonce the successful Release used
+        self.voided: set[str] = set()  # cert ids voided by mutate, cancel or a sibling release
         self.epoch: dict[str, int] = {}  # payment id -> successful mutation count
         self.steps: list[Step] = []
 
@@ -129,7 +144,7 @@ class Driver:
             return ""
         return ref.wrong
 
-    def resolve(self, sym: SymCmd) -> tuple[Cmd, str | None, dict[str, Any]]:
+    def resolve(self, sym: SymCmd) -> tuple[TraceCmd, str | None, dict[str, Any]]:
         if isinstance(sym, SCreate):
             return Create(sym.payment, sym.ctx, sym.conversation), None, {}
         if isinstance(sym, STick):
@@ -148,7 +163,25 @@ class Driver:
             return Release(pid, cert_id, nonce), pid, {"cert": info}
         if isinstance(sym, SMutate):
             return Mutate(pid, sym.patch, sym.ctx), pid, {}
+        if isinstance(sym, SCancel):
+            return Cancel(pid, sym.actor), pid, {}
         raise TypeError(sym)
+
+    def _apply(self, cmd: TraceCmd) -> CmdResult:
+        if not isinstance(cmd, Cancel):
+            return self.kernel.apply(cmd)
+        try:
+            p = self.kernel.cancel(cmd.payment_id, cmd.actor_id, cmd.note)
+            return CmdResult(ok=True, payment=p)
+        except Refusal as r:
+            return CmdResult(ok=False, invariant=r.invariant, error=r.text)
+        except Exception as e:  # noqa: BLE001  mirror apply's never-raises boundary
+            return CmdResult(ok=False, error=f"{type(e).__name__}: {e}")
+
+    def _void_certs(self, payment_id: str, keep: str | None = None) -> None:
+        for c in self.certs:
+            if c.payment_id == payment_id and c.id != keep:
+                self.voided.add(c.id)
 
     # ---------------------------------------------------------------- execution
 
@@ -159,7 +192,8 @@ class Driver:
         if isinstance(cmd, Release):
             extra["epoch_before"] = self.epoch.get(pid or "", 0)
             extra["released_before"] = frozenset(self.released)
-        result = self.kernel.apply(cmd)
+            extra["voided_before"] = frozenset(self.voided)
+        result = self._apply(cmd)
         if isinstance(cmd, Create) and result.ok and result.payment is not None:
             pid = result.payment.id
             self.payments.append(pid)
@@ -181,8 +215,12 @@ class Driver:
             info = self.cert_by_id[cmd.certificate_id]
             self.consumed.append(info)
             self.released[cmd.certificate_id] = cmd.nonce
+            self._void_certs(info.payment_id, keep=info.id)  # siblings die with the release
         if isinstance(cmd, Mutate) and result.ok and pid is not None:
             self.epoch[pid] = self.epoch.get(pid, 0) + 1
+            self._void_certs(pid)
+        if isinstance(cmd, Cancel) and result.ok and pid is not None:
+            self._void_certs(pid)
         after = self.load(pid) if pid else None
         record = None
         if self.snapshot and pid is not None and after is not None:
@@ -212,7 +250,10 @@ class Driver:
         """What `release` must answer, from the shadow model alone.
 
         Returns None for success, an Invariant for a refusal, or "error" when the payment
-        does not exist. Mirrors the fixed check order documented in certs.verify.
+        does not exist. Mirrors the fixed check order documented in certs.verify:
+        missing or other payment -> I1_NO_CERT; voided (mutate, cancel, sibling released)
+        -> I2; consumed -> I3_REPLAY; expired -> I3_EXPIRED; nonce -> I1_NO_CERT;
+        state -> I1_NOT_ELIGIBLE.
         """
         assert isinstance(step.cmd, Release)
         if step.payment_before is None:
@@ -222,7 +263,7 @@ class Driver:
         info = self.cert_by_id.get(step.cmd.certificate_id)
         if info is None or info.payment_id != step.payment_id:
             return Invariant.I1_NO_CERT
-        if info.epoch != step.extra["epoch_before"]:
+        if info.id in step.extra["voided_before"] or info.epoch != step.extra["epoch_before"]:
             return Invariant.I2_FINGERPRINT
         if info.id in step.extra["released_before"]:
             return Invariant.I3_REPLAY

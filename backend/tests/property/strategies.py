@@ -280,7 +280,15 @@ class STick:
     seconds: float
 
 
-SymCmd = SCreate | SAttest | SIssueCert | SRelease | SMutate | STick
+@dataclass(frozen=True)
+class SCancel:
+    """Operator cancel (the /ops Deny button). Voids everything, state CANCELLED."""
+
+    slot: int
+    actor: str
+
+
+SymCmd = SCreate | SAttest | SIssueCert | SRelease | SMutate | STick | SCancel
 
 MAX_SLOTS = 4
 
@@ -383,10 +391,16 @@ def s_mutates() -> st.SearchStrategy[SMutate]:
 
 
 @functools.cache
+def s_cancels() -> st.SearchStrategy[SCancel]:
+    return st.builds(SCancel, slot=slots(), actor=st.sampled_from(STAFF))
+
+
+@functools.cache
 def sym_cmds() -> st.SearchStrategy[SymCmd]:
     # Weighted so that the issue -> release path is exercised often enough to reach SUBMITTED.
     return st.one_of(
         s_creates(),
+        s_cancels(),
         s_attests(),
         s_attests(),
         s_issue_certs(),

@@ -66,6 +66,8 @@ def test_expiry_is_enforced_on_the_fake_clock(trace: list[SymCmd]) -> None:
             continue
         if info.epoch != s.extra["epoch_before"] or info.id in s.extra["released_before"]:
             continue
+        if info.id in s.extra["voided_before"]:
+            continue  # voided by a sibling release or cancel: I2 wins, see the oracle test
         if info.expires_at <= s.now:
             event("expired")
             assert not s.result.ok and s.result.invariant is Invariant.I3_EXPIRED
