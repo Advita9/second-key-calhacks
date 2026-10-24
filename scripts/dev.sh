@@ -66,6 +66,9 @@ start_spacetime() {
   spacetime_cli publish --module-path spacetime --server local --yes "${SPACETIME_DB:-second-key}" >"$PID_DIR/publish.log" 2>&1 \
     || { echo "publish failed; see $PID_DIR/publish.log" >&2; exit 1; }
   echo "module      published as ${SPACETIME_DB:-second-key} (log: .claude/publish.log)"
+  # Create the demo room (caller = CLI identity becomes the room operator). Already-exists errors are fine.
+  spacetime_cli call --server local --yes "${SPACETIME_DB:-second-key}" create_room "\"${ROOM_CODE:-DEMO}\"" >>"$PID_DIR/publish.log" 2>&1 \
+    && echo "room        ${ROOM_CODE:-DEMO} created" || echo "room        ${ROOM_CODE:-DEMO} already exists (or create_room failed; see .claude/publish.log)"
 }
 
 start_bridge() {
