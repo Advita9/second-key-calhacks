@@ -1,8 +1,8 @@
 # STATUS (source of truth, update after every task)
 
-Last updated: 2026-10-24 09:05 PDT
-Current task: all follow-up lanes landed; one cold-start Playwright flake being made deterministic; then tag overnight-2.
-Iteration: 10
+Last updated: 2026-10-24 09:40 PDT
+Current task: done. Acceptance GREEN, tagged overnight-2 (overnight-1 is the 07:18 state). Nothing running. Next for the team: docs/MORNING.md.
+Iteration: 11
 
 ## Gates (from docs/ACCEPTANCE.md)
 - [x] G1 Kernel library

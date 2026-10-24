@@ -26,9 +26,9 @@
   "extractor_model": null,
   "shared_evidence_included": false,
   "policy_version": "v1",
-  "git_sha": "b6b28cf0d7755d627ee86bb08c3c845911cd0d27",
+  "git_sha": "c31b58d8fcb2c2b79fdece9fca177198690f108a",
   "git_dirty": true,
-  "timestamp": "2026-10-24T14:39:16+00:00",
+  "timestamp": "2026-10-24T15:18:16+00:00",
   "suite": "/Users/armaanwaels/Desktop/second-key/fixtures/cases",
   "subset": null,
   "schema_errors": [],
@@ -89,7 +89,7 @@
   },
   "suite_counts": {
     "unit": 344,
-    "api": 60,
+    "api": 63,
     "voice": 51
   },
   "cases": [
