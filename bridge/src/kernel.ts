@@ -43,6 +43,8 @@ export interface PaymentSummary {
   id: string;
   state: string;
   conversation_id: string;
+  /** "room" | "attack" | "ops" once the kernel sends it; '' on older kernels. */
+  origin: string;
 }
 
 export interface KernelClientOptions {
@@ -92,7 +94,12 @@ export class KernelClient {
     if (!Array.isArray(list)) throw new KernelError('payments: unexpected shape');
     return list.map(p => {
       const r = (typeof p === 'object' && p !== null ? p : {}) as Record<string, unknown>;
-      return { id: String(r.id ?? ''), state: String(r.state ?? ''), conversation_id: String(r.conversation_id ?? '') };
+      return {
+        id: String(r.id ?? ''),
+        state: String(r.state ?? ''),
+        conversation_id: String(r.conversation_id ?? ''),
+        origin: typeof r.origin === 'string' ? r.origin : '',
+      };
     });
   }
 
