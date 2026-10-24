@@ -66,7 +66,7 @@ def test_attack_routes_require_ops_token_when_set(
             r = c.post(f"/attack/{name}")
             assert r.status_code == 401, name
             assert r.json() == {"refused": True, "reason": "ops token required"}
-        assert c.get("/payments").json()["payments"] == []  # nothing was created
+        assert c.get("/payments", headers={"X-Ops-Token": tok}).json()["payments"] == []
         assert c.get("/audit/verify").json()["length"] == 0
         for name in ATTACKS:
             r = c.post(f"/attack/{name}", headers={"X-Ops-Token": tok})

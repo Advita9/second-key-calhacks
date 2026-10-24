@@ -14,10 +14,12 @@ still returns with `audio_url` None.
 
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import logging
 import threading
+import time
 from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from pathlib import Path
@@ -30,6 +32,7 @@ from kernel.margaret.types import DRAFT_THRESHOLD, DraftPayment, Margaret
 from kernel.models import (
     AccountContext,
     Beneficiary,
+    Capability,
     Decision,
     Payment,
     PaymentIn,
@@ -50,6 +53,14 @@ TTS_BUDGET_S = 4.0
 DEFAULT_VOICE_ID = "margaret"
 REFERENCE_SPEAKER = "reference"
 FAIL_CLOSED_TEXT = "payment could not be created, fail closed"
+TIMED_OUT_TEXT = "turn timed out, fail closed"
+TIMEOUT_ACTOR = "room-timeout"
+# Monotonic deadline for the current turn. The room hub sets it before handing the turn to a
+# worker thread (`asyncio.to_thread` copies the context), so a turn the hub has already failed
+# closed on can never leave a usable payment behind, even though the thread keeps running.
+TURN_DEADLINE: contextvars.ContextVar[float | None] = contextvars.ContextVar(
+    "second_key_turn_deadline", default=None
+)
 OPEN_STATES = frozenset({State.DRAFT, State.PENDING_REVIEW, State.HELD, State.ELIGIBLE_TO_SUBMIT})
 NEW_REF_PREFIX = "ext_new_"
 # The only display names that resolve to an existing ref in the room: known billers, exact
@@ -315,7 +326,18 @@ class SessionStore:
         except KeyError:
             return None
 
-    def take_turn(self, room_id: str, turn_id: str, player_id: str, text: str) -> TurnResult:
+    def take_turn(
+        self,
+        room_id: str,
+        turn_id: str,
+        player_id: str,
+        text: str,
+        deadline: float | None = None,
+    ) -> TurnResult:
+        """`deadline` is a `time.monotonic()` value (default: the hub's `TURN_DEADLINE`). Past
+        it, no payment is created; one created while it passed is cancelled at once."""
+        if deadline is None:
+            deadline = TURN_DEADLINE.get()
         room = self.room(room_id)
         with self._lock:
             history = list(room.history)
@@ -340,15 +362,24 @@ class SessionStore:
         refusal: Refusal | None = None
         failure: str | None = None
         created = False
-        if turn.draft_payment is not None and not open_payment:
+        if turn.draft_payment is not None and not open_payment and _expired(deadline):
+            log.warning("room.turn.late", extra={"room_id": room.id, "turn_id": turn_id})
+            failure = TIMED_OUT_TEXT
+        elif turn.draft_payment is not None and not open_payment:
             try:
                 p_in = draft_to_payment_in(turn.draft_payment, room)
                 payment, decision = self.kernel.create_payment(
                     p_in, room.ctx, (*transcript, *self.evidence)
                 )
-                created = True
-                with self._lock:
-                    room.payment_id = payment.id
+                if _expired(deadline):
+                    # The hub already failed closed on this turn: the payment must not sit in
+                    # the ops queue (ELIGIBLE on a known biller) while the board says stage 10.
+                    self._cancel_late(payment, room.id, turn_id)
+                    payment, decision, failure = None, None, TIMED_OUT_TEXT
+                else:
+                    created = True
+                    with self._lock:
+                        room.payment_id = payment.id
             except Refusal as r:
                 refusal = r
             except Exception as e:  # noqa: BLE001  fail closed: the turn still answers
@@ -395,6 +426,22 @@ class SessionStore:
         )
         return result
 
+    def _cancel_late(self, payment: Payment, room_id: str, turn_id: str) -> None:
+        self.kernel.audit.append(
+            TIMEOUT_ACTOR,
+            "ROOM_TURN_TIMEOUT",
+            {"payment_id": payment.id, "room_id": room_id, "turn_id": turn_id},
+        )
+        try:
+            self.kernel.cancel(
+                payment.id, TIMEOUT_ACTOR, Capability.BANK_REVIEW, note="turn timed out"
+            )
+        except Refusal as r:  # DENIED is already terminal; nothing certifiable remains
+            log.info("room.turn.late.refused", extra={"payment_id": payment.id, "text": r.text})
+        log.warning(
+            "room.turn.late.cancelled", extra={"payment_id": payment.id, "turn_id": turn_id}
+        )
+
     def _synthesize(self, text: str) -> str | None:
         if self.tts is None or not text:
             return None
@@ -408,6 +455,10 @@ class SessionStore:
             log.warning("room.tts.failed", extra={"error": type(e).__name__})
             return None
         return audio_url(path) if path is not None else None
+
+
+def _expired(deadline: float | None) -> bool:
+    return deadline is not None and time.monotonic() > deadline
 
 
 def _failed_outcome(failure: str | None) -> dict[str, Any] | None:

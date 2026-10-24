@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import threading
 import time
 from typing import Annotated, Any
 
@@ -23,6 +22,12 @@ from pydantic import ValidationError
 
 from api import deps
 from api.hub import EventBus
+from api.ratelimit import (
+    ADDRESS_BURST,
+    ADDRESS_WINDOW_S,
+    TurnRateLimiter,
+    WindowLimiter,
+)
 from api.schemas import MAX_TURN_CHARS, TurnIn
 from api.voice_routes import MAX_AUDIO_BYTES, get_stt
 from kernel.models import Capability
@@ -34,35 +39,8 @@ log = logging.getLogger("second_key.api.rooms")
 router = APIRouter(tags=["rooms"])
 Bus = Annotated[EventBus, Depends(deps.get_bus)]
 RESET_ACTOR = "ops_reset"
-FORM_TURN_INTERVAL_S = 3.0  # same as RoomStore.submit_turn and the SpacetimeDB reducer
-
-
-class TurnRateLimiter:
-    """One form turn per player per 3 s, so an unauthenticated form post cannot drive
-    STT + Margaret + TTS in a loop. Keyed by (room, player_id); monotonic clock."""
-
-    def __init__(self, interval_s: float = FORM_TURN_INTERVAL_S) -> None:
-        self.interval_s = interval_s
-        self._last: dict[tuple[str, str], float] = {}
-        self._lock = threading.Lock()
-
-    def check(self, room_id: str, player_id: str, now: float | None = None) -> None:
-        now = time.monotonic() if now is None else now
-        key = (room_id, player_id)
-        with self._lock:
-            last = self._last.get(key)
-            if last is not None and now - last < self.interval_s:
-                raise HTTPException(
-                    status_code=429,
-                    detail={"code": "RATE_LIMIT", "message": "one turn every 3 seconds"},
-                )
-            self._last[key] = now
-            if len(self._last) > 10_000:  # bounded memory for a long-running room
-                for k in [k for k, t in self._last.items() if now - t > self.interval_s]:
-                    del self._last[k]
-
-
-form_limiter = TurnRateLimiter()
+form_limiter = TurnRateLimiter()  # one form turn per (room, player_id) per 3 s
+form_address_limiter = WindowLimiter(ADDRESS_BURST, ADDRESS_WINDOW_S)  # and per address
 SCRIPTED_INTERVAL_S = 30.0
 scripted_limiter = TurnRateLimiter(SCRIPTED_INTERVAL_S)
 SCRIPTED_PAUSE_S = 1.0  # between turns, so the board animates; tests shrink it
@@ -70,8 +48,15 @@ SCRIPTED_PAUSE_S = 1.0  # between turns, so the board animates; tests shrink it
 
 def reset_limiters() -> None:
     """Tests: forget rate-limit history (the limiters are process-wide)."""
-    form_limiter._last.clear()  # noqa: SLF001
-    scripted_limiter._last.clear()  # noqa: SLF001
+    form_limiter.reset()
+    form_address_limiter.reset()
+    scripted_limiter.reset()
+
+
+def _rate_limited() -> HTTPException:
+    return HTTPException(
+        status_code=429, detail={"code": "RATE_LIMIT", "message": "too many turns, slow down"}
+    )
 
 
 def _room_code(room: str) -> str:
@@ -138,7 +123,13 @@ async def turns(
     if is_bridge:
         deps.check_bridge(x_bridge_token or x_ops_token)
     else:
-        form_limiter.check(room_id, turn.player_id)
+        # Unauthenticated path: budget per player id AND per peer address, since the id is
+        # the caller's to choose.
+        address = request.client.host if request.client else "unknown"
+        if not form_address_limiter.allow(f"{room_id}:{address}"):
+            raise _rate_limited()
+        if not form_limiter.allow(f"{room_id}:{turn.player_id}"):
+            raise _rate_limited()
     if not turn.text.strip():
         raise HTTPException(status_code=400, detail="empty turn")
     sessions = deps.get_sessions()
@@ -253,7 +244,8 @@ async def scripted_attack(room: str, bus: Bus) -> dict[str, Any]:
     per 30 s per room. Shows on the board through the kernel WS (Margaret card, payment card),
     not on the leaderboard: in spacetime mode it bypasses the SpacetimeDB turn queue."""
     room_id = _room_code(room)
-    scripted_limiter.check(room_id, "scripted-attack")
+    if not scripted_limiter.allow(f"{room_id}:scripted-attack"):
+        raise _rate_limited()
     sessions = deps.get_sessions()
     out = await asyncio.to_thread(run_script, sessions, bus, room_id, SCRIPTED_PAUSE_S)
     log.info(

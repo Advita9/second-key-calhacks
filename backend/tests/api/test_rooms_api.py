@@ -110,7 +110,9 @@ def test_memory_room_path_uses_real_margaret(client: TestClient) -> None:
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         snap = client.get(
-            "/rooms/DEMO/snapshot", params={"role": "attacker", "player_id": j["player_id"]}
+            "/rooms/DEMO/snapshot",
+            params={"role": "attacker"},
+            headers={"X-Player-Token": j["player_token"]},
         ).json()
         if snap["replies"]:
             break
@@ -176,7 +178,8 @@ def test_reset_cancels_open_room_payment(client: TestClient) -> None:
 
 
 def test_form_path_rate_limited_per_player(client: TestClient) -> None:
-    from api.routes.rooms import TurnRateLimiter, form_limiter
+    from api.ratelimit import TurnRateLimiter
+    from api.routes.rooms import form_limiter
 
     body = {"turn_id": "r1", "player_id": "burst", "text": "hello"}
     assert client.post("/rooms/DEMO/turns", data=body).status_code == 200
@@ -189,10 +192,9 @@ def test_form_path_rate_limited_per_player(client: TestClient) -> None:
         assert client.post("/rooms/DEMO/turns", json=j).status_code == 200
     # The window is 3 s on a monotonic clock.
     lim = TurnRateLimiter()
-    lim.check("DEMO", "x", now=100.0)
-    with pytest.raises(Exception, match="429|RATE_LIMIT"):
-        lim.check("DEMO", "x", now=102.9)
-    lim.check("DEMO", "x", now=103.0)
+    assert lim.allow("DEMO:x", now=100.0)
+    assert not lim.allow("DEMO:x", now=102.9)
+    assert lim.allow("DEMO:x", now=103.0)
     assert form_limiter.interval_s == 3.0
 
 
@@ -249,3 +251,85 @@ def test_scripted_attack_needs_ops_token_when_set(
         r = c.post("/rooms/DEMO/scripted-attack", headers={"X-Ops-Token": tok})
         assert r.status_code == 200 and r.json()["decision"] == "HOLD"
     deps.reset()
+
+
+def test_form_path_rate_limited_per_address(client: TestClient) -> None:
+    """Rotating player_id does not buy more turns: a burst of 3 per 3 s per peer address."""
+    from api.ratelimit import ADDRESS_BURST, WindowLimiter
+
+    codes = [
+        client.post("/rooms/ADDR1/turns", data={"text": "hello", "player_id": f"r{i}"}).status_code
+        for i in range(ADDRESS_BURST + 2)
+    ]
+    assert codes[:ADDRESS_BURST] == [200] * ADDRESS_BURST and set(codes[ADDRESS_BURST:]) == {429}
+    # The bridge JSON path is not address-limited (it is token-gated instead).
+    for i in range(ADDRESS_BURST + 2):
+        j = {"turn_id": f"j{i}", "player_id": "bridge", "text": "hello"}
+        assert client.post("/rooms/ADDR1/turns", json=j).status_code == 200
+    w = WindowLimiter(2, 10.0)
+    assert w.allow("k", now=0.0) and w.allow("k", now=1.0) and not w.allow("k", now=2.0)
+    assert w.allow("k", now=10.0)  # the first hit slid out of the window
+
+
+def test_join_flood_and_memory_submit_are_address_limited(client: TestClient) -> None:
+    from api.ratelimit import ADDRESS_BURST, JOIN_BURST
+
+    tokens = []
+    for i in range(JOIN_BURST):
+        r = client.post("/rooms/FLOOD2/join", json={"handle": f"h{i}"})
+        assert r.status_code == 200, r.text
+        tokens.append(r.json()["player_token"])
+    r = client.post("/rooms/FLOOD2/join", json={"handle": "one-too-many"})
+    assert r.status_code == 429 and r.json()["detail"]["code"] == "RATE_LIMIT"
+    codes = [
+        client.post(
+            "/rooms/FLOOD2/submit", json={"text": "hello"}, headers={"X-Player-Token": t}
+        ).status_code
+        for t in tokens
+    ]
+    assert codes[:ADDRESS_BURST] == [200] * ADDRESS_BURST and 429 in codes[ADDRESS_BURST:]
+
+
+def test_attacker_views_are_bound_to_the_player_token(client: TestClient) -> None:
+    eve = client.post("/rooms/BIND1/join", json={"handle": "eve"}).json()
+    bob = client.post("/rooms/BIND1/join", json={"handle": "bob"}).json()
+    r = client.post(
+        "/rooms/BIND1/submit",
+        json={"text": "eve's private line"},
+        headers={"X-Player-Token": eve["player_token"]},
+    )
+    assert r.status_code == 200
+    import time
+
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        own = client.get(
+            "/rooms/BIND1/snapshot",
+            params={"role": "attacker"},
+            headers={"X-Player-Token": eve["player_token"]},
+        ).json()
+        if own["turns"]:
+            break
+        time.sleep(0.05)
+    assert [t["text"] for t in own["turns"]] == ["eve's private line"]
+    # Bob with a query id, no token, or his own token: never eve's turns.
+    for kwargs in (
+        {"params": {"role": "attacker", "player_id": eve["player_id"]}},
+        {"params": {"role": "attacker"}},
+        {"params": {"role": "attacker"}, "headers": {"X-Player-Token": bob["player_token"]}},
+    ):
+        snap = client.get("/rooms/BIND1/snapshot", **kwargs).json()
+        assert snap["turns"] == [] and snap["replies"] == [] and snap["myOutcomes"] == []
+        ids = {p["identity"] for p in snap["players"]}
+        assert eve["player_id"] not in ids
+        assert all(lb["player"] in ("", bob["player_id"]) for lb in snap["leaderboard"])
+    with client.websocket_connect(
+        f"/ws?room=BIND1&role=attacker&player_token={eve['player_token']}"
+    ) as ws:
+        first = ws.receive_json()
+        assert [t["text"] for t in first["snapshot"]["turns"]] == ["eve's private line"]
+        assert first["snapshot"]["players"][0]["identity"] == eve["player_id"]
+    with client.websocket_connect(
+        f"/ws?room=BIND1&role=attacker&player_id={eve['player_id']}"
+    ) as ws:
+        assert ws.receive_json()["snapshot"]["turns"] == []

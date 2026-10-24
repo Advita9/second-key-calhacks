@@ -37,11 +37,14 @@ def _join(client: TestClient, handle: str) -> tuple[str, str]:
     return str(j["player_id"]), str(j["player_token"])
 
 
-def _wait_for_turn(client: TestClient, player_id: str) -> None:
+def _wait_for_turn(client: TestClient, player_token: str) -> None:
+    # Polls eve's own view with her token: a bare player_id is exactly the spoof below.
     deadline = time.monotonic() + 5
     while time.monotonic() < deadline:
         snap = client.get(
-            f"/rooms/{ROOM}/snapshot", params={"role": "attacker", "player_id": player_id}
+            f"/rooms/{ROOM}/snapshot",
+            params={"role": "attacker"},
+            headers={"X-Player-Token": player_token},
         ).json()
         if snap["turns"]:
             return
@@ -68,7 +71,7 @@ def test_spoofed_player_id_does_not_reveal_another_players_turns(client: TestCli
         f"/rooms/{ROOM}/submit", json={"text": secret}, headers={"X-Player-Token": eve_token}
     )
     assert r.status_code == 200, r.text
-    _wait_for_turn(client, eve_id)
+    _wait_for_turn(client, eve_token)
 
     # bob presents eve's identity (read from players[]) with no token at all.
     spoof = client.get(

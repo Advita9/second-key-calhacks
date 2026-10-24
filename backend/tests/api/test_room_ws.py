@@ -38,14 +38,14 @@ class SlowTaker:
 
 
 def _wait_outcome(
-    client: TestClient, room: str, role: str, player_id: str, n: int = 1
+    client: TestClient, room: str, role: str, token: str, n: int = 1
 ) -> dict[str, Any]:
+    """`token` is the player token for the attacker view (the view is bound to it)."""
     deadline = time.monotonic() + 5
     key = "myOutcomes" if role == "attacker" else "outcomes"
+    headers = {"X-Player-Token": token} if role == "attacker" else {}
     while time.monotonic() < deadline:
-        snap = client.get(
-            f"/rooms/{room}/snapshot", params={"role": role, "player_id": player_id}
-        ).json()
+        snap = client.get(f"/rooms/{room}/snapshot", params={"role": role}, headers=headers).json()
         if len(snap[key]) >= n:
             return dict(snap)
         time.sleep(0.05)
@@ -64,7 +64,7 @@ def test_join_submit_snapshot_stub() -> None:
             headers={"X-Player-Token": j["player_token"]},
         )
         assert r.status_code == 200, r.text
-        snap = _wait_outcome(client, "DEMO", "attacker", j["player_id"])
+        snap = _wait_outcome(client, "DEMO", "attacker", j["player_token"])
         assert snap["myOutcomes"][0] == {"turnId": 1, "stage": 10, "decision": "NONE"}
         assert snap["replies"][0]["text"] == StubTurnTaker.line
         assert snap["role"] == "attacker" and snap["backend"] == "memory"
@@ -95,7 +95,7 @@ def test_attacker_never_sees_rule_ids_board_does() -> None:
         client.post(
             "/rooms/DEMO/submit", json={"text": "b"}, headers={"X-Player-Token": b["player_token"]}
         )
-        snap = _wait_outcome(client, "DEMO", "attacker", a["player_id"])
+        snap = _wait_outcome(client, "DEMO", "attacker", a["player_token"])
         _wait_outcome(client, "DEMO", "board", "", n=2)
         text = str(snap)
         assert "ruleIds" not in text and "H-01" not in text and "refusal" not in text
@@ -130,7 +130,7 @@ def test_ws_pushes_snapshots_and_accepts_turns() -> None:
     with TestClient(create_app()) as client:
         j = client.post("/rooms/DEMO/join", json={"handle": "alice"}).json()
         with client.websocket_connect(
-            f"/ws?room=DEMO&role=attacker&player_id={j['player_id']}"
+            f"/ws?room=DEMO&role=attacker&player_token={j['player_token']}"
         ) as ws:
             first = ws.receive_json()
             assert first["type"] == "room" and first["snapshot"]["room"]["code"] == "DEMO"

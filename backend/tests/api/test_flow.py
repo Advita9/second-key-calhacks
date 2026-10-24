@@ -252,7 +252,8 @@ def test_ops_token_required_when_set(env: dict[str, str], monkeypatch: pytest.Mo
             "refused": True,
             "reason": "ops token required",
         }
-        assert c.get(f"/payments/{p['id']}").json()["state"] == "HELD"
+        assert c.get(f"/payments/{p['id']}", headers={"X-Ops-Token": tok}).json()["state"] == "HELD"
+        assert c.get(f"/payments/{p['id']}").status_code == 401  # reads carry rule ids
         # Wrong header: still 401.
         r = c.post(
             attest,
@@ -325,7 +326,9 @@ def test_post_payments_account_context_requires_ops_token_when_set(
         assert r.status_code == 200 and r.json()["decision"]["outcome"] == "ALLOW"
         r = c.post("/payments", json=scenario_a_body(), headers={"X-Ops-Token": tok})
         assert r.status_code == 200 and r.json()["state"] == "HELD"
-        assert c.get("/payments").json()["payments"][0]["id"] == r.json()["id"]
+        assert c.get("/payments").status_code == 401
+        listed = c.get("/payments", headers={"X-Ops-Token": tok}).json()["payments"]
+        assert listed[0]["id"] == r.json()["id"]
     deps.reset()
 
 

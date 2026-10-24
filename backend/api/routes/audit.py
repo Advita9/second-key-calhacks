@@ -15,7 +15,7 @@ log = logging.getLogger("second_key.api.audit")
 router = APIRouter(tags=["audit"])
 
 
-@router.get("/audit")
+@router.get("/audit", dependencies=[Depends(deps.ops_guard)])
 def tail(limit: Annotated[int, Query(ge=1, le=2000)] = 200) -> list[dict[str, Any]]:
     kernel = deps.get_kernel()
     return [audit_event_dict(e) for e in kernel.audit.tail(limit)]

@@ -57,7 +57,9 @@ def test_refused_release_pushes_last_refusal(client: TestClient) -> None:
 def test_attacker_ws_never_receives_payment_or_attack_events(client: TestClient) -> None:
     j = client.post("/rooms/DEMO/join", json={"handle": "mallory"}).json()
     with (
-        client.websocket_connect(f"/ws?room=DEMO&role=attacker&player_id={j['player_id']}") as att,
+        client.websocket_connect(
+            f"/ws?room=DEMO&role=attacker&player_token={j['player_token']}"
+        ) as att,
         client.websocket_connect("/ws?room=DEMO&role=board") as board,
     ):
         assert att.receive_json()["type"] == "room"
@@ -109,9 +111,15 @@ def test_board_ops_roles_need_token_when_set(
             with c.websocket_connect(f"/ws?room=DEMO&role={role}&token={tok}") as ws:
                 assert ws.receive_json()["type"] == "room"
         # Attackers never need it.
-        r = c.get("/rooms/DEMO/snapshot", params={"role": "attacker", "player_id": j["player_id"]})
+        r = c.get(
+            "/rooms/DEMO/snapshot",
+            params={"role": "attacker"},
+            headers={"X-Player-Token": j["player_token"]},
+        )
         assert r.status_code == 200 and r.json()["outcomes"] == []
-        with c.websocket_connect(f"/ws?room=DEMO&role=attacker&player_id={j['player_id']}") as ws:
+        with c.websocket_connect(
+            f"/ws?room=DEMO&role=attacker&player_token={j['player_token']}"
+        ) as ws:
             assert ws.receive_json()["type"] == "room"
     deps.reset()
 

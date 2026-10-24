@@ -91,8 +91,9 @@ def test_operator_routes_need_the_token(ops_client: TestClient) -> None:
         assert missing.json() == {"refused": True, "reason": "ops token required"}
         wrong = ops_client.post(path, json=body, headers={"X-Ops-Token": "nope"})
         assert wrong.status_code == 401, path
-    # Nothing changed state.
-    assert ops_client.get(f"/payments/{pid}").json()["state"] == "HELD"
+    # Nothing changed state (reads need the token too; see the open-reads finding).
+    assert ops_client.get(f"/payments/{pid}").status_code == 401
+    assert ops_client.get(f"/payments/{pid}", headers=HDR).json()["state"] == "HELD"
 
 
 def test_customer_checkin_never_needs_the_token(ops_client: TestClient) -> None:

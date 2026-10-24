@@ -3,8 +3,9 @@
 Routes
     POST /rooms/{room}/join      {handle} -> {player_id, player_token, room_id}
     POST /rooms/{room}/submit    {text, audio_url?} + header X-Player-Token -> {turn_id}
-    GET  /rooms/{room}/snapshot?role=attacker|board|ops&player_id= -> RoomSnapshot (camelCase)
-    WS   /ws?room=&role=&player_id=   pushes {"type": "room", "snapshot": ...} on every change,
+    GET  /rooms/{room}/snapshot?role=attacker|board|ops -> RoomSnapshot (camelCase);
+         attacker view bound to X-Player-Token, board/ops to X-Ops-Token
+    WS   /ws?room=&role=&player_token=|token=  pushes {"type": "room", "snapshot": ...} on change,
                                       relays kernel events passed to `RoomHub.broadcast_event`,
                                       accepts {"type": "submit_turn", "text", "player_token"}.
 
@@ -19,14 +20,25 @@ from __future__ import annotations
 import asyncio
 import logging
 import secrets
+import time
 from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Protocol
 
-from fastapi import APIRouter, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from pydantic import BaseModel, Field
 
+from api.ratelimit import ADDRESS_BURST, ADDRESS_WINDOW_S, JOIN_BURST, JOIN_WINDOW_S, WindowLimiter
 from kernel.clock import Clock, SystemClock
 from kernel.room_memory import RoomError, RoomSnapshot, RoomStore, SnapshotRole, TurnRow
+from kernel.rooms import TURN_DEADLINE
 
 log = logging.getLogger("second_key.room")
 
@@ -153,6 +165,9 @@ class RoomHub:
         self.audit = audit
         self.turn_timeout_s = turn_timeout_s
         self.tokens: dict[str, str] = {}  # player_token -> player_id
+        # Per-address budgets: the player token is free to mint, the address is not.
+        self.address_limiter = WindowLimiter(ADDRESS_BURST, ADDRESS_WINDOW_S)
+        self.join_limiter = WindowLimiter(JOIN_BURST, JOIN_WINDOW_S)
         self._subs: set[_Subscriber] = set()
         self._tasks: set[asyncio.Task[None]] = set()
         self._processed: set[int] = set()
@@ -167,7 +182,9 @@ class RoomHub:
             self.store.set_room_status(c, "live")
         return c
 
-    def join(self, code: str, handle: str) -> tuple[str, str]:
+    def join(self, code: str, handle: str, address: str | None = None) -> tuple[str, str]:
+        if address is not None and not self.join_limiter.allow(f"join:{address}"):
+            raise RoomError("RATE_LIMIT", f"rate limit: {JOIN_BURST} joins per minute")
         room_id = self.ensure_room(code)
         player = self.store.join(room_id, handle, self.clock.now())
         token = secrets.token_urlsafe(24)
@@ -181,10 +198,23 @@ class RoomHub:
             raise RoomError("NOT_ATTACKER", "unknown player token")
         return pid
 
+    def player_or_none(self, token: str | None) -> str | None:
+        """Attacker views are bound to the token; a bare player id is never trusted."""
+        return self.tokens.get(token or "") if token else None
+
     async def submit_player_turn(
-        self, room_id: str, player_id: str, text: str, audio_url: str = ""
+        self,
+        room_id: str,
+        player_id: str,
+        text: str,
+        audio_url: str = "",
+        address: str | None = None,
     ) -> TurnRow:
         """Validate and queue a turn, then process it in the background (the memory bridge)."""
+        if address is not None and not self.address_limiter.allow(f"turn:{address}"):
+            raise RoomError(
+                "RATE_LIMIT", f"rate limit: {ADDRESS_BURST} turns per {ADDRESS_WINDOW_S:g}s"
+            )
         turn = self.store.submit_turn(room_id, player_id, text, self.clock.now(), audio_url)
         self.changed()
         task = asyncio.create_task(self._process(turn))
@@ -205,6 +235,9 @@ class RoomHub:
             return
         self.changed()
         failed = False
+        # The deadline rides in the context that to_thread copies: once we give up below, the
+        # abandoned thread must not create (or keep) a payment for this turn.
+        reset_token = TURN_DEADLINE.set(time.monotonic() + self.turn_timeout_s)
         try:
             raw = await asyncio.wait_for(
                 asyncio.to_thread(
@@ -218,6 +251,8 @@ class RoomHub:
             failed = True
             result = normalize_turn_response(fail_closed_response())
             log.warning("room.turn.failclosed", extra={"turn": turn.id, "error": str(e)})
+        finally:
+            TURN_DEADLINE.reset(reset_token)
         now = self.clock.now()
         if not failed:
             self.store.record_reply(
@@ -346,6 +381,12 @@ def allow_all(role: str, token: str | None) -> bool:
     return True
 
 
+def _address(request: Request) -> str | None:
+    """The peer address, for per-address budgets. (Behind the Next.js rewrite every browser
+    shares the proxy's address; the budgets are sized as bursts for that reason.)"""
+    return request.client.host if request.client else None
+
+
 def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
     """`authorize(role, token)` gates the board and ops views: `X-Ops-Token` header for
     `/snapshot`, `?token=` query for `/ws` (browsers cannot set headers on a WebSocket).
@@ -356,10 +397,10 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
         return role == "attacker" or authorize(role, header or query)
 
     @router.post("/rooms/{room}/join")
-    async def join(room: str, body: JoinBody) -> dict[str, str]:
+    async def join(room: str, body: JoinBody, request: Request) -> dict[str, str]:
         # async so hub.changed() (asyncio queues) runs on the loop, not in a worker thread.
         try:
-            player_id, token = hub.join(room, body.handle)
+            player_id, token = hub.join(room, body.handle, _address(request))
         except RoomError as e:
             raise _http(e) from e
         return {
@@ -372,12 +413,17 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
     async def submit(
         room: str,
         body: SubmitBody,
+        request: Request,
         x_player_token: Annotated[str | None, Header()] = None,
     ) -> dict[str, int]:
         try:
             player_id = hub.player_for_token(x_player_token)
             turn = await hub.submit_player_turn(
-                RoomStore.normalize_code(room), player_id, body.text, body.audio_url
+                RoomStore.normalize_code(room),
+                player_id,
+                body.text,
+                body.audio_url,
+                address=_address(request),
             )
         except RoomError as e:
             raise _http(e) from e
@@ -387,11 +433,13 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
     def snapshot(
         room: str,
         role: Annotated[SnapshotRole, Query()] = "board",
-        player_id: Annotated[str | None, Query()] = None,
         x_ops_token: Annotated[str | None, Header()] = None,
+        x_player_token: Annotated[str | None, Header()] = None,
     ) -> dict[str, Any]:
         # Header only: a token in a URL lands in proxy and browser logs. `/ws` keeps `?token=`
-        # because browsers cannot set headers on a WebSocket.
+        # because browsers cannot set headers on a WebSocket. The attacker's own view is bound
+        # to X-Player-Token; a `player_id` query is ignored.
+        player_id = hub.player_or_none(x_player_token) if role == "attacker" else None
         if not _check(role, x_ops_token, None):
             raise HTTPException(
                 status_code=401, detail={"code": "NOT_OPERATOR", "message": "ops token required"}
@@ -408,10 +456,11 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
         websocket: WebSocket,
         room: Annotated[str, Query()] = "DEMO",
         role: Annotated[SnapshotRole, Query()] = "board",
-        player_id: Annotated[str | None, Query()] = None,
         token: Annotated[str | None, Query()] = None,
+        player_token: Annotated[str | None, Query()] = None,
     ) -> None:
         await websocket.accept()
+        player_id = hub.player_or_none(player_token) if role == "attacker" else None
         if not _check(role, websocket.headers.get("x-ops-token"), token):
             await websocket.send_json(
                 {"type": "error", "code": "NOT_OPERATOR", "message": "ops token required"}
@@ -447,6 +496,7 @@ def make_router(hub: RoomHub, authorize: Authorizer = allow_all) -> APIRouter:
                             pid,
                             str(data.get("text", "")),
                             str(data.get("audio_url", "") or ""),
+                            address=websocket.client.host if websocket.client else None,
                         )
                         await websocket.send_json({"type": "turn_accepted", "turn_id": turn.id})
                     except RoomError as e:

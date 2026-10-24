@@ -69,13 +69,14 @@ def create_payment(body: PaymentCreate, bus: Bus, x_ops_token: OpsToken = None) 
     return payment_summary(record)
 
 
-@router.get("/payments")
+@router.get("/payments", dependencies=[Depends(deps.ops_guard)])
 def list_payments(limit: Annotated[int, Query(ge=1, le=500)] = 100) -> dict[str, Any]:
-    """Not in docs/api.md; the /ops queue reads it. Newest first."""
+    """The /ops queue and the board's live card. Newest first. Ops token when set: records
+    carry rule ids, fingerprints and refusals (the attacker view must never see them)."""
     return {"payments": [payment_dict(r) for r in deps.get_kernel().list_payments(limit)]}
 
 
-@router.get("/payments/{payment_id}")
+@router.get("/payments/{payment_id}", dependencies=[Depends(deps.ops_guard)])
 def get_payment(payment_id: str) -> dict[str, Any]:
     return payment_dict(deps.load_record(payment_id))
 

@@ -481,7 +481,8 @@ class RoomStore:
     ) -> RoomSnapshot:
         """Room state for one subscriber.
 
-        attacker: own turns, own replies, own outcomes as stage+decision only, no audit.
+        attacker: own turns, own replies, own outcomes as stage+decision only, no audit,
+                  and no other player's identity (players and leaderboard carry handles).
         board: everything for the room except the audit mirror.
         ops: everything.
         """
@@ -508,10 +509,14 @@ class RoomStore:
 
         if role == "attacker":
             own_turn_ids = {t.id for t in turns if t.player == player_id}
+            # Rival identities unlock rival views; the attacker sees handles only (own kept).
             return RoomSnapshot(
                 role=role,
                 room=room,
-                players=players,
+                players=[
+                    p if p.identity == player_id else p.model_copy(update={"identity": ""})
+                    for p in players
+                ],
                 turns=[t for t in turns if t.id in own_turn_ids],
                 replies=[r for r in replies if r.turn_id in own_turn_ids],
                 outcomes=[],
@@ -520,7 +525,10 @@ class RoomStore:
                     for o in outcomes
                     if o.player == player_id
                 ],
-                leaderboard=leaderboard,
+                leaderboard=[
+                    lb if lb.player == player_id else lb.model_copy(update={"player": ""})
+                    for lb in leaderboard
+                ],
                 scoreboard=scoreboard,
                 audit=[],
                 version=self.version,
