@@ -13,8 +13,9 @@ export function Refusal({ text, size = "md", animate = false, className }: { tex
   );
 }
 
+/** The kernel's own text wins (`SETTLEMENT REFUSED · I2_FINGERPRINT`, or `HELD · H-01 H-03 ...` for inject). */
 export function refusalText(invariant: string | null | undefined, text?: string | null): string {
-  if (text && /REFUSED/.test(text)) return text;
+  if (text && text.trim()) return text;
   if (invariant) return `SETTLEMENT REFUSED · ${invariant}`;
-  return text ?? "";
+  return "";
 }

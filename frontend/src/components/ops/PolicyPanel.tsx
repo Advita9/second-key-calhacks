@@ -23,7 +23,7 @@ export function PolicyPanel({ policyVersion, liveHits }: { policyVersion: string
         {ev.loading ? (
           <Loading text="Loading eval results" />
         ) : ev.error ? (
-          <ErrorText text={ev.notFound ? "Eval results route not live yet." : ev.error} notFound={ev.notFound} />
+          <ErrorText text={ev.notFound ? "No eval results yet. Run scripts/eval.py to fill this panel." : ev.error} notFound={ev.notFound} />
         ) : ev.data ? (
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             <dt className="text-muted">Unauthorized releases</dt>

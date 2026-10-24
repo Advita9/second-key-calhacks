@@ -98,10 +98,14 @@ export interface AuditVerify {
 }
 
 export interface AttackResult {
+  name: string;
   steps: string[];
   refused: boolean;
   invariant: string;
   text: string;
+  /** inject only: the policy decision the kernel reached despite the compromised extractor */
+  decision: string | null;
+  rule_ids: string[];
 }
 
 export interface EvalCase {

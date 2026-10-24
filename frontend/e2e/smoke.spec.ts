@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -8,11 +8,6 @@ fs.mkdirSync(SHOTS, { recursive: true });
 
 async function shot(page: Page, name: string) {
   await page.screenshot({ path: path.join(SHOTS, `${name}.png`), fullPage: false });
-}
-
-async function routeExists(request: APIRequestContext, method: "get" | "post", url: string) {
-  const res = method === "get" ? await request.get(url) : await request.post(url, { data: {} });
-  return res.status() !== 404;
 }
 
 test.describe("board", () => {
@@ -48,17 +43,26 @@ test.describe("board", () => {
     }
   });
 
-  test("attack panel button shows a refusal when the route is live", async ({ page, request }) => {
-    const live = await routeExists(request, "post", `${KERNEL}/attack/mutate`);
+  test("attack panel: all four buttons show the refusal and invariant", async ({ page }) => {
     await page.goto("/board");
-    await page.getByTestId("attack-mutate").click();
-    if (live) {
-      await expect(page.getByTestId("refusal")).toContainText(/SETTLEMENT REFUSED · I2/);
-    } else {
-      await expect(page.getByTestId("refusal")).toContainText("ATTACK ROUTE NOT LIVE YET");
+    const cases: [string, RegExp][] = [
+      ["mutate", /SETTLEMENT REFUSED · I2_FINGERPRINT/],
+      ["replay", /SETTLEMENT REFUSED · I3_REPLAY/],
+      ["self-approve", /REFUSED · I5_CONFLICT/],
+      ["inject", /HELD · H-\d{2}/],
+    ];
+    for (const [name, re] of cases) {
+      await page.getByTestId(`attack-${name}`).click();
+      await expect(page.getByTestId("refusal")).toContainText(re, { timeout: 20_000 });
+      if (name === "mutate") {
+        await page.waitForTimeout(600); // let the refusal animation settle before the screenshot
+        await shot(page, "board-attack");
+      }
     }
-    await page.waitForTimeout(600); // let the refusal animation settle before the screenshot
-    await shot(page, "board-attack");
+    // inject: the policy held on facts and the rule ids are on screen
+    await expect(page.getByTestId("refusal-rules")).toContainText(/H-\d{2}/);
+    // the live payment card got the pushed payment state from the WS
+    await expect(page.getByTestId("live-payment").getByTestId("state-pill")).toBeVisible();
   });
 });
 
@@ -73,18 +77,11 @@ test.describe("play", () => {
     await shot(page, "play-join");
   });
 
-  test("joins a room with a code and sends a turn", async ({ page, request }) => {
-    const joinLive = await routeExists(request, "post", `${KERNEL}/rooms/E2E/join`);
+  test("joins a room with a code and sends a turn", async ({ page }) => {
     await page.goto("/play?room=E2E");
     await expect(page.getByTestId("room-input")).toHaveValue("E2E");
     await page.getByTestId("handle-input").fill("smoketester");
     await page.getByTestId("join-button").click();
-    if (!joinLive) {
-      // TODO(lead): remove this branch once POST /rooms/{room}/join lands; keep the strict path below.
-      await expect(page.getByRole("alert")).toBeVisible();
-      await expect(page.getByTestId("join-button")).toBeVisible();
-      return;
-    }
     await expect(page.getByTestId("turn-input")).toBeVisible();
     await expect(page.getByTestId("send-button")).toBeVisible();
     await expect(page.getByTestId("stage-bar")).toBeVisible();
@@ -92,13 +89,8 @@ test.describe("play", () => {
     await expect(page.getByTestId("turn-input")).not.toHaveValue("");
     await page.getByTestId("send-button").click();
     await expect(page.getByTestId("msg-you").first()).toBeVisible();
-    const submitLive = await routeExists(request, "post", `${KERNEL}/rooms/E2E/submit`);
-    if (submitLive) {
-      await expect(page.getByTestId("msg-margaret").first()).toBeVisible({ timeout: 20_000 });
-    } else {
-      // TODO(lead): drop this branch once POST /rooms/{room}/submit is mounted in api/main.py.
-      await expect(page.getByTestId("notice")).toBeVisible();
-    }
+    await expect(page.getByTestId("msg-margaret").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("stage-bar").getByRole("progressbar")).toHaveAttribute("aria-valuenow", /^(10|40|60|70|90|100)$/);
     // Attacker view never shows rule ids.
     await expect(page.getByTestId("play")).not.toContainText(/\b[HDAX]-\d{2}\b/);
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -110,8 +102,20 @@ test.describe("play", () => {
 test.describe("ops", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("shows holds queue and audit verify button; verify turns green or red", async ({ page, request }) => {
-    const verifyLive = await routeExists(request, "get", `${KERNEL}/audit/verify`);
+  test("holds queue fills from a HELD payment, approve works, verify green then tamper then red", async ({ page, request }) => {
+    // Seed a HELD payment: S-03 body with an empty mule list (D-01 off, H-01/H-03 still fire).
+    const s03 = JSON.parse(fs.readFileSync(path.join(__dirname, "../../fixtures/cases/S-03.json"), "utf8")) as {
+      payment: Record<string, unknown>;
+      account_context: Record<string, unknown>;
+      conversation: unknown[];
+    };
+    const created = await request.post(`${KERNEL}/payments`, {
+      data: { ...s03.payment, conversation_id: "e2e_s03", conversation: s03.conversation, account_context: { ...s03.account_context, mule_list: [] } },
+    });
+    expect(created.ok()).toBeTruthy();
+    const payment = (await created.json()) as { id: string; state: string };
+    expect(payment.state).toBe("HELD");
+
     await page.goto("/ops");
     await expect(page.getByTestId("holds-queue")).toBeVisible();
     await expect(page.getByTestId("holds-queue")).toContainText("Holds queue");
@@ -121,12 +125,35 @@ test.describe("ops", () => {
     await expect(page.getByTestId("policy-panel")).toBeVisible();
     await expect(page.getByTestId("certificates-log")).toBeVisible();
     await expect(page.getByTestId("payment-history")).toBeVisible();
-    await verify.click();
-    if (verifyLive) {
-      await expect(verify).toHaveAttribute("data-verdict", /ok|bad/);
-    } else {
-      await expect(page.getByRole("alert").first()).toBeVisible();
-    }
+    await expect(page.getByTestId("ops-token")).toBeVisible();
+
+    // Holds queue shows the seeded payment; approve as BANK_REVIEW lifts it.
+    const row = page.getByTestId("hold-row").filter({ hasText: payment.id.slice(0, 12) });
+    await expect(row).toBeVisible();
+    await expect(row).toContainText(/H-\d{2}/);
     await shot(page, "ops");
+    await row.getByTestId("approve-button").click();
+    await expect(row).toBeHidden({ timeout: 10_000 });
+    const after = (await (await request.get(`${KERNEL}/payments/${payment.id}`)).json()) as { state: string };
+    expect(after.state).toBe("ELIGIBLE_TO_SUBMIT");
+
+    // Payment history replay for the approved payment.
+    await page.getByTestId("payment-select").selectOption(payment.id);
+    await expect(page.getByTestId("payment-history")).toContainText("ELIGIBLE TO SUBMIT");
+    await expect(page.getByTestId("payment-history")).toContainText("BANK_REVIEW");
+
+    // Audit chain: green, then tamper (demo mode), then red with the bad seq highlighted.
+    // Tamper is irreversible, so on a reused kernel (reuseExistingServer) the chain may already be red.
+    await verify.click();
+    await expect(verify).toHaveAttribute("data-verdict", /ok|bad/);
+    if ((await verify.getAttribute("data-verdict")) === "ok") {
+      await page.getByTestId("tamper-button").click();
+      await verify.click();
+    }
+    await expect(verify).toHaveAttribute("data-verdict", "bad");
+    await expect(verify).toContainText(/Broken at seq \d+/);
+    await expect(page.getByTestId("audit-list").locator("li.text-bad").first()).toBeVisible();
+    await page.waitForTimeout(400); // let the color transition settle before the screenshot
+    await shot(page, "ops-tampered");
   });
 });

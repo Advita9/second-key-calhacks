@@ -11,7 +11,8 @@ import { Scoreboard } from "./Scoreboard";
 import { useHealth } from "@/components/shared/Health";
 import { refusalText } from "@/components/shared/Refusal";
 import { MARGARET, roomFromSearch } from "@/lib/config";
-import { isMockFlag } from "@/lib/kernel/rest";
+import { isMockFlag, kernel } from "@/lib/kernel/rest";
+import { useAsync } from "@/lib/useAsync";
 import type { AttackName, AttackResult, WsMessage } from "@/lib/kernel/types";
 import { useKernelSocket } from "@/lib/kernel/ws";
 import { useRoom } from "@/lib/useRoom";
@@ -63,7 +64,9 @@ export function BoardView() {
       } else if (m.type === "attack") {
         const a = m as { name?: string; invariant?: string; text?: string };
         const def = ATTACKS.find((x) => x.name === a.name);
-        setRefusal({ title: def?.label ?? a.name ?? "Attack", invariant: a.invariant ?? "", text: refusalText(a.invariant, a.text), steps: [], seq: next() });
+        // The REST response for a clicked attack carries steps and rule ids; the WS event is the
+        // minimal {name, invariant} and only fills in when nobody on this board clicked.
+        setRefusal((prev) => (prev && prev.title === (def?.label ?? a.name) ? prev : { title: def?.label ?? a.name ?? "Attack", invariant: a.invariant ?? "", text: refusalText(a.invariant, a.text), steps: [], ruleIds: [], seq: next() }));
       }
     },
     [next],
@@ -89,15 +92,20 @@ export function BoardView() {
 
   const onAttack = (name: AttackName, r: AttackResult) => {
     const def = ATTACKS.find((x) => x.name === name);
-    setRefusal({ title: def?.label ?? name, invariant: r.invariant, text: refusalText(r.invariant, r.text), steps: r.steps, seq: next() });
+    setRefusal({ title: def?.label ?? name, invariant: r.invariant, text: refusalText(r.invariant, r.text), steps: r.steps, ruleIds: r.rule_ids, seq: next() });
   };
   const onAttackError = (name: AttackName, msg: string, notFound: boolean) => {
     const def = ATTACKS.find((x) => x.name === name);
-    setRefusal({ title: def?.label ?? name, invariant: "", text: notFound ? "ATTACK ROUTE NOT LIVE YET" : `KERNEL ERROR · ${msg}`, steps: [], seq: next() });
+    setRefusal({ title: def?.label ?? name, invariant: "", text: notFound ? "ATTACK ROUTE NOT LIVE YET" : `KERNEL ERROR · ${msg}`, steps: [], ruleIds: [], seq: next() });
   };
 
+  // Legitimate completed: the room scoreboard (bridge `record_legit_completed`) or, when that is
+  // behind, the count of SUBMITTED payments on the kernel. Every SUBMITTED payment carried a valid
+  // certificate; "unauthorized" is an attacker reaching stage 100 and stays room-scoped.
+  const list = useAsync(() => kernel.payments(), [], 10000);
+  const submittedOnKernel = useMemo(() => (list.data ?? []).filter((p) => p.state === "SUBMITTED").length, [list.data]);
   const unauthorized = snap.scoreboard?.unauthorizedReleases ?? 0;
-  const legit = snap.scoreboard?.legitCompleted ?? 0;
+  const legit = Math.max(snap.scoreboard?.legitCompleted ?? 0, submittedOnKernel);
 
   return (
     <main className="mx-auto flex h-screen w-[1920px] max-w-full flex-col gap-5 p-6" data-testid="board">
@@ -110,7 +118,7 @@ export function BoardView() {
           {ws.status === "reconnecting" ? ` (attempt ${ws.attempt})` : ""}
         </p>
       </header>
-      <section className="grid min-h-0 flex-1 grid-cols-[1fr_1.35fr_1fr] gap-5">
+      <section className="grid min-h-0 flex-1 grid-cols-[1fr_1.35fr_1fr] gap-5 overflow-hidden">
         <MargaretCard live={margaretLive} balanceCents={MARGARET.balanceCents - submittedCents} voiceMock={isMockFlag(health.data, "tts")} />
         <LivePaymentCard payment={paymentLive} refusal={refusal} />
         <div className="flex min-h-0 flex-col gap-5">

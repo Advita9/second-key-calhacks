@@ -38,7 +38,7 @@ export function MargaretCard({ live, balanceCents, voiceMock }: { live: Margaret
   const meter = Math.max(0, Math.min(100, live?.meter ?? 0));
 
   return (
-    <Card className="flex h-full flex-col" data-testid="margaret-card">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden" data-testid="margaret-card">
       <CardHeader>
         <CardTitle>Customer</CardTitle>
         <div className="flex items-baseline justify-between">
@@ -50,7 +50,7 @@ export function MargaretCard({ live, balanceCents, voiceMock }: { live: Margaret
         </p>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-6">
-        <div className="flex-1 rounded-md border bg-panel-2 p-5">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-md border bg-panel-2 p-5">
           <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted">Last reply</p>
           {live?.text ? (
             <p className="text-3xl leading-snug" data-testid="margaret-reply">

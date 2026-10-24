@@ -76,7 +76,8 @@ export async function kernelFetch<T>(path: string, init?: RequestInit & { timeou
       const detail = asRecord(body);
       // FastAPI wraps 409 bodies as {detail: {...}}; unwrap so refusals surface.
       const inner = isRefusal(detail.detail) ? detail.detail : body;
-      throw new KernelError(res.status, inner, str(asRecord(inner).text) || str(detail.detail) || undefined);
+      const msg = str(asRecord(inner).text) || str(asRecord(inner).reason) || str(detail.detail) || str(asRecord(detail.detail).message) || undefined;
+      throw new KernelError(res.status, inner, res.status === 401 ? "Operator token required or wrong" : msg);
     }
     return body as T;
   } finally {
@@ -84,8 +85,8 @@ export async function kernelFetch<T>(path: string, init?: RequestInit & { timeou
   }
 }
 
-function json(body: unknown): RequestInit {
-  return { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+function json(body: unknown, ops = false): RequestInit {
+  return { method: "POST", headers: { "Content-Type": "application/json", ...(ops ? opsHeaders() : {}) }, body: JSON.stringify(body) };
 }
 
 export function parseHealth(v: unknown): Health {
@@ -164,7 +165,7 @@ export function parsePayment(v: unknown): Payment {
         payload: x.payload,
       };
     }),
-    created_at: str(r.created_at),
+    created_at: str(r.created_at) || str(asRecord(arr(r.history)[0]).ts),
     updated_at: str(r.updated_at),
     last_refusal: typeof r.last_refusal === "string" ? r.last_refusal : null,
   };
@@ -193,13 +194,45 @@ export function parseVerify(v: unknown): AuditVerify {
 
 export function parseAttack(v: unknown): AttackResult {
   const r = asRecord(v);
-  return { steps: strs(r.steps), refused: bool(r.refused), invariant: str(r.invariant), text: str(r.text) };
+  return {
+    name: str(r.name),
+    steps: strs(r.steps),
+    refused: bool(r.refused),
+    invariant: str(r.invariant),
+    text: str(r.text),
+    decision: str(r.decision) || null,
+    rule_ids: strs(r.rule_ids),
+  };
+}
+
+// ---------------------------------------------------------------- operator token
+// When the kernel runs with OPS_TOKEN set, operator routes need `X-Ops-Token`. Stored per browser.
+const OPS_KEY = "sk:ops:token";
+export function getOpsToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage.getItem(OPS_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+export function setOpsToken(t: string) {
+  try {
+    if (t) window.localStorage.setItem(OPS_KEY, t);
+    else window.localStorage.removeItem(OPS_KEY);
+  } catch {
+    // ignore
+  }
+}
+function opsHeaders(): Record<string, string> {
+  const t = getOpsToken();
+  return t ? { "X-Ops-Token": t } : {};
 }
 
 export function parseEval(v: unknown): EvalResults {
   const r = asRecord(v);
   const hits: Record<string, number> = {};
-  for (const [k, val] of Object.entries(asRecord(r.rule_hits ?? r.rule_hit_counts))) hits[k] = num(val);
+  for (const [k, val] of Object.entries(asRecord(r.rule_hits ?? r.per_rule_hits ?? r.rule_hit_counts))) hits[k] = num(val);
   const cases = arr(r.cases).map((c) => {
     const x = asRecord(c);
     const ids = strs(x.rule_ids ?? x.actual_rule_ids);
@@ -238,14 +271,15 @@ export const kernel = {
     return list.map(parsePayment);
   },
   attest: async (id: string, body: { actor_id: string; capability: string; note?: string }) =>
-    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/attest`, json(body))),
-  deny: async (id: string, body: { actor_id: string; note?: string }) =>
-    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/deny`, json(body))),
+    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/attest`, json(body, true))),
+  /** Operator cancel: `POST /payments/{id}/deny` moves the payment to CANCELLED and voids attestations and certificates. */
+  cancel: async (id: string, body: { actor_id: string; note?: string }) =>
+    parsePayment(await kernelFetch<unknown>(`/payments/${encodeURIComponent(id)}/deny`, json(body, true))),
   attack: async (name: AttackName) => parseAttack(await kernelFetch<unknown>(`/attack/${name}`, { method: "POST", timeoutMs: 20000 })),
   audit: async (limit = 200) => parseAudit(await kernelFetch<unknown>(`/audit?limit=${limit}`)),
   verify: async () => parseVerify(await kernelFetch<unknown>("/audit/verify")),
-  tamper: async () => kernelFetch<unknown>("/audit/tamper", { method: "POST" }),
+  tamper: async () => kernelFetch<unknown>("/audit/tamper", { method: "POST", headers: opsHeaders() }),
   evalResults: async () => parseEval(await kernelFetch<unknown>("/eval/results")),
   certificates: async (): Promise<unknown> => kernelFetch<unknown>("/certificates"),
-  resetRoom: async (room: string) => kernelFetch<unknown>(`/rooms/${encodeURIComponent(room)}/reset`, { method: "POST" }),
+  resetRoom: async (room: string) => kernelFetch<unknown>(`/rooms/${encodeURIComponent(room)}/reset`, { method: "POST", headers: opsHeaders() }),
 };

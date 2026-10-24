@@ -23,13 +23,14 @@ export interface LiveRefusal {
   invariant: string;
   title: string;
   steps: string[];
+  ruleIds: string[];
   seq: number;
 }
 
 export function LivePaymentCard({ payment, refusal }: { payment: LivePayment | null; refusal: LiveRefusal | null }) {
   const showRefusal = refusal && (!payment || refusal.seq >= payment.seq);
   return (
-    <Card className="flex h-full flex-col" data-testid="live-payment">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden" data-testid="live-payment">
       <CardHeader>
         <CardTitle>Live payment</CardTitle>
         {payment ? (
@@ -46,7 +47,7 @@ export function LivePaymentCard({ payment, refusal }: { payment: LivePayment | n
           <p className="text-2xl text-muted">No payment yet. Margaret has not agreed to send anything.</p>
         )}
       </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-6">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-6">
         {payment && payment.ruleIds.length > 0 && (
           <div>
             <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted">Rules hit</p>
@@ -59,15 +60,25 @@ export function LivePaymentCard({ payment, refusal }: { payment: LivePayment | n
             </div>
           </div>
         )}
-        <div className={`flex flex-1 flex-col justify-center rounded-md border p-6 ${showRefusal ? "border-bad/60 bg-bad/5" : "bg-panel-2"}`}>
+        <div className={`flex min-h-0 flex-1 flex-col justify-center overflow-hidden rounded-md border p-6 ${showRefusal ? "border-bad/60 bg-bad/5" : "bg-panel-2"}`}>
           {showRefusal ? (
             <div key={refusal.seq} className="refuse-in">
               <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted">{refusal.title}</p>
               <Refusal text={refusal.text} size="xl" />
+              {refusal.invariant || refusal.ruleIds.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2" data-testid="refusal-rules">
+                  {refusal.invariant ? <span className="rounded border border-bad/60 px-3 py-1 font-mono text-xl text-bad">{refusal.invariant}</span> : null}
+                  {refusal.ruleIds.map((r) => (
+                    <span key={r} className="rounded border bg-panel-2 px-3 py-1 font-mono text-xl">
+                      {r}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               {refusal.steps.length > 0 && (
-                <ol className="mt-5 space-y-1 font-mono text-base text-muted">
+                <ol className="mt-5 max-h-44 space-y-1 overflow-hidden font-mono text-sm leading-snug text-muted">
                   {refusal.steps.map((s, i) => (
-                    <li key={i}>
+                    <li key={i} className="truncate" title={s}>
                       {i + 1}. {s}
                     </li>
                   ))}

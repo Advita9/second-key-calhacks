@@ -8,7 +8,7 @@ import type { AttackName, AttackResult } from "@/lib/kernel/types";
 import { errorText } from "@/lib/useAsync";
 
 export const ATTACKS: { name: AttackName; label: string; invariant: string }[] = [
-  { name: "inject", label: "Prompt-inject model", invariant: "I4_MODEL_NO_RELEASE" },
+  { name: "inject", label: "Prompt-inject model", invariant: "POLICY_HOLD (I4)" },
   { name: "mutate", label: "Change payee after approval", invariant: "I2_FINGERPRINT" },
   { name: "replay", label: "Replay old approval", invariant: "I3_REPLAY" },
   { name: "self-approve", label: "Daughter releases to herself", invariant: "I5_CONFLICT" },

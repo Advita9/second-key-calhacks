@@ -17,17 +17,17 @@ export function HoldsQueue({ payments, loading, error, notFound, onChanged, onSe
   const [rowError, setRowError] = useState<Record<string, string>>({});
   const held = payments.filter((p) => p.state === "HELD" || p.state === "PENDING_REVIEW");
 
-  const act = async (p: Payment, kind: "approve" | "deny") => {
+  const act = async (p: Payment, kind: "approve" | "cancel") => {
     setBusy(p.id);
     setRowError((e) => ({ ...e, [p.id]: "" }));
     try {
       const next =
         kind === "approve"
           ? await kernel.attest(p.id, { actor_id: OPERATOR_ID, capability: "BANK_REVIEW", note: "Reviewed by operator" })
-          : await kernel.deny(p.id, { actor_id: OPERATOR_ID, note: "Denied by operator" });
+          : await kernel.cancel(p.id, { actor_id: OPERATOR_ID, note: "Cancelled by operator" });
       onChanged({ ...p, ...next, id: next.id || p.id });
     } catch (e) {
-      const msg = e instanceof KernelError && e.refusal ? `SETTLEMENT REFUSED · ${e.refusal.invariant}` : e instanceof KernelError && e.notFound && kind === "deny" ? "Deny route not live on this kernel yet" : errorText(e);
+      const msg = e instanceof KernelError && e.refusal ? e.refusal.text || `REFUSED · ${e.refusal.invariant}` : errorText(e);
       setRowError((er) => ({ ...er, [p.id]: msg }));
     } finally {
       setBusy(null);
@@ -38,7 +38,7 @@ export function HoldsQueue({ payments, loading, error, notFound, onChanged, onSe
     <Card data-testid="holds-queue">
       <CardHeader>
         <CardTitle>Holds queue</CardTitle>
-        <p className="text-sm text-muted">Payments waiting on BANK_REVIEW. Approve lifts a hold to eligible; it never releases money by itself.</p>
+        <p className="text-sm text-muted">Payments waiting on BANK_REVIEW. Approve lifts a hold to eligible; it never releases money by itself. Cancel voids every attestation and certificate.</p>
       </CardHeader>
       <CardContent>
         {loading && payments.length === 0 ? (
@@ -84,8 +84,8 @@ export function HoldsQueue({ payments, loading, error, notFound, onChanged, onSe
                       <Button size="sm" disabled={busy === p.id} onClick={() => act(p, "approve")} data-testid="approve-button">
                         Approve as BANK_REVIEW
                       </Button>
-                      <Button size="sm" variant="danger" disabled={busy === p.id} onClick={() => act(p, "deny")} data-testid="deny-button">
-                        Deny
+                      <Button size="sm" variant="danger" disabled={busy === p.id} onClick={() => act(p, "cancel")} data-testid="cancel-button">
+                        Cancel
                       </Button>
                     </div>
                     {rowError[p.id] ? <p className="mt-1 text-right font-mono text-xs text-bad">{rowError[p.id]}</p> : null}

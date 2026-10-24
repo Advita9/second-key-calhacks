@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AuditList } from "./AuditList";
 import { CertificatesLog, certRows } from "./CertificatesLog";
@@ -8,9 +8,10 @@ import { HoldsQueue } from "./HoldsQueue";
 import { PaymentHistory } from "./PaymentHistory";
 import { PolicyPanel } from "./PolicyPanel";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { KernelStatus, MockBadges, useHealth } from "@/components/shared/Health";
 import { roomFromSearch } from "@/lib/config";
-import { isDemoMode, kernel } from "@/lib/kernel/rest";
+import { getOpsToken, isDemoMode, kernel, setOpsToken } from "@/lib/kernel/rest";
 import type { Payment, WsMessage } from "@/lib/kernel/types";
 import { useKernelSocket } from "@/lib/kernel/ws";
 import { useAsync } from "@/lib/useAsync";
@@ -24,6 +25,12 @@ export function OpsView() {
   const [livePayments, setLivePayments] = useState<Record<string, Payment>>({});
   const [liveHits, setLiveHits] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  const [opsToken, setToken] = useState("");
+  useEffect(() => setToken(getOpsToken()), []);
+  const onToken = (t: string) => {
+    setToken(t);
+    setOpsToken(t.trim());
+  };
 
   // Live payment pushes fill the queue even when GET /payments is not available.
   const onMessage = useCallback((m: WsMessage) => {
@@ -86,6 +93,10 @@ export function OpsView() {
           <Badge variant="outline">Policy {health.data?.policy_version ?? "v1"}</Badge>
           {isDemoMode(health.data) ? <Badge variant="accent">Demo mode</Badge> : null}
           <MockBadges mode={health.data?.mode} />
+          <label className="flex items-center gap-2 text-xs text-muted">
+            Ops token
+            <Input type="password" value={opsToken} onChange={(e) => onToken(e.target.value)} placeholder="only if OPS_TOKEN is set" className="h-8 w-48 text-xs" autoComplete="off" data-testid="ops-token" />
+          </label>
         </div>
       </header>
       <HoldsQueue payments={payments} loading={list.loading} error={list.error} notFound={list.notFound} onChanged={onChanged} onSelect={setSelected} />
