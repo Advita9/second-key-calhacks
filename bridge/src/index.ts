@@ -13,6 +13,7 @@ import type { Infer } from 'spacetimedb';
 import TurnRow from './module_bindings/turn_table.js';
 import { KernelClient, KernelError, type TurnResponse } from './kernel.js';
 import { findNewLegitCompletions } from './legit.js';
+import { KERNEL_RETRY, withDeadline, withRetry } from './retry.js';
 import { log, warn } from './log.js';
 import { IDENTITY_FILE, TOKEN_FILE, loadToken, saveIdentityHex, saveToken } from './token.js';
 
@@ -28,6 +29,10 @@ const ROOM_CODE = (process.env.ROOM_CODE ?? 'DEMO').toUpperCase();
 const LEGIT_POLL_MS = Number(process.env.LEGIT_POLL_MS ?? 3_000);
 // Kernel operator token: BRIDGE_TOKEN, falling back to OPS_TOKEN. Sent as X-Ops-Token.
 const OPS_TOKEN = process.env.BRIDGE_TOKEN?.trim() || process.env.OPS_TOKEN?.trim() || undefined;
+
+// Watchdog over the whole kernel hop (all attempts and backoffs). Worst case is
+// transport retries (1 s + 2 s) plus one full timeout; add slack.
+const KERNEL_WATCHDOG_MS = KERNEL_TIMEOUT_MS + 10_000;
 
 const kernel = new KernelClient({ baseUrl: KERNEL_URL, timeoutMs: KERNEL_TIMEOUT_MS, opsToken: OPS_TOKEN });
 
@@ -45,29 +50,6 @@ let legitPrimed = false;
 let lastAuditSeq = 0;
 let conn: DbConnection;
 let subscribed = false;
-
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-async function withRetry<T>(
-  label: string,
-  fn: () => Promise<T>,
-  opts: { attempts: number; baseMs: number; maxMs?: number; retryIf?: (e: unknown) => boolean }
-): Promise<T> {
-  let attempt = 0;
-  for (;;) {
-    attempt += 1;
-    try {
-      return await fn();
-    } catch (err) {
-      const retry = attempt < opts.attempts && (opts.retryIf ? opts.retryIf(err) : true);
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!retry) throw err;
-      const delay = Math.min(opts.maxMs ?? 10_000, opts.baseMs * 2 ** (attempt - 1));
-      warn(`${label}.retry`, { attempt, delayMs: delay, error: msg });
-      await sleep(delay);
-    }
-  }
-}
 
 function failClosed(): TurnResponse {
   return {
@@ -117,20 +99,27 @@ async function processTurn(row: Turn): Promise<void> {
       throw err;
     }
 
-    // 2. kernel hop. Two retries for transport errors and 5xx, then fail closed.
+    // 2. kernel hop. Transport errors and 5xx retry fast (1 s, 2 s); a timeout
+    //    (kernel accepted the request, never answered) fails closed at once.
+    //    A watchdog bounds the whole hop no matter what.
     let result: TurnResponse;
     let failed = false;
+    const hopStarted = Date.now();
     try {
-      result = await withRetry(
-        'kernel.turn',
-        () => kernel.postTurn(roomId, { turn_id: id.toString(), player_id: playerHex, text: row.text, audio_url: row.audioUrl || undefined }),
-        { attempts: 3, baseMs: 500, retryIf: e => !(e instanceof KernelError) || e.status === undefined || e.status >= 500 }
+      result = await withDeadline(
+        withRetry(
+          'kernel.turn',
+          () => kernel.postTurn(roomId, { turn_id: id.toString(), player_id: playerHex, text: row.text, audio_url: row.audioUrl || undefined }),
+          KERNEL_RETRY
+        ),
+        KERNEL_WATCHDOG_MS
       );
-      log('kernel.turn.ok', { turn: id, stage: result.stage, persuaded: result.persuaded, decision: result.outcome?.decision ?? 'NONE' });
+      log('kernel.turn.ok', { turn: id, stage: result.stage, persuaded: result.persuaded, decision: result.outcome?.decision ?? 'NONE', ms: Date.now() - hopStarted });
     } catch (err) {
       failed = true;
       result = failClosed();
-      warn('kernel.turn.failclosed', { turn: id, error: err instanceof Error ? err.message : String(err) });
+      const kind = err instanceof KernelError ? err.kind : err instanceof Error ? err.name : 'unknown';
+      warn('kernel.turn.failclosed', { turn: id, kind, ms: Date.now() - hopStarted, error: err instanceof Error ? err.message : String(err) });
     }
 
     // 3. write back. record_outcome is the row the e2e and the board wait on.
@@ -185,14 +174,18 @@ async function mirrorAudit(roomId: string): Promise<void> {
 // that did not come from a room as "legit completed" on the active room's
 // scoreboard. The first poll only primes the seen set so payments submitted
 // before the bridge started are not counted.
+let legitPollInFlight = false;
 async function pollLegitCompletions(): Promise<void> {
-  if (!subscribed) return;
+  if (!subscribed || legitPollInFlight) return;
+  legitPollInFlight = true;
   let payments;
   try {
     payments = await kernel.listPayments(200);
   } catch (err) {
     warn('legit.poll.skip', { error: err instanceof Error ? err.message : String(err) });
     return;
+  } finally {
+    legitPollInFlight = false;
   }
   const fresh = findNewLegitCompletions(payments, seenSubmitted, processedRooms);
   if (!legitPrimed) {

@@ -67,7 +67,20 @@ npm run submit-turn -- --room DEMO --handle probe --text "..."   # scripted atta
 ```
 Env: `KERNEL_URL` (default `http://127.0.0.1:8000`), `SPACETIME_URI`, `SPACETIME_DB`, `ROOM_CODE` (default `DEMO`, the room whose scoreboard gets legit completions), `BRIDGE_TOKEN` or `OPS_TOKEN` (sent as `X-Ops-Token` on every kernel request; `BRIDGE_TOKEN` wins, falls back to `OPS_TOKEN`; the kernel requires it on `/rooms/{room}/turns` when either is set), `KERNEL_TIMEOUT_MS` (default 25000, matches the real-mode turn budget), `LEGIT_POLL_MS` (default 3000).
 
-Turn loop: subscribe `SELECT * FROM turn WHERE status = 'queued'` -> `claim_turn` -> `POST ${KERNEL_URL}/rooms/{room}/turns {turn_id, player_id, text}` (25 s timeout, 2 retries with backoff on transport errors and 5xx) -> `record_reply` -> `record_outcome` (`outcome: null` -> decision `NONE`) -> `mirror_audit` for seqs above the last seen from `GET /audit?limit=50`. Kernel error, timeout or malformed body -> `record_outcome(stage 10, HOLD, [], "kernel unavailable, fail closed")`. Idempotent per turn id in-process, and `record_outcome` in the module ignores a second outcome for the same turn. Every hop is one log line.
+Turn loop: subscribe `SELECT * FROM turn WHERE status = 'queued'` -> `claim_turn` -> `POST ${KERNEL_URL}/rooms/{room}/turns {turn_id, player_id, text}` -> `record_reply` -> `record_outcome` (`outcome: null` -> decision `NONE`) -> `mirror_audit` for seqs above the last seen from `GET /audit?limit=50`. Kernel error, timeout or malformed body -> `record_outcome(stage 10, HOLD, [], "kernel unavailable, fail closed")`. Idempotent per turn id in-process, and `record_outcome` in the module ignores a second outcome for the same turn. Every hop is one log line.
+
+Kernel hop policy (`bridge/src/retry.ts`, `kernel.ts`): one `AbortController` per attempt, cleared in `finally`. Transport errors (connection refused, reset, socket closed mid-request) and 5xx retry with backoff 1 s, 2 s (3 attempts). A timeout (kernel accepted the request and never answered within `KERNEL_TIMEOUT_MS`) is never retried. Parse errors and 4xx are never retried. A watchdog (`KERNEL_TIMEOUT_MS` + 10 s) bounds the whole hop as a last resort. Measured 2026-10-24 (local server, mock kernel, time from `submit_turn` to `outcome.recorded`):
+
+| kernel state | fail-closed row after |
+|---|---|
+| healthy (mock) | 0.6 s (real reply, decision NONE) |
+| down before the POST (ECONNREFUSED) | 3.5 s |
+| killed 0.6 s into the request (socket closed) | 4.1 s |
+| accepts the connection, never answers | 25.5 s (one attempt, 25 s budget) |
+
+Before this fix a hung kernel took 76.9 s (the 25 s timeout was retried twice). Node tests in `bridge/src/kernel.test.ts` cover the hung server, ECONNREFUSED, socket closed mid-request, the retry classification and the watchdog.
+
+Kill-test warning: `lsof -ti :8000 | xargs kill` lists BOTH ends of every TCP connection on :8000, so it kills the bridge (whose client socket is connected to the kernel) along with the kernel. That looks like "the bridge logged nothing" because the bridge is gone. Kill only the listener: `lsof -ti TCP:8000 -sTCP:LISTEN | xargs kill`.
 
 Legit completions (the second headline number): every 3 s the bridge does a read-only `GET /payments?limit=200`. A payment that is `SUBMITTED`, not seen before, and whose `conversation_id` is not a room conversation (`room_<CODE>` from `kernel/rooms.py`, or a bare room code, or any `room_` prefix) triggers `record_legit_completed(ROOM_CODE)` and one log line `legit.completed payment=... room=...`. A `SUBMITTED` payment that came from a room turn is a breach, already counted by `record_outcome(stage 100)`, and is never counted as legit. The first poll only primes the seen set, so payments submitted before the bridge started are not counted. The seen set lives in memory. Logic is pure in `bridge/src/legit.ts` with node tests in `legit.test.ts`.
 

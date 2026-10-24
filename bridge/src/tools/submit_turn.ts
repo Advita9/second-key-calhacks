@@ -23,6 +23,7 @@ const tokenFile = resolve(arg('token-file', '.attacker-token'));
 const uri = process.env.SPACETIME_URI ?? 'ws://127.0.0.1:3000';
 const db = process.env.SPACETIME_DB ?? 'second-key';
 
+let t0 = Date.now();
 const deadline = setTimeout(() => {
   console.error(`timeout: no outcome within ${waitS}s`);
   process.exit(1);
@@ -44,20 +45,28 @@ const conn = DbConnection.builder()
     await c.reducers.joinRoom({ code: room, handle });
     console.log(`joined ${room} as ${handle}`);
     let myTurnId: bigint | null = null;
-    c.db.myOutcomes.onInsert((_ctx, row) => {
-      if (myTurnId !== null && row.turnId !== myTurnId) return;
-      console.log(JSON.stringify({ turnId: row.turnId.toString(), stage: row.stage, decision: row.decision, keys: Object.keys(row) }));
+    const finish = (row: { turnId: bigint; stage: number; decision: string }) => {
+      console.log(JSON.stringify({ turnId: row.turnId.toString(), stage: row.stage, decision: row.decision, keys: Object.keys(row), ms: Date.now() - t0 }));
       clearTimeout(deadline);
       c.disconnect();
       process.exit(0);
+    };
+    // Only our own turn counts. Rows that already exist when the subscription is
+    // applied (earlier turns by this identity) are ignored.
+    c.db.myOutcomes.onInsert((_ctx, row) => {
+      if (myTurnId !== null && row.turnId === myTurnId) finish(row);
     });
     c.subscriptionBuilder()
       .onApplied(async () => {
         const before = new Set(Array.from(c.db.turn.iter()).map(t => t.id));
+        t0 = Date.now();
         await c.reducers.submitTurn({ roomId: room, text });
         const mine = Array.from(c.db.turn.iter()).find(t => !before.has(t.id) && t.player.isEqual(identity));
         myTurnId = mine ? mine.id : null;
         console.log(`submitted turn ${myTurnId ?? '?'}`);
+        // The outcome may have landed between submit and this line.
+        const already = myTurnId !== null ? c.db.myOutcomes.turnId.find(myTurnId) : undefined;
+        if (already) finish(already);
       })
       .subscribe(['SELECT * FROM my_outcomes', 'SELECT * FROM turn']);
   })

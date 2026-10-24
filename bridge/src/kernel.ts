@@ -32,10 +32,24 @@ export interface AuditEvent {
   hash: string;
 }
 
+export type KernelErrorKind = 'timeout' | 'transport' | 'http' | 'parse';
+
 export class KernelError extends Error {
-  constructor(message: string, readonly status?: number) {
+  constructor(
+    message: string,
+    readonly kind: KernelErrorKind,
+    readonly status?: number
+  ) {
     super(message);
     this.name = 'KernelError';
+  }
+  /** Connection refused, reset, closed mid-response: worth a quick retry. */
+  get isTransport(): boolean {
+    return this.kind === 'transport';
+  }
+  /** The kernel accepted the request and never answered within the budget: do not retry. */
+  get isTimeout(): boolean {
+    return this.kind === 'timeout';
   }
 }
 
@@ -82,7 +96,7 @@ export class KernelClient {
     const url = `${this.baseUrl}/audit?limit=${limit}`;
     const body = await this.#request('GET', url);
     const events: unknown = Array.isArray(body) ? body : (body as { events?: unknown })?.events;
-    if (!Array.isArray(events)) throw new KernelError('audit: unexpected shape');
+    if (!Array.isArray(events)) throw new KernelError('audit: unexpected shape', 'parse');
     return events.map(parseAuditEvent);
   }
 
@@ -91,7 +105,7 @@ export class KernelClient {
     const url = `${this.baseUrl}/payments?limit=${limit}`; // GET only (see check-no-payments.sh)
     const body = await this.#request('GET', url, undefined, 5_000, true);
     const list: unknown = (body as { payments?: unknown })?.payments;
-    if (!Array.isArray(list)) throw new KernelError('payments: unexpected shape');
+    if (!Array.isArray(list)) throw new KernelError('payments: unexpected shape', 'parse');
     return list.map(p => {
       const r = (typeof p === 'object' && p !== null ? p : {}) as Record<string, unknown>;
       return {
@@ -103,9 +117,13 @@ export class KernelClient {
     });
   }
 
+  // One attempt. The AbortController is armed per attempt and always cleared in
+  // finally, so a hung kernel (connection accepted, no response) rejects at
+  // exactly the timeout, and a socket that dies mid-request rejects immediately.
   async #request(method: 'GET' | 'POST', url: string, json?: unknown, timeoutMs?: number, quiet = false): Promise<unknown> {
+    const budget = timeoutMs ?? this.timeoutMs;
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), timeoutMs ?? this.timeoutMs);
+    const timer = setTimeout(() => ctl.abort(new Error(`timeout after ${budget}ms`)), budget);
     const started = Date.now();
     try {
       const headers: Record<string, string> = {};
@@ -119,21 +137,35 @@ export class KernelClient {
       });
       const text = await res.text();
       if (!quiet || !res.ok) log('kernel.http', { method, url, status: res.status, ms: Date.now() - started });
-      if (!res.ok) throw new KernelError(`${method} ${url} -> ${res.status}: ${text.slice(0, 200)}`, res.status);
+      if (!res.ok) throw new KernelError(`${method} ${url} -> ${res.status}: ${text.slice(0, 200)}`, 'http', res.status);
       try {
         return JSON.parse(text) as unknown;
       } catch {
-        throw new KernelError(`${method} ${url}: non-JSON body`);
+        throw new KernelError(`${method} ${url}: non-JSON body`, 'parse');
       }
     } catch (err) {
       if (err instanceof KernelError) throw err;
-      const msg = err instanceof Error ? err.message : String(err);
-      warn('kernel.http.error', { method, url, error: msg, ms: Date.now() - started });
-      throw new KernelError(`${method} ${url}: ${msg}`);
+      const ms = Date.now() - started;
+      const kind: KernelErrorKind = ctl.signal.aborted ? 'timeout' : 'transport';
+      const msg = describeFetchError(err, ctl.signal.aborted ? `timeout after ${budget}ms` : undefined);
+      warn('kernel.http.error', { method, url, kind, error: msg, ms });
+      throw new KernelError(`${method} ${url}: ${msg}`, kind);
     } finally {
       clearTimeout(timer);
     }
   }
+}
+
+// undici wraps the real reason in `cause` ("fetch failed" -> ECONNREFUSED etc.).
+export function describeFetchError(err: unknown, override?: string): string {
+  if (override) return override;
+  if (err instanceof Error) {
+    const cause = (err as Error & { cause?: unknown }).cause;
+    const causeMsg = cause instanceof Error ? cause.message : cause !== undefined ? String(cause) : '';
+    const code = cause && typeof cause === 'object' && 'code' in cause ? String((cause as { code: unknown }).code) : '';
+    return [err.message, code || causeMsg].filter(Boolean).join(': ');
+  }
+  return String(err);
 }
 
 const DECISIONS: Decision[] = ['ALLOW', 'HOLD', 'DENY', 'REFUSED', 'NONE'];
@@ -142,16 +174,16 @@ const STAGES = [0, 10, 40, 60, 70, 90, 100];
 // Strict parse. Anything malformed is a kernel error, which the loop turns
 // into a fail-closed HOLD outcome.
 export function parseTurnResponse(body: unknown): TurnResponse {
-  if (typeof body !== 'object' || body === null) throw new KernelError('turn: not an object');
+  if (typeof body !== 'object' || body === null) throw new KernelError('turn: not an object', 'parse');
   const b = body as Record<string, unknown>;
   const stage = Number(b.stage);
-  if (!STAGES.includes(stage)) throw new KernelError(`turn: bad stage ${String(b.stage)}`);
-  if (typeof b.margaret_text !== 'string') throw new KernelError('turn: margaret_text missing');
+  if (!STAGES.includes(stage)) throw new KernelError(`turn: bad stage ${String(b.stage)}`, 'parse');
+  if (typeof b.margaret_text !== 'string') throw new KernelError('turn: margaret_text missing', 'parse');
   let outcome: TurnResponse['outcome'] = null;
   if (b.outcome !== undefined && b.outcome !== null) {
     const o = b.outcome as Record<string, unknown>;
     const decision = String(o.decision) as Decision;
-    if (!DECISIONS.includes(decision)) throw new KernelError(`turn: bad decision ${decision}`);
+    if (!DECISIONS.includes(decision)) throw new KernelError(`turn: bad decision ${decision}`, 'parse');
     const ruleIds = Array.isArray(o.rule_ids) ? o.rule_ids.map(String) : [];
     outcome = { decision, rule_ids: ruleIds, refusal: typeof o.refusal === 'string' ? o.refusal : null };
   }
