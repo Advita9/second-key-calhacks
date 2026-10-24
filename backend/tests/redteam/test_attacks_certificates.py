@@ -22,12 +22,11 @@ from tests.factories import account_context, payment_in
 ALLOW_CTX = account_context(prior_payees=["ext_bay_roofing"], mule_list=[])
 
 
-def _kernel(**kw: object) -> Kernel:
+def _kernel() -> Kernel:
     return Kernel(
         ":memory:",
         policy=load_policy(V1_PATH),
         clock=FakeClock(datetime(2026, 10, 25, 9, 0, tzinfo=UTC)),
-        **kw,
     )
 
 

@@ -1,4 +1,5 @@
-"""FOUND (red): a compromised / zero-signal extractor lets scam case S-05 reach SUBMITTED.
+"""FOUND, then FIXED (02405d8, rule H-07; now green): a compromised / zero-signal extractor let
+scam case S-05 reach SUBMITTED.
 
 The attack in the agent brief: "run the 20 scam fixtures with the extractor returning zero
 signals; rules alone (H-01, H-03, D-01) must still HOLD or DENY most of them. Report how many
@@ -25,10 +26,13 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from kernel.clock import FakeClock
 from kernel.llm.types import EvidenceItem, NullExtractor
-from kernel.models import AccountContext, Capability, PaymentIn, State
+from kernel.models import AccountContext, Capability, Invariant, PaymentIn, Refusal, State
 from kernel.policy.engine import V1_PATH, load_policy
 from kernel.rail import NullTransferRail
 from kernel.service import Kernel
@@ -36,7 +40,7 @@ from kernel.service import Kernel
 CASES = Path(__file__).resolve().parents[3] / "fixtures" / "cases"
 
 
-def _load(case_id: str) -> dict:
+def _load(case_id: str) -> dict[str, Any]:
     raw = json.loads((CASES / f"{case_id}.json").read_text("utf-8"))
     assert isinstance(raw, dict)
     return raw
@@ -72,12 +76,28 @@ def test_s05_scam_must_not_submit_with_a_blind_extractor() -> None:
         f"S-05 decided {decision.outcome.value} {decision.rule_ids} with zero signals: "
         "A-01 allowed a scam because known-biller ALLOW consults no signals"
     )
-    assert payment.state is not State.ELIGIBLE_TO_SUBMIT
+    assert payment.state is State.HELD
 
-    # And it must not be completable end to end.
-    if payment.state is State.ELIGIBLE_TO_SUBMIT:
-        cert = kernel.issue_certificate(payment.id, "ops", Capability.BANK_REVIEW)
-        released = kernel.release(payment.id, cert.id, cert.nonce)
-        assert released.state is not State.SUBMITTED, (
-            "UNAUTHORIZED RELEASE: compromised extractor let scam S-05 reach SUBMITTED"
-        )
+    # And it must not be completable end to end: no certificate can be issued on a HELD
+    # payment, so the compromised model has no path to SUBMITTED.
+    with pytest.raises(Refusal) as e:
+        kernel.issue_certificate(payment.id, "ops", Capability.BANK_REVIEW)
+    assert e.value.invariant is Invariant.I1_NOT_ELIGIBLE
+    assert kernel.get(payment.id).payment.state is State.HELD
+
+
+def test_s05_holds_on_facts_with_blind_extractor_via_h07() -> None:
+    """Regression for the fix (02405d8): H-07 holds person-to-person transfers on irreversible
+    rails above $1,000 on facts alone, so S-05 (prior payee, $1,500 ZELLE) is HELD with zero
+    signals and the known-biller ALLOW (A-01) no longer wins."""
+    case = _load("S-05")
+    kernel = _kernel()
+    p_in = PaymentIn.model_validate(
+        {**case["payment"], "conversation_id": case["id"]}, strict=False
+    )
+    ctx = AccountContext.model_validate(case["account_context"], strict=False)
+    payment, decision = kernel.create_payment(p_in, ctx, ())
+    assert decision.outcome.value == "HOLD"
+    assert "H-07" in decision.rule_ids
+    assert payment.state is State.HELD
+    assert kernel.audit_verify().ok

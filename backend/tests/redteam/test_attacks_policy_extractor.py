@@ -2,7 +2,7 @@
 
 - The 20 scam fixtures with a zero-signal extractor: all 20 HOLD or DENY on facts alone
   (19 when found; H-07 closed S-05, see docs/DECISIONS.md).
-  Only S-05 relies on signals (documented in test_found_compromised_extractor_allows_s05).
+  S-05 relied on signals when found; see test_found_compromised_extractor_allows_s05.
 - Prompt injection in conversation text cannot force or lower signals.
 - A foreign source_id is rejected by the per-request Literal; sanitize drops bad spans and bad
   kinds and clamps scores; a crafted high-score signal only makes the outcome stronger.
@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pydantic
 import pytest
@@ -39,16 +40,16 @@ CASES = Path(__file__).resolve().parents[3] / "fixtures" / "cases"
 POLICY = load_policy(V1_PATH)
 
 
-def _scam_cases() -> list[dict]:
-    out = []
+def _scam_cases() -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
     for f in sorted(CASES.glob("S-*.json")):
         raw = f.read_text("utf-8")
-        case = pydantic.TypeAdapter(dict).validate_json(raw)
+        case = pydantic.TypeAdapter(dict[str, Any]).validate_json(raw)
         out.append(case)
     return out
 
 
-def test_zero_signal_holds_or_denies_19_of_20_scams() -> None:
+def test_zero_signal_holds_or_denies_all_20_scams() -> None:
     results = {}
     for case in _scam_cases():
         p = PaymentIn.model_validate(

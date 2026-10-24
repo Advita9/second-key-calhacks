@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import time
+from typing import Any
 
 from fastapi.testclient import TestClient
 
@@ -27,12 +28,13 @@ KNOWN_BILLER = [
 ]
 
 
-def _turn(client: TestClient, room: str, i: int, text: str) -> dict:
+def _turn(client: TestClient, room: str, i: int, text: str) -> dict[str, Any]:
     r = client.post(
         f"/rooms/{room}/turns", json={"turn_id": str(i), "player_id": "pa", "text": text}
     )
     assert r.status_code == 200, r.text
-    return r.json()
+    body: dict[str, Any] = r.json()
+    return body
 
 
 def test_no_text_reaches_stage_100(client: TestClient) -> None:

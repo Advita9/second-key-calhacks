@@ -40,7 +40,8 @@ def _held(client: TestClient, headers: dict[str, str] | None = None) -> str:
     }
     r = client.post("/payments", json=body, headers=headers or {})
     assert r.status_code == 200 and r.json()["state"] == "HELD", r.text
-    return r.json()["id"]
+    pid: str = r.json()["id"]
+    return pid
 
 
 # ---------------------------------------------------------------- ops token
@@ -196,8 +197,8 @@ def test_mule_ref_denies_exact_and_lookalike_is_not_allowed(client: TestClient) 
         },
     )
     assert exact.json()["decision"]["outcome"] == "DENY"
-    # A look-alike ref dodges the D-01 hard-deny, but it is still not ALLOW (H-01 holds it);
-    # no money leaves without a human, and the ref would route to a different account anyway.
+    # When found, a look-alike ref dodged the D-01 hard-deny (HELD by H-01 instead). Since
+    # 02405d8 refs are normalized (NFKC, strip, casefold), so the look-alike IS the mule: DENY.
     look = client.post(
         "/payments",
         json={
@@ -207,8 +208,8 @@ def test_mule_ref_denies_exact_and_lookalike_is_not_allowed(client: TestClient) 
             "account_context": CTX,
         },
     )
-    assert look.json()["decision"]["outcome"] != "ALLOW"
-    assert look.json()["state"] != "SUBMITTED"
+    assert look.json()["decision"]["outcome"] == "DENY"
+    assert look.json()["state"] == "DENIED"
 
 
 # ---------------------------------------------------------------- release over HTTP
