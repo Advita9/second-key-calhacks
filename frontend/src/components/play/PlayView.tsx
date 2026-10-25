@@ -131,7 +131,7 @@ export function PlayView() {
     try {
       const r = await room.client.submitTurn(text, audioUrl);
       if (r?.turnId) setMyTurnIds((s) => new Set(s).add(r.turnId));
-      if (r?.stage) setStage((prev) => (r.stage > prev ? r.stage : prev));
+      if (r?.stage != null) setStage(r.stage as Stage);
       if (r?.margaretText) {
         // Bridge-style inline reply (when the submit route answers synchronously).
         setMessages((m) => [...m, { id: `m-${r.turnId}`, from: "margaret", text: r.margaretText, audioUrl: r.margaretAudioUrl, persuaded: r.persuaded, mock: voiceMock }]);

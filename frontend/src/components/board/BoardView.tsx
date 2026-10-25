@@ -59,7 +59,16 @@ export function BoardView() {
           text: mm.text ?? "",
           audioUrl: mm.audio_url ?? null,
           persuaded: !!mm.persuaded,
-          meter: mm.persuaded ? 100 : Math.max(STAGE_METER[mm.stage ?? 0] ?? 0, Math.min(45, (prev?.meter ?? 0) + 8)),
+          meter: mm.persuaded
+  ? 100
+  : Math.min(
+      100,
+      Math.max(
+        10,
+        prev?.meter ?? 10,
+        STAGE_METER[mm.stage ?? 0] ?? 0,
+      ) + 8,
+    ),
           seq: next(),
         }));
       } else if (m.type === "payment") {

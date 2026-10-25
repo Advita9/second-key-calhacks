@@ -11,6 +11,7 @@ from api import deps
 from api.room_ws import TURN_TIMEOUT_S
 from tests.api.conftest import make_client
 from tests.unit.test_rooms import WARM_FEAR
+from api.routes import rooms
 
 SHAPE = {"margaret_text", "margaret_audio_url", "persuaded", "payment_id", "stage", "outcome"}
 
@@ -253,14 +254,26 @@ def test_scripted_attack_needs_ops_token_when_set(
     deps.reset()
 
 
-def test_form_path_rate_limited_per_address(client: TestClient) -> None:
+def test_form_path_rate_limited_per_address(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Rotating player_id does not buy more turns: a burst of 3 per 3 s per peer address."""
     from api.ratelimit import ADDRESS_BURST, WindowLimiter
+
+    import api.ratelimit as ratelimit
+
+    monkeypatch.setattr(ratelimit.time, "monotonic", lambda: 100.0)
 
     codes = [
         client.post("/rooms/ADDR1/turns", data={"text": "hello", "player_id": f"r{i}"}).status_code
         for i in range(ADDRESS_BURST + 2)
     ]
+
+    print("RATE LIMIT DEBUG:", codes)
+    print(
+        "ADDRESS HITS:",
+        rooms.form_address_limiter._hits,
+    )
     assert codes[:ADDRESS_BURST] == [200] * ADDRESS_BURST and set(codes[ADDRESS_BURST:]) == {429}
     # The bridge JSON path is not address-limited (it is token-gated instead).
     for i in range(ADDRESS_BURST + 2):

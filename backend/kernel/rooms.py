@@ -25,6 +25,8 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from pathlib import Path
 from typing import Any, Literal
 
+from kernel.llm.heuristics import scan
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from kernel.llm.types import EvidenceItem
@@ -167,6 +169,7 @@ class Room(BaseModel):
     turn_count: int = 0
     ctx: AccountContext
     payee_directory: dict[str, str] = Field(default_factory=dict)
+    scam_cues: set[str] = Field(default_factory=set)
 
 
 class TurnResult(BaseModel):
@@ -345,14 +348,35 @@ class SessionStore:
         # Model calls outside the room lock: output is data only.
         turn = self.margaret.reply(history, text, persuasion)
         reply = turn.reply.replace("—", ",")
-        persuaded = turn.persuasion > DRAFT_THRESHOLD
+
+        # Track distinct cues for the display score only. Cues must not change
+        # progression or payment eligibility; those remain model/policy-driven.
+        hits = scan(text)
+        with self._lock:
+            room.scam_cues.update(hit.kind for hit in hits)
+            cue_count = len(room.scam_cues)
+
+        effective_persuasion = turn.persuasion
+        persuaded = effective_persuasion > DRAFT_THRESHOLD
+
+        log.info(
+            "room.progression",
+            extra={
+                "room_id": room.id,
+                "model_persuasion": round(turn.persuasion, 3),
+                "effective_persuasion": round(effective_persuasion, 3),
+                "cue_count": cue_count,
+                "cue_categories": sorted(room.scam_cues),
+                "persuaded": persuaded,
+            },
+)
 
         with self._lock:
             n = len(room.history) + 1
             caller = EvidenceItem(id=f"EV-{n:04d}", speaker="caller", text=text)
             margaret = EvidenceItem(id=f"EV-{n + 1:04d}", speaker="margaret", text=reply)
             room.history.extend([caller, margaret])
-            room.persuasion = turn.persuasion
+            room.persuasion = effective_persuasion
             room.turn_count += 1
             transcript = tuple(room.history)
             payment = self.current_payment(room)
@@ -405,7 +429,7 @@ class SessionStore:
             evidence_id=caller.id,
             margaret_text=reply,
             margaret_audio_url=audio,
-            persuasion=turn.persuasion,
+            persuasion=effective_persuasion,
             persuaded=persuaded,
             payment_id=payment.id if payment is not None else None,
             payment_created=created,

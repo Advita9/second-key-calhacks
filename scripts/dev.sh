@@ -101,14 +101,19 @@ start_frontend() {
     echo "frontend    already running on :3001 (left as is)"; return 0
   fi
   stop_one "$PID_DIR/frontend.pid" frontend
-  [ -d "$ROOT/frontend/node_modules" ] || (cd "$ROOT/frontend" && npm install --silent)
-  (cd "$ROOT/frontend" && NEXT_PUBLIC_ROOM_BACKEND="${ROOM_BACKEND:-memory}" \
-      NEXT_PUBLIC_SPACETIME_URI="${SPACETIME_URI:-ws://127.0.0.1:3000}" NEXT_PUBLIC_SPACETIME_DB="${SPACETIME_DB:-second-key}" \
-      nohup npm run dev -- -p 3001 -H 0.0.0.0 >"$PID_DIR/frontend.log" 2>&1 & echo $! >"$PID_DIR/frontend.pid")
+  [ -d "$ROOT/final-frontend/node_modules" ] || (cd "$ROOT/final-frontend" && npm install --silent)
+  (
+    cd "$ROOT/final-frontend"
+    NEXT_PUBLIC_ROOM_BACKEND="${ROOM_BACKEND:-spacetime}" \
+    NEXT_PUBLIC_HAS_BINDINGS=1 \
+    NEXT_PUBLIC_SPACETIME_URI="${SPACETIME_URI:-ws://127.0.0.1:3000}" \
+    NEXT_PUBLIC_SPACETIME_DB="${SPACETIME_DB:-second-key}" \
+    nohup npm run dev -- -p 3001 -H 0.0.0.0 >"$PID_DIR/frontend.log" 2>&1 &
+    echo $! >"$PID_DIR/frontend.pid"
+  )
   wait_http http://127.0.0.1:3001/board 120 || echo "frontend slow to start; see .claude/frontend.log"
   echo "frontend    http://localhost:3001/board  /play  /ops   log: .claude/frontend.log"
 }
-
 prerender_audio() {
   (cd "$ROOT/backend" && nohup uv run python ../scripts/prerender_audio.py >"$PID_DIR/prerender.log" 2>&1 &)
   echo "audio       pre-rendering Margaret's lines in the background (TTS_PROVIDER=${TTS_PROVIDER:-mock}); log: .claude/prerender.log"

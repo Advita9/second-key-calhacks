@@ -52,6 +52,7 @@ class Settings:
     eval_results_path: Path
     room_backend: str
     frontend_origin: str
+    app_env: str
 
     @property
     def ops_token_set(self) -> bool:
@@ -72,8 +73,12 @@ def load_settings(environ: Mapping[str, str] | None = None) -> Settings:
     policy = env.get("KERNEL_POLICY", "").strip()
     eval_path = env.get("EVAL_RESULTS", "").strip()
     room = env.get("ROOM_BACKEND", "").strip().lower() or "memory"
+    app_env = env.get("APP_ENV", "development").strip().lower()
+    if app_env not in {"development", "production"}:
+        raise ValueError("APP_ENV must be 'development' or 'production'")
     return Settings(
         env=env,
+        app_env=app_env,
         demo_mode=truthy(env.get("DEMO_MODE")),
         ops_token=env.get("OPS_TOKEN", "").strip(),
         bridge_token=env.get("BRIDGE_TOKEN", "").strip() or env.get("OPS_TOKEN", "").strip(),

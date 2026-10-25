@@ -34,56 +34,72 @@ export function PlayView() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [myTurnIds, setMyTurnIds] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<{ text: string; kind: "error" | "info" } | null>(null);
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [stage, setStage] = useState<Stage>(0);
+  const [activeTurnIds, setActiveTurnIds] = useState<Set<string>>(new Set());
 
   // Resume a session saved by the client (sessionStorage) after reload.
+  // Always require an explicit username entry on page load.
   useEffect(() => {
-    try {
-      const saved = window.sessionStorage.getItem(`sk:player:${roomCode}`);
-      if (saved) {
-        const j = JSON.parse(saved) as { handle?: string };
-        if (j.handle) setHandle(j.handle);
-      }
-    } catch {
-      // ignore
-    }
+    setHandle(null);
   }, [roomCode]);
 
   // Margaret's replies and the bank's outcome for my own turns come from the room feed.
   // The attacker snapshot only carries my turns, replies and outcomes (stage + decision, no rule ids).
   const snap = room.snapshot;
+
   const voiceMock = health.data?.mode.tts === "mock";
+
   useEffect(() => {
-    const myId = room.client.myId();
-    const ownTurns = new Set([...myTurnIds, ...snap.turns.filter((t) => !myId || t.player === myId).map((t) => t.id)]);
-    const mine = snap.replies.filter((r) => ownTurns.has(r.turnId));
-    const outs = snap.myOutcomes.filter((o) => ownTurns.has(o.turnId) && (o.decision === "HOLD" || o.decision === "DENY"));
-    const repliedTurns = new Set(mine.map((r) => r.turnId));
-    if (mine.length === 0 && outs.length === 0) return;
+    const active = new Set(activeTurnIds);
+    if (active.size === 0) return;
+
+    const replies = snap.replies.filter((r) => active.has(r.turnId));
+    const outcomes = snap.myOutcomes.filter(
+      (o) =>
+        active.has(o.turnId) &&
+        (o.decision === "HOLD" || o.decision === "DENY")
+    );
+
     setMessages((prev) => {
       const seen = new Set(prev.map((m) => m.id));
       const add: ChatMessage[] = [];
-      for (const r of mine) {
+
+      for (const r of replies) {
         if (seen.has(`m-${r.turnId}`)) continue;
-        add.push({ id: `m-${r.turnId}`, from: "margaret", text: r.text, audioUrl: r.audioUrl || null, persuaded: r.persuaded, mock: voiceMock });
+
+        add.push({
+          id: `m-${r.turnId}`,
+          from: "margaret",
+          text: r.text,
+          audioUrl: r.audioUrl || null,
+          persuaded: r.persuaded,
+          mock: voiceMock,
+        });
       }
-      for (const o of outs) {
+
+      const replied = new Set(replies.map((r) => r.turnId));
+
+      for (const o of outcomes) {
         if (seen.has(`b-${o.turnId}`)) continue;
-        // A HOLD with no Margaret reply is the bridge's fail-closed row: the kernel never answered.
-        const failClosed = o.decision === "HOLD" && !repliedTurns.has(o.turnId);
+        if (o.decision === "HOLD" && !replied.has(o.turnId)) continue;
+
         add.push({
           id: `b-${o.turnId}`,
           from: "bank",
-          text: failClosed ? "The bank did not answer. Nothing was sent." : o.decision === "HOLD" ? "The bank put this payment on hold. A reviewer will look at it." : "The bank denied this payment.",
+          text:
+            o.decision === "HOLD"
+              ? "The bank put this payment on hold. A reviewer will look at it."
+              : "The bank denied this payment.",
         });
       }
+
       return add.length ? [...prev, ...add] : prev;
     });
-  }, [snap.turns, snap.replies, snap.myOutcomes, myTurnIds, room.client, voiceMock]);
+  }, [activeTurnIds, snap.replies, snap.myOutcomes, voiceMock]);
+
 
   const waiting = useMemo(() => {
     const last = messages[messages.length - 1];
@@ -138,7 +154,9 @@ export function PlayView() {
     setNotice(null);
     try {
       const r = await room.client.submitTurn(text, audioUrl);
-      if (r?.turnId) setMyTurnIds((s) => new Set(s).add(r.turnId));
+      if (r?.turnId) {
+  setActiveTurnIds((s) => new Set(s).add(r.turnId));
+}
       if (r?.stage) setStage((prev) => (r.stage > prev ? r.stage : prev));
       if (r?.margaretText) {
         setMessages((m) => [...m, { id: `m-${r.turnId}`, from: "margaret", text: r.margaretText, audioUrl: r.margaretAudioUrl, persuaded: r.persuaded, mock: voiceMock }]);

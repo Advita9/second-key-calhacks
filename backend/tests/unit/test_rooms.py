@@ -64,6 +64,21 @@ def test_shared_evidence_loaded() -> None:
     assert all(e.speaker == "reference" for e in ev)
 
 
+def test_scam_cues_accumulate_across_turns(store: SessionStore) -> None:
+    room = store.room("demo")
+
+    # Distinct manipulation categories should accumulate.
+    for cue in (
+        "This is urgent, act immediately.",
+        "Do not tell your family.",
+        "I am an officer investigating this case.",
+    ):
+        store.take_turn("demo", f"cue-{room.turn_count}", "player", cue)
+
+    assert room.scam_cues
+    assert len(room.scam_cues) >= 3
+
+
 @pytest.mark.parametrize(
     ("persuaded", "state", "stage"),
     [

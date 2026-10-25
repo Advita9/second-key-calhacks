@@ -106,6 +106,15 @@ def create_app() -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         bus.bind_loop(asyncio.get_running_loop())
         settings = deps.get_settings()
+        if settings.app_env == "production":
+            if not settings.ops_token_set:
+                raise RuntimeError(
+                    "OPS_TOKEN must be configured when APP_ENV=production"
+                )
+            if settings.demo_mode:
+                raise RuntimeError(
+                    "DEMO_MODE must be disabled when APP_ENV=production"
+                )
         set_stt(make_stt(settings.env))
         log.info(
             "api.start",

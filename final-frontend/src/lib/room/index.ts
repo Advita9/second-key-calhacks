@@ -33,8 +33,7 @@ function makeLazySpacetime(): RoomClient {
         await c.connect(o);
         inner = c;
       } catch (e) {
-        // Only when SpacetimeDB itself is unreachable: fall back to the kernel memory room and say so.
-        console.warn("[room] SpacetimeDB connect failed, falling back to the kernel memory room:", e);
+        alert("SpacetimeDB connection failed: " + String(e));
         await fallback.connect(o);
         inner = fallback;
       }

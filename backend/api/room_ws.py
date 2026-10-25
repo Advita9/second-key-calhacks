@@ -250,7 +250,12 @@ class RoomHub:
         except Exception as e:  # noqa: BLE001 - any failure fails closed
             failed = True
             result = normalize_turn_response(fail_closed_response())
-            log.warning("room.turn.failclosed", extra={"turn": turn.id, "error": str(e)})
+            log.warning(
+                "room.turn.failclosed",
+                extra={"turn": turn.id, "error": str(e)},
+                exc_info=True,
+            )
+
         finally:
             TURN_DEADLINE.reset(reset_token)
         now = self.clock.now()
