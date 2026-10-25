@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST='{"lib/room/index.ts -> ./spacetime":{"id":4555,"files":["static/chunks/555.67fb1a73b39536ca.js"]},"lib/room/spacetime.ts -> @bindings":{"id":3844,"files":["static/chunks/1525c72b.9b43441093237757.js","static/chunks/741.24b44a3bf9d3db4e.js","static/chunks/844.56807b9a262b9798.js"]}}';

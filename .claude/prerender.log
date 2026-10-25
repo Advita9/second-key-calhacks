@@ -1,0 +1,2 @@
+provider=cartesia mode=real voice_id=d7bf7d75-64b7-4c1e-86c0-79d647366587 lines=111 cache=/Users/soheekim/second-key/backend/cache/audio
+rendered=0 cached=111 failed=0 elapsed=0.0s cache_files=111 cache_bytes=21220818

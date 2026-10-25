@@ -1,0 +1,629 @@
+INFO:     Started server process [79872]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:60368 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60369 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60372 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60374 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60376 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60378 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60380 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60382 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60384 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60386 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60388 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60390 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60392 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60399 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60398 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60401 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60403 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60405 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60407 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60410 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60413 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60415 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60417 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60419 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60421 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60423 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60425 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60427 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60431 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60433 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60436 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60438 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60445 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60443 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60447 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60448 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60450 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60452 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60454 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60456 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60470 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60482 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60476 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60481 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60479 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60475 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60480 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60485 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60486 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60488 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60489 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60491 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60492 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60494 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60495 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60504 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60506 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60508 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60512 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60516 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60499 - "POST /attack/mutate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60524 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60523 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60528 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60532 - "POST /attack/inject HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60536 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60545 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60540 - "POST /attack/replay HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60553 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60552 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60557 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60561 - "POST /attack/self-approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60565 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60570 - "POST /attack/self-approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60574 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60582 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60581 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60586 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60590 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60596 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60601 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60609 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60608 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60613 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60621 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60628 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60638 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60637 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60642 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60646 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60650 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60662 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60661 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60659 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60666 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60670 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60674 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60682 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60681 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60687 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60691 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60695 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60711 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60709 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60713 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60717 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60720 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:60725 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60745 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60744 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60742 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60753 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60758 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60762 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60770 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60769 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60776 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60781 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60785 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60793 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60797 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60801 - "POST /attack/inject HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60805 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60809 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60817 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60816 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60821 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60825 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60829 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60833 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60841 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60840 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60845 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60849 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60855 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60863 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60862 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60867 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60871 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60877 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60887 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60886 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60891 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60898 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60906 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60914 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60925 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60924 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60929 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60935 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60939 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60948 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60946 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60952 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60956 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60960 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60968 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60967 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60972 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60976 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60980 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60984 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60992 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60991 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60996 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61000 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61004 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61013 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61011 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61017 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61021 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61025 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61033 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61032 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61037 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61041 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61045 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61050 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61060 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61059 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61067 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61072 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61076 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61084 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61083 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61088 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61092 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61096 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61108 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61106 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61105 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61112 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61116 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61120 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61127 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61128 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61133 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61138 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61142 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61150 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61148 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61154 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61161 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61171 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61184 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61183 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61182 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61193 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61208 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61211 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61210 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61223 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61227 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61226 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61254 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61256 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61255 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61296 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61299 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61298 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61397 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61400 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61399 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61425 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61428 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61427 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61452 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61455 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61454 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61478 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61481 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61480 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61493 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61496 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61494 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61500 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63390 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63392 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63399 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:63398 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63403 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63405 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63408 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63409 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63412 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63413 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63416 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:63417 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64015 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64018 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64014 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64016 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64023 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64033 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64038 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64039 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64049 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64054 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64060 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64061 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64071 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64078 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64081 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64081 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64087 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64101 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64101 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64107 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64106 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64166 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64169 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64165 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64170 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64175 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64178 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64183 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64184 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64188 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64191 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64196 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64197 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64201 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64220 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64223 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64223 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64229 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64242 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64242 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64249 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64247 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64275 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64276 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64298 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64296 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64306 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64312 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64323 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64324 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64329 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64335 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64344 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64345 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64460 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64462 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64466 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64470 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64472 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64474 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64477 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64479 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64481 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64483 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64597 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64601 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64608 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64609 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64614 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64611 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64612 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64610 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64602 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64617 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64619 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64621 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64623 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64625 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64627 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64629 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64631 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64633 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64635 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64637 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64639 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64642 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64645 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64648 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64650 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64656 - "GET /payments?limit=20 HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64655 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64658 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64660 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64663 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64665 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64668 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64671 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64674 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64676 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64679 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64681 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64684 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64686 - "WebSocket /ws?room=DEMO&role=board" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64690 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64693 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64696 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64694 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64701 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64702 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "POST /attack/inject HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64716 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "POST /attack/mutate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "POST /attack/replay HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "POST /attack/self-approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64706 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64720 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64729 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64742 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64741 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64748 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64747 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64755 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64754 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64761 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64760 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64767 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64766 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64779 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64780 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64778 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64781 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64778 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64781 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64797 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64800 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64799 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64798 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64799 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64798 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64804 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64816 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64821 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64822 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64825 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64829 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64839 - "WebSocket /ws?room=DEMO&role=attacker" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64835 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64852 - "WebSocket /ws?room=DEMO&role=attacker" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64845 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64849 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64850 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64846 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "POST /rooms/DEMO/join HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64854 - "WebSocket /ws?room=DEMO&role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289&player_token=PaOEADJcFVM4ouSmX6DFBlqosoTlbJQ3" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64834 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "POST /rooms/DEMO/stt HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "POST /rooms/DEMO/submit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64865 - "GET /audio/ed999097cbae66348e1d6cf4908e58a2532a5b3df687534f279a00c15bee9f47.wav HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "POST /rooms/DEMO/submit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64876 - "GET /audio/f4f839658395f5bc51f4f1dc6a8aeb4bd74711674c1b143a7adc7195bea4d610.wav HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "POST /rooms/DEMO/submit HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64859 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64880 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64880 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64880 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64883 - "GET /audio/85af1b7f081e117b5d5216766e18315dc23d0a6a1f5fc89e80c5817d9287cd6f.wav HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:64880 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64880 - "GET /rooms/DEMO/snapshot?role=attacker&player_id=c7c369ef3715f0a01703247eccbf9bfa1f9b507ea384a2af78f51ab121316289 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64880 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64897 - "POST /attack/inject HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64897 - "POST /attack/mutate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64897 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64916 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64922 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64932 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64926 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64934 - "WebSocket /ws?room=DEMO&role=ops&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64928 - "GET /audit?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64926 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64927 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64930 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64927 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64930 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /audit?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64926 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64928 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64930 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /audit?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /audit?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64939 - "GET /audit?limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64939 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64943 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64950 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64954 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64957 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64946 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64959 - "WebSocket /ws?room=DEMO&role=board&token=db00811f05ba1d1e" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64943 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64952 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64925 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64939 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64929 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64961 - "GET /audio/85af1b7f081e117b5d5216766e18315dc23d0a6a1f5fc89e80c5817d9287cd6f.wav HTTP/1.1" 206 Partial Content
+INFO:     127.0.0.1:64946 - "GET /payments?limit=20 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /rooms/DEMO/snapshot?role=board HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64972 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64970 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64968 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64975 - "GET /eval/results HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64946 - "GET /health HTTP/1.1" 200 OK
